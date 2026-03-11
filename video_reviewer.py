@@ -2,7 +2,6 @@ from custom_logger import logger_config
 import traceback
 import databasecon
 import common
-import shutil
 import custom_env
 import re
 import json
@@ -15,10 +14,6 @@ from google import genai
 from PIL import Image
 import combineAudio
 import os
-import subprocess
-from pathlib import Path
-from browser_manager.browser_config import BrowserConfig
-from chat_bot_ui_handler import GeminiUIChat, AIStudioUIChat
 import json_repair
 from jebin_lib import HFTTTClient, HFTTSClient
 

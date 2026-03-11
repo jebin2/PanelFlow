@@ -20,14 +20,12 @@ import custom_env
 import common
 import re
 import json_repair
-import subprocess
-import time
 from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, utils
 from caption_generator import MultiTypeCaptionGenerator
 import text_splitter as split_paragraph
-from chat_bot_ui_handler import GeminiUIChat, AIStudioUIChat
+from chat_bot_ui_handler import AIStudioUIChat
 
 @dataclass
 class Config:

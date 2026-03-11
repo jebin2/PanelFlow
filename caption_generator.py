@@ -10,8 +10,7 @@ from custom_logger import logger_config
 
 import threading
 import time # Import time for skip logic
-import sys
-from chat_bot_ui_handler import GoogleAISearchChat, AIStudioUIChat, QwenUIChat, PerplexityUIChat, GeminiUIChat, GrokUIChat, CopilotUIChat, BingUIChat, MistralUIChat, PallyUIChat, MoonDream, BraveAISearch, DuckDuckGoAISearch
+from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch
 from browser_manager.browser_config import BrowserConfig
 
 # Serialize logger output so multi-line entries (message + separator) from

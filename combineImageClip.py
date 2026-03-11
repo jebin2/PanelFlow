@@ -7,7 +7,6 @@ from custom_logger import logger_config
 from typing import List, Dict
 import custom_env
 import common
-import subprocess
 from animate_image import ImageAnimator
 import traceback
 import media_transitions

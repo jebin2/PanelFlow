@@ -1,6 +1,4 @@
 import spacy
-import sys
-import json
 
 def split(text):
     nlp=None

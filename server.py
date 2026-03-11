@@ -20,7 +20,7 @@ import common
 from content_map import content_map
 import fcntl
 import asyncio
-from typing import Optional, List
+from typing import List
 import json
 
 app = FastAPI()

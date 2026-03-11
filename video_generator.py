@@ -1,6 +1,5 @@
 from PIL import Image
 import os
-import random
 from custom_logger import logger_config
 import databasecon
 import common
@@ -11,7 +10,6 @@ import time
 import combineImageClip
 import combineVideo
 import json
-import render_text
 import shutil
 import traceback
 from pathlib import Path

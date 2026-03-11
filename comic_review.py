@@ -5,19 +5,16 @@ from gemini_config import pre_model_wrapper
 import databasecon
 from custom_logger import logger_config
 from PIL import Image
-from datetime import datetime, timedelta
 from google import genai
 from pydantic import BaseModel
 import traceback
-from video_reviewer import DataFormat, titleAndDescription
+from video_reviewer import DataFormat
 import time
 from PIL import ImageOps
 import json
-from functools import reduce
 import combineImageClip
 from create_comic_panel_video import main as main_ComicVideoPipeline, Config as CVP_Config
 import re
-import subprocess
 import os
 import shlex
 import pickle

@@ -1,14 +1,12 @@
 from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip
 import gc
 import os
-import subprocess
 from contextlib import ExitStack
 from custom_logger import logger_config
 from typing import List, Tuple
 import common
 import custom_env
 import media_transitions
-import random
 from animate_image import ImageAnimator
 
 def start(temp_files: List[str], audioPath, fps: float, do_animate = False, output_video_path=None, need_transitions = True) -> Tuple[str, str]:

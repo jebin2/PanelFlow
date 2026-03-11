@@ -3,7 +3,6 @@ import os
 import shutil
 import string
 from custom_logger import logger_config
-import databasecon
 import custom_env
 import secrets
 import hashlib

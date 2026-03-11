@@ -7,7 +7,6 @@ import traceback
 import merge_audio
 import json
 import time
-from jebin_lib import HFSTTClient
 
 class AudioGenerator:
     type_instance = None
