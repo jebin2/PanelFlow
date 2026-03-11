@@ -6,7 +6,7 @@ pre_model_wrapper=None
 try:
 	from functools import partial
 	from gemiwrap import GeminiWrapper
-	from gemiwrap.utils import compress_video as geminiwrap_compress_video, split_video as geminiwrap_split
+	from gemiwrap.utils import compress_video as geminiwrap_compress_video
 	import custom_env
 
 	pre_model_wrapper = partial(GeminiWrapper, model_name=custom_env.MODEL_NAME)
@@ -25,16 +25,6 @@ try:
 
 		return compressed_path
 
-	def compress_and_split(
-		input_path
-	):
-		# Step 1: Compress the video
-		compressed_path = compress(
-			input_path=input_path
-		)
-
-		split_paths = geminiwrap_split(compressed_path)
-		return split_paths
 
 except:
 	logger_config.warning("Gemini Wrapper is not initialised.")

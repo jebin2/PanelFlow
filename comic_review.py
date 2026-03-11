@@ -14,7 +14,6 @@ import time
 from PIL import ImageOps
 import json
 from functools import reduce
-import json_parser
 import combineImageClip
 from create_comic_panel_video import main as main_ComicVideoPipeline, Config as CVP_Config
 import re

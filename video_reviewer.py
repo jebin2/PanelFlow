@@ -7,12 +7,10 @@ import shutil
 import custom_env
 import re
 import json
-import video_clipper
 import gc
 import time
-import json_parser
 from pydantic import BaseModel
-from gemini_config import pre_model_wrapper, compress_and_split, compress
+from gemini_config import pre_model_wrapper, compress
 from google import genai
 from PIL import Image
 import combineAudio
@@ -59,9 +57,6 @@ class VideoReviewer(PropContent):
 	#	 anime_name = title.split("Episode")[0].strip() if " Episode" in title else title
 	#	 return anime_name
 
-	def get_start_phrase(self):
-		return None
-	
 	def get_welcome_phrase(self):
 		# return f"Hello Everyone, Welcome to our next episode of {self.get_series_name()}."
 		return ''
@@ -216,62 +211,6 @@ Before output, ask:
 		logger_config.debug(content)
 		return content
 
-	def recap_user_prompt(self):
-		return self.get_db_entry()[databasecon.getId("title")]
-
-	def spelling_system_prompt(self):
-		return """# Spelling Cross-Check System Prompt
-
-You are a spelling verification assistant. Your task is to cross-check a given paragraph against provided video transcription to identify and correct spelling mistakes.
-
-## Instructions:
-
-1. **Use the video transcription as your spelling reference** - The transcription contains the correct spellings for terms, names, and concepts mentioned in the video
-2. **Focus only on spelling errors** - Do not make changes to:
-   - Grammar or sentence structure
-   - Punctuation (unless it affects spelling context)
-   - Word choice or vocabulary
-   - Formatting or capitalization (unless it's a clear spelling mistake)
-
-3. **Identify spelling mistakes by**:
-   - Finding words in the paragraph that appear misspelled when compared to their correct versions in the transcription
-   - Looking for typos, misspellings, or phonetic errors
-   - Cross-referencing proper nouns, technical terms, and specific terminology from the transcription
-
-4. **Output JSON format**:
-{
-  "corrected_paragraph": "Your continuous review content here, written as seamless continuation of the ongoing narrative without any segment or part references."
-}
-
-## Example:
-**Paragraph**: "The cientist discussed quantum mecanics and Einsteins theory of relativity."
-**Transcript**: "The scientist explained that quantum mechanics builds upon Einstein's revolutionary work..."
-{
-	"corrected_paragraph": "The scientist discussed quantum mechanics and Einstein's theory of relativity."
-}
-
-## Important Notes:
-- The paragraph content may differ from the transcription but should use the same correct spellings
-- Focus on matching spelling accuracy rather than exact word-for-word correspondence
-- If a word appears in the paragraph but not in the transcription, apply standard spelling rules
-- Maintain the original meaning and structure of the paragraph"""
-
-	def spelling_schema(self):
-		return genai.types.Schema(
-			type = genai.types.Type.OBJECT,
-			required = ["corrected_paragraph"],
-			properties = {
-				"corrected_paragraph": genai.types.Schema(
-					type = genai.types.Type.STRING,
-				),
-			},
-		)
-
-	def spelling_user_prompt(self, Paragraph, otherDetails):
-		return f"""**Paragraph**: {Paragraph}
-
-- **Transcript**: {" ".join(seg['text'] for seg in otherDetails)}"""
-
 	def dialogue_matcher_user_prompt(self, recap_sentence=None, dialogue_with_timestamp=None):
 		return f"""Recap Sentence: {recap_sentence}
 
@@ -394,101 +333,14 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 		except Exception as e:
 			raise ValueError("LLM failed to correct the data")
 	
-	def _split_data(self, segments, char_len=CHAR_LEN):
-		sentence = ''
-		batches = []
-
-		n = 2
-		all_text = ' '.join(seg["text"] for seg in segments)
-		total_len = len(all_text)
-
-		char_len = total_len / n
-
-		for segment in segments:
-			# Check if adding the current segment will exceed the limit
-			if len(sentence) + len(segment["text"]) < char_len:
-				sentence += segment["text"]
-			else:
-				# Save the current sentence to batches and start a new one
-				batches.append(sentence)
-				sentence = segment["text"]
-
-		# Add any remaining text after the loop finishes
-		if sentence:
-			batches.append(sentence)
-		
-		return batches
-
 	def merge_audio(self, audioPath):
 		return audioPath
-
-	def match_sentence(self, recap, otherDetails):
-		nlp=None
-		import spacy
-		try:
-			nlp = spacy.load("en_core_web_sm")
-		except OSError:
-			from spacy.cli import download
-			download("en_core_web_sm")
-			nlp = spacy.load("en_core_web_sm")
-
-		geminiWrapper = pre_model_wrapper(
-			system_instruction=self.dialogue_matcher_system_prompt(otherDetails),
-			schema=self.single_dialogue_matcher_schema()
-		)
-		new_dialogues = []
-		doc = nlp(recap)
-
-		sentence_count = sum(1 for _ in doc.sents)
-		modul_n = (sentence_count // 100) + 1
-
-		sentence = ""
-		count = 0
-		for sent in doc.sents:
-			sentence += f"{sent.text.strip()} "
-			count += 1
-
-			if (count % modul_n != 0 or len(sentence) < 100) and count < sentence_count:
-				continue
-
-			sentence = sentence.strip()
-			logger_config.info(f"Working match_sentence on sentence {count} of {sentence_count}", seconds=5)
-
-			model_responses = geminiWrapper.send_message(
-				user_prompt=self.dialogue_matcher_user_prompt(sentence, otherDetails)
-			)
-			for model_res in model_responses:
-				local_dialog = self.parse_content(model_res, format=RecapDialogMoment.model_json_schema())
-				new_dialogues.append({
-					"key_moment": local_dialog["dialogue"],
-					"impact": sentence
-				})
-
-			sentence = ""
-
-		logger_config.info(new_dialogues)
-		return new_dialogues
-
-	def get_skip_segment(self, intro=True):
-		return None
 
 	def save_json_data(self, id, json_data):
 		databasecon.execute(
 			f"update {custom_env.TABLE_NAME} set json_data=? where id=?",
 			values=(json.dumps(json_data, ensure_ascii=False), id)
 		)
-
-	def find_script_file(self, videoPath):
-		base, _ = os.path.splitext(videoPath)
-		txt_file = base + ".txt"
-		pdf_file = base + ".pdf"
-
-		if os.path.exists(txt_file):
-			return txt_file
-		elif os.path.exists(pdf_file):
-			return pdf_file
-		else:
-			return None
 
 	def get_key_moment(self, segments):
 		if self.get_type() in [custom_env.COMIC_REVIEW, custom_env.COMIC_SHORTS]:
@@ -538,39 +390,6 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 
 		return full_content, final_output_audio
 
-	def get_video_for_duration(self, moment, videoPath):
-		duration = moment['duration']
-		full_duration, _, _, _ = common.get_media_metadata(videoPath)
-		start = moment["frame_second"]
-		end = start + duration
-		diff = abs(end-start)
-		remain = abs(diff-duration)
-
-		if remain > 0:
-			if int(start - remain/2) < 0:
-				end += remain
-			elif int(end + remain/2) > full_duration:
-				start -= remain
-			else:
-				start -= remain/2
-				end += remain/2
-		else:
-			start += remain/2
-			end -= remain/2
-
-		start = max(0, start)
-		end = min(full_duration, end)
-		base = os.path.basename(videoPath)
-		name, _ = os.path.splitext(base)
-		output_path = f'{custom_env.REUSE_SPECIFIC_PATH}/{name}_{round(start, 2)}_{round(end, 2)}_2.mp4'
-		clipped_path = video_clipper.clip(videoPath, start, end, output_path=output_path)
-
-		# subprocess.run([
-		#	 'ffmpeg', '-y', '-i', clipped_path,
-		#	 '-an', '-c:v', 'copy', output_path
-		# ], check=True)
-		return clipped_path
-	
 	def get_audio_details(self):
 		audioPath = self.get_db_entry()[databasecon.getId("audioPath")]
 		transcript = self.get_description()

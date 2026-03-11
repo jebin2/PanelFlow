@@ -3,7 +3,6 @@ import custom_env
 import json
 from custom_logger import logger_config
 import common
-import time
 from datetime import datetime, timedelta
 
 class PropContent:
@@ -43,14 +42,6 @@ class PropContent:
     def is_video_allowed(self):
         return True
 
-    def content_sequence(self):
-        return [
-            [custom_env.COMIC_REVIEW, custom_env.COMIC_SHORTS],
-            [custom_env.COMIC_REVIEW, custom_env.COMIC_SHORTS],
-            [custom_env.COMIC_REVIEW, custom_env.COMIC_SHORTS],
-            [custom_env.COMIC_REVIEW, custom_env.COMIC_SHORTS]
-        ]
-
     def set_db_entry(self, db_entry):
         self._current_db_entry = db_entry
         return self.get_db_entry()
@@ -58,15 +49,6 @@ class PropContent:
     def get_db_entry(self):
         return self._current_db_entry
 
-    def update_db_entry(self, db_entry):
-        columns_to_update = [col_info["name"] for col_name, col_info in databasecon.COLUMNS.items() if col_name != "id"]
-        update_query = f"UPDATE {custom_env.TABLE_NAME} SET {', '.join([col + ' = ?' for col in columns_to_update])}, lastModifiedTime = {int(time.time() * 1000)} WHERE id = ?"
-        values = list(db_entry[1:])
-        values.append(db_entry[0])
-        id = databasecon.execute(update_query, values, type="lastrowid")
-        db_entry = databasecon.execute(f"select * from {custom_env.TABLE_NAME} where id = '{id}'", type="get")
-        return self.set_db_entry(db_entry)
-    
     def refresh_db_entry(self):
         id = self.get_db_entry()[databasecon.getId("id")]
         db_entry = databasecon.execute(f"select * from {custom_env.TABLE_NAME} where id = '{id}'", type="get")
@@ -75,41 +57,17 @@ class PropContent:
     def get_type(self):
         return self.get_db_entry()[databasecon.getId("type")]
     
-    def get_start_phrase(self):
-        return None
-
-    def get_custom_instruction(self):
-        return None
-    
-    def get_source(self):
-        return None
-
     def get_system_prompt(self):
         return None
 
     def get_user_prompt(self):
         return None
 
-    def get_images_prompt(self):
-        return None
-
-    def json_schema():
-        return None
-
-    def format(self):
-        None
-
-    def from_online(self):
-        return False
-
     def merge_audio(self, audioPath):
         return None
 
     def post_process(self, start_show_answer=None):
         return None
-
-    def get_video_for_frames(self, frame_params=None):
-        return []
 
     def get_yt_category(self):
         return '24'
@@ -179,12 +137,6 @@ Logic riddles
 
         return description.strip()
     
-    def get_hours_to_wait(self):
-        return 20
-
-    def get_animate_type(self):
-        return None
-
     def get_yt_publish_time(self, type, add_day = 0, pub_hour=18):
         publish_at_ist = datetime.now().replace(hour=pub_hour, minute=0, second=0, microsecond=0)
         publish_at_ist = publish_at_ist + timedelta(days=add_day)
@@ -225,11 +177,3 @@ Logic riddles
         weekday = date_object.weekday()
         return weekday in (4, 5, 6)
 
-    def skip_day(self, timestamp_in_mills):
-        """Backward-compatible alias for ``not is_publish_day``.
-
-        Older code uses ``skip_day`` to decide whether to move to the next
-        day.  It returns ``True`` when a day should be skipped (i.e. not
-        Friday‑Sunday) and ``False`` on publishable days.
-        """
-        return not self.is_publish_day(timestamp_in_mills)

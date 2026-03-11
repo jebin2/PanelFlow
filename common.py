@@ -2,8 +2,6 @@ from pathlib import Path
 import os
 import shutil
 import string
-import argparse
-from datetime import datetime, timedelta
 from custom_logger import logger_config
 import databasecon
 import custom_env
@@ -14,7 +12,6 @@ import time
 import glob
 import re
 import requests
-from PIL import Image, PngImagePlugin
 import subprocess
 import psutil
 
@@ -88,10 +85,6 @@ def list_files(directory):
     
     return file_list
 
-def remove_path(path):
-    remove_file(path, True)
-    remove_all_files_and_dirs(path)
-
 def remove_file(file_path, retry=True):
     try:
         # Check if the file exists
@@ -127,105 +120,10 @@ def create_directory(directory_path):
     except Exception as e:
         logger_config.error(f'An error occurred: {e}')
 
-def get_files_count(directory_path):
-    return len(os.listdir(directory_path))
-
 def generate_random_string(length=10):
     characters = string.ascii_letters
     random_string = ''.join(secrets.choice(characters) for _ in range(length))
     return random_string
-
-def get_date(when=0):
-    today = datetime.now()
-    sub_day = today - timedelta(days=when)
-
-    sub_day_str = sub_day.strftime('%Y-%m-%d')    
-    return sub_day_str
-
-def update_database_status(entry_id: int, is_success: bool):
-    if is_success is None:
-        logger_config.error(f'Invalid audio: {entry_id}')
-        databasecon.execute(f"""UPDATE {custom_env.TABLE_NAME} 
-            SET audioPath = NULL, lastModifiedTime = {int(time.time() * 1000)}
-            WHERE id = ?""",
-            (entry_id,)
-        )
-        
-    elif not is_success:
-        databasecon.execute(f"""UPDATE {custom_env.TABLE_NAME} 
-            SET generatedVideoPath = '',
-                generatedThumbnailPath = '', lastModifiedTime = {int(time.time() * 1000)}
-            WHERE id = ?""",
-            (entry_id,)
-        )
-
-def parse_arguments() -> argparse.Namespace:
-    parser = None
-    parser = argparse.ArgumentParser(description="Content Generation Utility")
-
-    parser.add_argument(
-        "-t", "--text",
-        action="store_true",
-        help="Create only text content"
-    )
-    parser.add_argument(
-        "-f", "--facts",
-        action="store_true",
-        help="Create only fact content"
-    )
-    parser.add_argument(
-        "-c", "--chess",
-        action="store_true",
-        help="Create only chess content"
-    )
-    parser.add_argument(
-        "-l", "--long-text",
-        action="store_true",
-        help="Create only long text content"
-    )
-    parser.add_argument(
-        "--fen",
-        type=str,
-        help="FEN string representing the chess position.",
-        default=None
-    )
-    parser.add_argument(
-        "--moves-made",
-        type=str,
-        help="moves made aftefen the chess position.",
-        default=None
-    )
-    parser.add_argument(
-        "--host",
-        action="store_true",
-        help="Run the command on a remote host."
-    )
-    parser.add_argument(
-        "-ar", "--anime-review",
-        action="store_true",
-        help="Create only anime content"
-    )
-    parser.add_argument(
-        "-mr", "--movie-review",
-        action="store_true",
-        help="Create only movie content"
-    )
-    
-    return parser.parse_args()
-
-def get_existing_answers(type) -> str:
-    result = databasecon.execute(
-        f"SELECT answer FROM {custom_env.TABLE_NAME} WHERE type = ?", 
-        (type,)
-    )
-    return ', '.join(row[0] for row in result)
-
-def get_existing_titles(type) -> str:
-    result = databasecon.execute(
-        f"SELECT title FROM {custom_env.TABLE_NAME} WHERE type = ?",
-        (type,)
-    )
-    return ', '.join(row[0] for row in result)
 
 def generate_random_string_from_input(input_string, length=16):
     # Hash the input string to get a consistent value
@@ -240,29 +138,6 @@ def generate_random_string_from_input(input_string, length=16):
     random_string = ''.join(random.choice(characters) for _ in range(length))
 
     return random_string
-
-def is_chess_data_already_exists(data):
-    date = data['date']
-    result = databasecon.execute(f"SELECT * FROM {custom_env.TABLE_NAME} WHERE type='{custom_env.CHESS}' and title LIKE '%{date}%'")
-    if result:
-        return True
-    
-    return False
-
-def is_online_facts_data_already_exists(content):
-    result = databasecon.execute(f"SELECT * FROM {custom_env.TABLE_NAME} WHERE description = ?", (content,))
-    if result:
-        return True
-
-    return False
-
-def rename_file(current_name, new_name):
-    try:
-        # Rename the file
-        os.rename(current_name, new_name)
-        logger_config.success(f"File renamed from '{current_name}' to '{new_name}'")
-    except Exception as e:
-        logger_config.error(f"An error occurred: {e}")
 
 def copy(source, dest):
     try:
@@ -336,50 +211,6 @@ def get_html_content(url):
 
     return response.content
 
-def write_to_png(data_str, image_path='media/ChatGPT Image Apr 3, 2025, 02_03_23 PM.png'):
-    with Image.open(image_path) as img:
-        img_copy = img.copy()
-
-        metadata = PngImagePlugin.PngInfo()
-        metadata.add_text("Comment", data_str)
-
-        img_copy.save(image_path, "PNG", pnginfo=metadata)
-
-def read_from_png(image_path='media/ChatGPT Image Apr 3, 2025, 02_03_23 PM.png'):
-    with Image.open(image_path) as image:
-        return image.info.get("Comment")
-
-def is_mostly_black(frame, black_threshold=20, percentage_threshold=0.9, sample_rate=10):
-    """
-    Fast black frame detection using pixel sampling.
-
-    Args:
-        frame: OpenCV BGR frame (NumPy array)
-        black_threshold: grayscale value below which a pixel is considered black
-        percentage_threshold: fraction of black pixels to consider frame mostly black
-        sample_rate: sample every N-th pixel in both dimensions (higher = faster)
-    Returns:
-        True if mostly black, False otherwise
-    """
-    import cv2
-    import numpy as np
-    if frame is None or frame.size == 0:
-        return True
-    # Convert to grayscale
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    # Sample pixels
-    sampled = gray[::sample_rate, ::sample_rate]
-    black_count = np.sum(sampled < black_threshold)
-    total_count = sampled.size
-    return (black_count / total_count) >= percentage_threshold
-
-def is_server_alive(url):
-    try:
-        response = requests.get(url, timeout=3)
-        return response.status_code == 200
-    except requests.exceptions.RequestException:
-        return False
-
 def delete_matching_videos(output_dir, match_text):
     """
     Delete all MP4 files matching pattern {index:04d}_*.mp4 in the given output directory.
@@ -397,16 +228,6 @@ def safe_json(obj):
         return obj
     except TypeError:
         return str(obj.__class__.__name__)  # fallback: just print the type
-
-def get_video_size(video_path):
-    import cv2
-    cap = cv2.VideoCapture(video_path)
-    if not cap.isOpened():
-        raise ValueError(f"Cannot open video: {video_path}")
-    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-    cap.release()
-    return width, height
 
 def is_valid_wav(file_path):
     """Check if the given file is a valid WAV audio file."""
@@ -568,106 +389,6 @@ def get_best_match(query: str, candidates: list[str]) -> tuple[int, str]:
 
     return best_idx, best_text
 
-def deduplicate_gemini_history(history):
-    seen = set()
-    cleaned_history = []
-    i = 0
-
-    while i < len(history):
-        entry = history[i]
-        # Ensure it’s a UserContent (odd/even depends on your structure)
-        if hasattr(entry, "parts") and len(entry.parts) > 0 and hasattr(entry.parts[0], "text"):
-            text = entry.parts[0].text
-            if text in seen:
-                # Skip both UserContent and the following model Content
-                i += 2
-                continue
-            else:
-                seen.add(text)
-        entry.parts = [entry.parts[0]]
-        cleaned_history.append(entry)
-        cleaned_history.append(history[i+1])
-        i += 2
-
-    return cleaned_history
-
-
-def gemini_history_to_text(pkl_path):
-    import pickle
-
-    # Load existing review history
-    with open(pkl_path, 'rb') as f:
-        review_history = pickle.load(f)
-    seen = set()
-    cleaned_history = ""
-
-    # Slice user and model entries
-    user_entries = review_history[0::2]   # every even index
-    model_entries = review_history[1::2]  # every odd index
-
-    for user_entry, model_entry in zip(user_entries, model_entries):
-        # Check if UserContent has text
-        if hasattr(user_entry, "parts") and len(user_entry.parts) > 0:
-            user_text = user_entry.parts[0].text.strip()
-            if not user_text or user_text in seen:
-                continue
-            seen.add(user_text)
-            
-            cleaned_history += f"{user_text}\n"
-            
-            # Model response
-            if hasattr(model_entry, "parts") and len(model_entry.parts) > 0:
-                model_text = model_entry.parts[0].text.strip()
-                cleaned_history += f"{model_text}\n\n"
-
-    return cleaned_history
-
-def append_to_gemeni_history(pkl_path, user_prompt, system_response):
-    import copy
-    import pickle
-
-    # Load existing review history
-    with open(pkl_path, 'rb') as f:
-        review_history = pickle.load(f)
-
-    # Find a template user and model entry to clone
-    template_user = None
-    template_model = None
-
-    for entry in review_history:
-        if getattr(entry, "role", None) == "user" and hasattr(entry, "parts"):
-            template_user = entry
-            break
-
-    for entry in review_history:
-        if getattr(entry, "role", None) == "model" and hasattr(entry, "parts"):
-            template_model = entry
-            break
-
-    if not template_user or not template_model:
-        raise ValueError("Could not find template user/model in pickle.")
-
-    # Create new entries by deep copying the templates
-    new_user = copy.deepcopy(template_user)
-    new_model = copy.deepcopy(template_model)
-
-    # Set the new text
-    new_user.parts[0].text = user_prompt
-    new_model.parts[0].text = system_response
-
-    # Append to review history
-    review_history.append(new_user)
-    review_history.append(new_model)
-
-    # Save back to pickle
-    with open(pkl_path, 'wb') as f:
-        pickle.dump(review_history, f)
-    return review_history
-
-def safe_filename(text: str) -> str:
-    """Create safe filename from text."""
-    return text.replace(" ", "_").replace("/", "_").replace("\\", "_")
-
 def get_neko_additional_flags(config):
     additional_flags = []
     additional_flags.append(f'-v {custom_env.CAPTION_CREATOR_BASE_PATH}:{config.neko_attach_folder}')
@@ -806,36 +527,3 @@ def run_ffmpeg(cmd):
     logger_config.debug(f"Running command: {' '.join(cmd)}")
     return subprocess.run(cmd, capture_output=True, text=True, check=True)
 
-def is_yt_published(row):
-    """
-    Check if a YouTube upload is considered fully published from a database row.
-    Returns True if an uploaded time exists and is greater than 0,
-    and a valid video ID exists.
-    """
-    try:
-        import databasecon
-        yt_time = row[databasecon.getId("youtubeUploadedTime")]
-        yt_id = row[databasecon.getId("youtubeVideoId")]
-        
-        uploaded_time = int(yt_time) if yt_time else 0
-        has_id = bool(yt_id) and str(yt_id).strip() != ""
-        return uploaded_time > 0 and has_id
-    except:
-        return False
-
-def is_x_published(row):
-    """
-    Check if an X (Twitter) upload is considered fully published from a database row.
-    Returns True if an uploaded time exists and is greater than 0,
-    and a valid tweet ID exists.
-    """
-    try:
-        import databasecon
-        x_time = row[databasecon.getId("xUploadedTime")]
-        x_id = row[databasecon.getId("xId")]
-        
-        uploaded_time = int(x_time) if x_time else 0
-        has_id = bool(x_id) and str(x_id).strip() != ""
-        return uploaded_time > 0 and has_id
-    except:
-        return False

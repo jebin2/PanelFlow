@@ -110,31 +110,6 @@ class VideoGenerator:
         
         return True
 
-    def _find_segment_time(self, sentence, segments, type, checkAfterSegment):
-        sentence = sentence.strip().lower()  # Normalize the sentence for better matching
-        sentence = sentence.replace(".", "")
-        sendNextWordStartTime = False
-        combineSegementText = None
-        for i, segment in enumerate(segments):
-            if checkAfterSegment is None or segment["id"] >= checkAfterSegment["id"]:
-                segment_text = segment["text"].strip().lower()
-                segment_text = segment_text.replace(".", "")
-                if combineSegementText is None:
-                    combineSegementText = segment_text
-                else:
-                    combineSegementText += f" {segment_text}"
-                if sendNextWordStartTime:
-                    return segment
-                if sentence in combineSegementText:
-                    if type == "start":
-                        return segment
-                    else:
-                        if i == len(segments) - 1:
-                            return segment
-                        sendNextWordStartTime = True
-
-        return None
-    
     def _post_success_process(self):
         id = self.type_instance.get_db_entry()[databasecon.getId("id")]
 
@@ -148,12 +123,6 @@ class VideoGenerator:
                 """, (1, id))
         gc.collect()
     
-    def save_json_data(self, id, json_data):
-        databasecon.execute(
-            f"update {custom_env.TABLE_NAME} set json_data=? where id=?",
-            values=(json.dumps(json_data, ensure_ascii=False), id)
-        )
-
     def update_video(self, add_bg_music=False):
         id = self.type_instance.get_db_entry()[databasecon.getId("id")]
         databasecon.execute(f"""

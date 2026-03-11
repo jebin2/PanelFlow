@@ -1,5 +1,4 @@
 from jebin_lib import HFTTTClient
-import json_parser
 import json_repair
 
 def remove(raw_text):

@@ -1,7 +1,6 @@
 import sqlite3
 from custom_logger import logger_config
 import custom_env
-import shutil
 import gc
 import traceback
 import os
@@ -132,17 +131,6 @@ def sync_all_columns():
                 cursor.execute(f"ALTER TABLE {custom_env.TABLE_NAME} ADD COLUMN {col['name']} {col['type'].upper()}")
         conn.commit()
 
-# Backup function
-def backup_database():
-    shutil.copy2(custom_env.DATABASE, custom_env.BACKUP_DATABASE)
-
-def get_columns():
-    cursor = execute("SELECT * FROM users", type='cursor')
-
-    # Get column names
-    column_names = [description[0] for description in cursor.description]
-    return column_names
-
 def execute(query, values=None, type='getAll'):
     conn = None  # Initialize conn variable outside the try block
     is_modification = False
@@ -179,67 +167,6 @@ def execute(query, values=None, type='getAll'):
             # backup_database()
             gc.collect()
 
-def execute_many(query, values_list, type='executemany'):
-    """
-    Execute a query with multiple sets of values for batch operations.
-    
-    Args:
-        query (str): SQL query with placeholders
-        values_list (list): List of tuples/lists containing values for each execution
-        type (str): Operation type - 'executemany' (default) or 'lastrowid' for getting inserted IDs
-    
-    Returns:
-        None for 'executemany'
-        List of lastrowid values for 'lastrowid' type
-    
-    Example usage:
-        # Batch insert
-        execute_many(
-            "INSERT INTO entries (title, description) VALUES (?, ?)",
-            [("Title 1", "Desc 1"), ("Title 2", "Desc 2")]
-        )
-        
-        # Batch update
-        execute_many(
-            "UPDATE entries SET audioPath = NULL WHERE id = ?",
-            [(1,), (2,), (3,)]
-        )
-    """
-    conn = None
-    is_modification = False
-    try:
-        init_database()
-        conn = sqlite3.connect(custom_env.DATABASE)
-        cursor = conn.cursor()
-        
-        if not values_list:
-            logger_config.warning("execute_many called with empty values_list")
-            return None if type == 'executemany' else []
-
-        if type == 'lastrowid':
-            # For getting multiple lastrowid values (useful for batch inserts)
-            lastrowids = []
-            for values in values_list:
-                cursor.execute(query, values)
-                lastrowids.append(cursor.lastrowid)
-            if query and values_list:
-                is_modification = query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE", "REPLACE"))
-            return lastrowids
-        else:
-            # Standard executemany for batch operations
-            cursor.executemany(query, values_list)
-            if query and values_list:
-                is_modification = query.strip().upper().startswith(("INSERT", "UPDATE", "DELETE", "REPLACE"))
-            return None
-            
-    except Exception as e:
-        logger_config.error(f"Batch Query:: {query} | Batch size:: {len(values_list) if values_list else 0}\n{traceback.format_exc()}")
-        raise ValueError(f'Error in databasecon.execute_many:: {str(e)}')
-    finally:
-        if conn:
-            conn.commit()
-            conn.close()
-            gc.collect()
 
 # if __name__ == "__main__":
 #     # Correctly format the execute call with proper type
