@@ -57,7 +57,7 @@ class AudioGenerator:
 
             return True
 
-        except Exception as e: # needed here to added in id_not_in
+        except Exception as e:
             logger_config.error(f"Error in AudioGenerator::process : {e}\n{traceback.format_exc()}")
             return False
 

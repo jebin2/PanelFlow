@@ -8,7 +8,6 @@ import time
 import traceback
 from PIL import Image
 import gc
-import combineAudio
 import os
 from jebin_lib import HFTTSClient
 
@@ -82,7 +81,7 @@ class ComicShortsReview(ComicReview):
         if not only_content:
             logger_config.info(f"Combining {len(audio_files)} audio files...")
             final_output_audio = f'{custom_env.AUDIO_PATH}/{common.generate_random_string()}.wav'
-            combineAudio.start(audio_files, final_output_audio, silence=0)
+            common.combineAudio(audio_files, final_output_audio, silence=0)
             logger_config.info(f"Combined audio saved as {final_output_audio}")
 
         return content, final_output_audio

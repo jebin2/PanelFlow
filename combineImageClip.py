@@ -71,7 +71,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
                 clip = stack.enter_context(clip)
                 clips.append(clip)
                 logger_config.debug(
-                    f"Clip Created {clip_info['img_path'].split(custom_env.CAPTION_CREATOR_BASE_PATH)[-1]} "
+                    f"Clip Created {clip_info['img_path']} "
                     f"start: {clip_info['clip_start']} "
                     f"duration: {clip_info['clip_duration']}"
                 , overwrite=True)
@@ -138,7 +138,7 @@ def start(images: List[Dict], fps: float = custom_env.FPS, animate_type="zoom_ou
 
 if __name__ == "__main__":
     logger_config.info(start([{
-        "img_path": f"{custom_env.ALL_PROJECT_BASE_PATH}/CaptionCreator/tempOutput/resized.png",
+        "img_path": f"CaptionCreator/tempOutput/resized.png",
         "clip_duration": 4.49,
         "clip_start": 0
     }]))

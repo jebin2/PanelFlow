@@ -13,6 +13,7 @@ import re
 import requests
 import subprocess
 import psutil
+from pydub import AudioSegment
 
 def file_exists(file_path):
     try:
@@ -344,7 +345,7 @@ def get_chrome_policies_json_path():
     Returns the path to policies.json, downloading it if it doesn't exist.
     """
 
-    local_path = f"{custom_env.ALL_PROJECT_BASE_PATH}/neko-apps/chrome-remote-debug/policies.json"
+    local_path = f"{custom_env.PARENT_BASE_PATH}/neko-apps/chrome-remote-debug/policies.json"
     if file_exists(local_path):
         return local_path
 
@@ -368,68 +369,6 @@ def get_chrome_policies_json_path():
     except Exception as e:
         logger_config.error(f"Error downloading policies.json: {e}")
         return None
-
-def setup_git_repo_get_install_pip(repo_url, target_path, pip_name=None, requirements_file=None, force_install=False):
-    is_new = False
-    if not dir_exists(target_path):
-        import subprocess
-        logger_config.info(f"Cloning {repo_url} to {target_path}")
-        subprocess.run(
-            ["git", "clone", repo_url, target_path],
-            check=True
-        )
-        logger_config.info(f"{repo_url} cloned.")
-        is_new = True
-    else:
-        import subprocess
-        logger_config.info(f"Pulling {target_path}")
-        try:
-            subprocess.run(
-                ["git", "pull"],
-                cwd=target_path,
-                check=True
-            )
-            logger_config.info(f"{target_path} pulled.")
-        except subprocess.CalledProcessError:
-            import shutil
-            logger_config.info(f"Git pull failed for {target_path}, deleting and re-cloning...")
-            shutil.rmtree(target_path)
-            subprocess.run(
-                ["git", "clone", repo_url, target_path],
-                check=True
-            )
-            logger_config.info(f"{repo_url} re-cloned to {target_path}.")
-            is_new = True
-
-    if (is_new or force_install) and not custom_env.IS_DOCKER:
-        import subprocess
-        if requirements_file:
-            req_path = os.path.join(target_path, requirements_file)
-            if file_exists(req_path):
-                logger_config.info(f"Installing dependencies from {requirements_file}")
-                subprocess.run(
-                    [
-                        "bash",
-                        "-ic",
-                        f"penv {pip_name} && pip install -r {requirements_file}"
-                    ],
-                    check=True,
-                    cwd=target_path
-                )
-                logger_config.info(f"Dependencies from {requirements_file} installed.")
-        elif pip_name:
-            logger_config.info(f"Installing {pip_name} via pip")
-            subprocess.run(
-                [
-                    "bash",
-                    "-ic",
-                    f"penv {pip_name} && pip install -e .[{pip_name}]"
-                ],
-                check=True,
-                cwd=target_path
-            )
-            logger_config.info(f"{pip_name} installed.")
-    return target_path
 
 _SUBPROCESS_ENV = {**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
 
@@ -471,3 +410,24 @@ def run_ffmpeg(cmd):
     logger_config.debug(f"Running command: {' '.join(cmd)}")
     return subprocess.run(cmd, capture_output=True, text=True, check=True)
 
+
+def combineAudio(file_names, path=None, silence=1000):  # Default silence = 1 sec
+    combined = AudioSegment.empty()
+
+    # Loop through the file names and append them to the combined audio
+    file_len = len(file_names)
+    for i, file_name in enumerate(file_names):
+        if not common.is_valid_wav(file_name):
+            raise ValueError(f"Invalid audio. {file_name}")
+        audio = AudioSegment.from_wav(file_name)
+        combined += audio
+        
+        # Add silence only between files
+        if silence and silence > 0 and i + 1 < file_len:
+            combined += AudioSegment.silent(duration=silence)  # Corrected
+
+    # Generate output path
+    audio_path = path if path else f'audio/{common.generate_random_string()}.wav'
+
+    combined.export(audio_path, format='wav')
+    return audio_path

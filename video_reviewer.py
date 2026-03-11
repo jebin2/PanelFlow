@@ -12,7 +12,6 @@ from pydantic import BaseModel
 from gemini_config import pre_model_wrapper, compress
 from google import genai
 from PIL import Image
-import combineAudio
 import os
 import json_repair
 from jebin_lib import HFTTTClient, HFTTSClient
@@ -483,7 +482,7 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 			databasecon.execute(f"UPDATE {custom_env.TABLE_NAME} SET answer = ?, lastModifiedTime = {int(time.time() * 1000)} WHERE id = ?", (json.dumps(key_moment, ensure_ascii=False), id))
 			logger_config.info(f"Combining {len(audio_files)} audio files...")
 			final_output_audio = f'{custom_env.AUDIO_PATH}/{common.generate_random_string()}.wav'
-			combineAudio.start(audio_files, final_output_audio, silence=0)
+			common.combineAudio(audio_files, final_output_audio, silence=0)
 			logger_config.info(f"Combined audio saved as {final_output_audio}")
 
 		return full_content, final_output_audio

@@ -455,18 +455,6 @@ Next Page:: {user_prompt}""",
 			return self.sanitise_sentences(id, json_data)
 
 		except Exception as e:
-			all_models = custom_env.ALL_MODEL_NAME
-			current = custom_env.MODEL_NAME
-
-			# Find the index of the current model
-			try:
-				index = all_models.index(current)
-				# Move to the next model in the list (wrap around using modulo)
-				next_model = all_models[(index + 1) % len(all_models)]
-				custom_env.MODEL_NAME = next_model
-				print(f"[Info] Switching model from {current} → {next_model} due to None returned.")
-			except ValueError:
-				print(f"[Warning] Current model '{current}' not found in ALL_MODEL_NAME.")
 			raise ValueError(f'Error in get_google_ai_studio_key_moment {e}\n{traceback.format_exc()}')
 
 	def get_frame_path(self, moment, videoPath, sub_path, i):
@@ -481,7 +469,7 @@ Next Page:: {user_prompt}""",
 	def resize_frame(self, img_path, i):
 		comic_name = img_path.split("/")[-2]
 		base_name = os.path.basename(img_path)
-		output_path = f'{custom_env.TEMP_OUTPUT}/{comic_name}_{base_name}_resize_frame_{custom_env.MAX_FRAME_FILE}.jpg'
+		output_path = f'{custom_env.TEMP_OUTPUT}/{comic_name}_{base_name}_resize_frame.jpg'
 		if common.file_exists(output_path):
 			return output_path
 		with Image.open(img_path) as background:
@@ -508,7 +496,7 @@ Next Page:: {user_prompt}""",
 
 			cwd = "/tmp/comic-panel-extractor"
 			if not common.dir_exists(cwd):
-				common.setup_git_repo_get_install_pip(
+				utils.setup_git_repo_get_install_pip(
 					repo_url="https://github.com/jebin2/comic-panel-extractor.git",
 					target_path=cwd,
 					pip_name="comic-panel-extractor",

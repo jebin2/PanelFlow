@@ -107,4 +107,4 @@ def merge(audio_1, audio_2=None, audio_2_index=[3, 4, 7, 8], volume_1=None, volu
     return output_path
 
 if __name__ == "__main__":
-    merge(f"{custom_env.ALL_PROJECT_BASE_PATH}/CaptionCreator/tempOutput/tZHedxvzPD.wav")
+    merge(f"CaptionCreator/tempOutput/tZHedxvzPD.wav")

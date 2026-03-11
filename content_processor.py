@@ -20,15 +20,13 @@ class ContentProcessor:
             filter_clause = ' AND id=?'
             filter_values = [self.type_instance.main_instance.id]
 
-        id_not_in_list = [int(x) for x in self.type_instance.main_instance.id_not_in.split(',')]
-        placeholders = ','.join('?' * len(id_not_in_list))
-        values = tuple([self.type_instance.get_type()] + id_not_in_list + filter_values)
+        values = tuple([self.type_instance.get_type()] + filter_values)
 
         order = 'ORDER BY CASE WHEN audioPath LIKE \'%audio%\' THEN 1 ELSE 0 END, id DESC'
 
         query = (f"SELECT * FROM {custom_env.TABLE_NAME} WHERE type = ?"
                  f" AND (video_processed is NULL or video_processed != 1)"
-                 f" AND id NOT IN ({placeholders}) {filter_clause} {order}")
+                 f" {filter_clause} {order}")
         return databasecon.execute(query, values, type='get')
 
     def process_content(self, db_entry):
@@ -73,8 +71,6 @@ class ContentProcessor:
 
     def _post_process(self, db_entry, failed_type):
         id = db_entry[0]
-        if failed_type is not None:
-            self.type_instance.main_instance.id_not_in += f',{id}'
 
         if failed_type == 'audio':
             logger_config.error(f'Invalid audio: {db_entry[0]}')

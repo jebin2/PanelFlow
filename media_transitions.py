@@ -157,8 +157,8 @@ if __name__ == "__main__":
     clip2 = ImageClip("media/anime/AnyxNGMDsx_captioned_anime_review.png").set_duration(3)
     clip3 = ImageClip("media/anime/AXHKtwunBw_captioned_anime_review.png").set_duration(2)
     clip4 = ImageClip("media/anime/AKEhQxrRFT_captioned_anime_review.png").set_duration(2)
-    clip5 = VideoFileClip(f"{custom_env.ALL_PROJECT_BASE_PATH}/CaptionCreator/video/jhPjBwMSWn.mp4")
-    clip6 = VideoFileClip(f"{custom_env.ALL_PROJECT_BASE_PATH}/CaptionCreator/video/ZYGMetYPVU.mp4")
+    clip5 = VideoFileClip(f"CaptionCreator/video/jhPjBwMSWn.mp4")
+    clip6 = VideoFileClip(f"CaptionCreator/video/ZYGMetYPVU.mp4")
 
     final_video = make([clip5, clip6])
     output_path = f'{custom_env.TEMP_OUTPUT}/{common.generate_random_string()}.mp4'
