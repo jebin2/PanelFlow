@@ -14,9 +14,6 @@ import requests
 import subprocess
 import psutil
 
-def path_exists(path):
-    return file_exists(path) or dir_exists(path)
-
 def file_exists(file_path):
     try:
         return Path(file_path).is_file()
@@ -194,22 +191,6 @@ def write_audiofile(audio_clip, output_path, fps=44100, codec="libmp3lame", bitr
         bitrate=bitrate
     )
 
-def download_image(image_url, save_path, throw_error=False):
-	response = requests.get(image_url, stream=True)
-	if response.status_code == 200:
-		with open(save_path, 'wb') as file:
-			for chunk in response.iter_content(1024):
-				file.write(chunk)
-	elif throw_error:
-		raise ValueError(f"Error: Unable to download image, status code {response.status_code}")
-
-def get_html_content(url):
-    response = requests.get(url)
-    if response.status_code != 200:
-        raise ValueError(f"Error: Unable to fetch page, status code {response.status_code}")
-
-    return response.content
-
 def delete_matching_videos(output_dir, match_text):
     """
     Delete all MP4 files matching pattern {index:04d}_*.mp4 in the given output directory.
@@ -351,42 +332,6 @@ def get_device(is_vision=False):
         torch.cuda.is_available = lambda: False
 
     return device
-
-def get_best_match(query: str, candidates: list[str]) -> tuple[int, str]:
-    """
-    Returns the index and text of the most suitable match 
-    from candidates for the given query.
-    
-    Args:
-        query (str): Input text to compare.
-        candidates (list[str]): List of candidate texts.
-    
-    Returns:
-        (int, str): (best_match_index, best_match_text)
-    """
-    from sentence_transformers import SentenceTransformer, util
-    import torch, gc
-    # Load model on CPU
-    model = SentenceTransformer('all-mpnet-base-v2', device="cpu")
-
-    # Encode query and candidates
-    query_emb = model.encode(query, convert_to_tensor=True, device="cpu")
-    candidate_embs = model.encode(candidates, convert_to_tensor=True, device="cpu")
-
-    # Compute cosine similarity
-    similarities = util.cos_sim(query_emb, candidate_embs)[0]
-
-    # Get index of best match
-    best_idx = similarities.argmax().item()
-    best_text = candidates[best_idx]
-
-    # Cleanup to free memory
-    del model
-    gc.collect()
-    if torch.cuda.is_available():
-        torch.cuda.empty_cache()
-
-    return best_idx, best_text
 
 def get_neko_additional_flags(config):
     additional_flags = []
