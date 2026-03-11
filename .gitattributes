@@ -1,0 +1,10 @@
+*.mp3 filter=xet diff=xet merge=xet
+*.wav filter=xet diff=xet merge=xet
+*.mp4 filter=xet diff=xet merge=xet
+*.jpg filter=xet diff=xet merge=xet
+*.jpeg filter=xet diff=xet merge=xet
+*.png filter=xet diff=xet merge=xet
+*.gif filter=xet diff=xet merge=xet
+*.ttf filter=xet diff=xet merge=xet
+*.otf filter=xet diff=xet merge=xet
+stockfish/stockfish-ubuntu-x86-64-avx2 filter=lfs diff=lfs merge=lfs -text

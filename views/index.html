@@ -1,0 +1,1320 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neo-Brutalist Audio DB</title>
+    <!-- Xterm.js Files -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.min.js"></script>
+
+    <!-- Font: JetBrains Mono for code aesthetics -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;800&display=swap" rel="stylesheet">
+
+    <style>
+        :root {
+            --c-bg: #e0e0e0;
+            --c-sidebar: #ffffff;
+            --c-border: #000000;
+            --c-text: #000000;
+
+            /* Palette */
+            --c-accent-1: #00f2ff;
+            /* Cyan */
+            --c-accent-2: #b537f2;
+            /* Purple */
+            --c-accent-3: #ff479c;
+            /* Pink */
+            --c-accent-4: #00e676;
+            /* Green */
+            --c-dark: #1a1a1a;
+
+            --border-width: 3px;
+            --shadow-depth: 5px;
+            --radius: 0px;
+            /* Hard edges */
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'JetBrains Mono', monospace;
+            background-color: var(--c-bg);
+            color: var(--c-text);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            /* Prevent body scroll */
+            display: flex;
+            /* Sidebar | Main */
+        }
+
+        /* --- SCROLLBARS --- */
+        ::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: #000;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--c-accent-1);
+            border: 2px solid #000;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--c-accent-3);
+        }
+
+        /* --- SIDEBAR (Left Panel) --- */
+        .app-sidebar {
+            width: 340px;
+            min-width: 340px;
+            background: var(--c-sidebar);
+            border-right: var(--border-width) solid var(--c-border);
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            z-index: 10;
+        }
+
+        .sidebar-header {
+            padding: 20px;
+            background: var(--c-dark);
+            color: var(--c-accent-1);
+            border-bottom: var(--border-width) solid var(--c-border);
+        }
+
+        .sidebar-header h1 {
+            margin: 0;
+            font-size: 1.4rem;
+            text-transform: uppercase;
+            line-height: 1.2;
+            text-shadow: 3px 3px 0px var(--c-accent-2);
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .sidebar-section-title {
+            background: var(--c-accent-3);
+            color: white;
+            padding: 5px 10px;
+            font-weight: 800;
+            margin-bottom: 10px;
+            border: var(--border-width) solid black;
+            box-shadow: 3px 3px 0 black;
+            text-transform: uppercase;
+            font-size: 0.9rem;
+        }
+
+        /* NEW: Sidebar Dropdown Styling */
+        .sidebar-dropdown {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 15px;
+            background: var(--c-accent-1);
+            /* Cyan background */
+            border: var(--border-width) solid black;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 0.9rem;
+            box-shadow: 3px 3px 0 black;
+            cursor: pointer;
+            outline: none;
+        }
+
+        .sidebar-dropdown:focus {
+            box-shadow: 5px 5px 0 black;
+            transform: translate(-1px, -1px);
+        }
+
+        .sidebar-label {
+            font-size: 0.75rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            display: block;
+            text-transform: uppercase;
+        }
+
+        /* --- TRANSFORMED STATS TABLE (CSS Magic) --- */
+        #statsTable {
+            width: 100%;
+            display: block;
+            border: none;
+            box-shadow: none;
+            background: transparent;
+            overflow: auto;
+            height: 34vh;
+        }
+
+        #statsTable thead {
+            display: none;
+        }
+
+        #statsTable tbody {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        #statsTable tr {
+            display: flex;
+            flex-direction: column;
+            background: #fff;
+            border: var(--border-width) solid black;
+            box-shadow: 4px 4px 0px black;
+            transition: transform 0.2s;
+        }
+
+        #statsTable tr:hover {
+            transform: translate(-2px, -2px);
+            box-shadow: 6px 6px 0px black;
+        }
+
+        #statsTable td {
+            padding: 8px 10px;
+            border: none;
+            border-bottom: 1px solid #eee;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #statsTable td:nth-child(1) {
+            background: black;
+            color: var(--c-accent-1);
+            font-weight: 800;
+            text-transform: uppercase;
+            border-bottom: var(--border-width) solid black;
+            justify-content: center;
+        }
+
+        #statsTable td:nth-child(2)::before {
+            content: "No Audio:";
+            color: #666;
+            font-weight: 800;
+        }
+
+        #statsTable td:nth-child(3)::before {
+            content: "A/V Gen:";
+            color: #666;
+            font-weight: 800;
+        }
+
+        #statsTable td:nth-child(4)::before {
+            content: "Ready:";
+            color: #666;
+            font-weight: 800;
+        }
+
+        #statsTable td:nth-child(5)::before {
+            content: "Pub'd:";
+            color: #666;
+            font-weight: 800;
+        }
+
+        #statsTable td:nth-child(6)::before {
+            content: "Total:";
+            color: #666;
+            font-weight: 800;
+        }
+
+        /* --- ACTION BUTTONS GRID --- */
+        .actions-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .cmdaction-btn,
+        .add-button,
+        .view-button,
+        .delete-button,
+        .edit-button,
+        .download-button,
+        input[type="submit"] {
+            border: var(--border-width) solid black;
+            background: white;
+            color: black;
+            padding: 10px 5px;
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 800;
+            font-size: 0.8rem;
+            cursor: pointer;
+            box-shadow: 3px 3px 0 black;
+            transition: all 0.1s;
+            text-transform: uppercase;
+        }
+
+        .cmdaction-btn:hover,
+        .add-button:hover,
+        .view-button:hover {
+            transform: translate(1px, 1px);
+            box-shadow: 2px 2px 0 black;
+        }
+
+        .cmdaction-btn:active,
+        .add-button:active {
+            transform: translate(3px, 3px);
+            box-shadow: 0px 0px 0 black;
+        }
+
+        .add-button {
+            grid-column: span 2;
+            background: var(--c-accent-4);
+            font-size: 1rem;
+            padding: 15px;
+        }
+
+        .cmdaction-btn {
+            background: white;
+        }
+
+        /* Changed to white for better contrast against cyan bg if needed, or keep accent */
+        .cmdaction-btn:nth-child(even) {
+            background: #f0f0f0;
+        }
+
+        /* --- MAIN CONTENT (Right Panel) --- */
+        .app-main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .toolbar {
+            padding: 15px;
+            background: #fff;
+            border-bottom: var(--border-width) solid black;
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            border: var(--border-width) solid black;
+            padding: 10px;
+            font-family: inherit;
+            font-weight: bold;
+            box-shadow: 3px 3px 0 var(--c-accent-3);
+        }
+
+        .type-filter {
+            border: var(--border-width) solid black;
+            padding: 10px;
+            font-family: inherit;
+            background: white;
+            font-weight: bold;
+            box-shadow: 3px 3px 0 black;
+        }
+
+        /* --- DATA TABLE CONTAINER --- */
+        .table-wrapper {
+            flex: 1;
+            /* overflow: auto; */
+            padding: 20px;
+            background: #f4f4f4;
+            /* Grid background pattern */
+            background-image: linear-gradient(#ccc 1px, transparent 1px), linear-gradient(90deg, #ccc 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        #entriesTable {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border: var(--border-width) solid black;
+            box-shadow: 8px 8px 0px black;
+            overflow: auto;
+            display: block;
+            height: 85vh;
+        }
+
+        #entriesTable thead th {
+            background: black;
+            color: white;
+            padding: 15px;
+            text-align: left;
+            position: sticky;
+            top: 0;
+            z-index: 5;
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            border-bottom: var(--border-width) solid var(--c-accent-3);
+            white-space: nowrap;
+        }
+
+        #entriesTable tbody td {
+            border: 1px solid black;
+            padding: 12px;
+            font-size: 0.85rem;
+            vertical-align: middle;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            /* white-space: nowrap;  To allow multiline*/
+        }
+
+        #entriesTable tbody tr:nth-child(even) {
+            background: #e8e8e8;
+        }
+
+        #entriesTable tbody tr:hover {
+            background: var(--c-accent-1);
+            color: black;
+        }
+
+        /* Action buttons inside table */
+        #entriesTable td .view-button,
+        #entriesTable td .edit-button,
+        #entriesTable td .delete-button {
+            padding: 5px 8px;
+            font-size: 0.7rem;
+            margin: 0 2px;
+            box-shadow: 2px 2px 0 black;
+        }
+
+        .delete-button {
+            background: var(--c-accent-3);
+            color: white;
+        }
+
+        .edit-button {
+            background: var(--c-accent-4);
+        }
+
+        /* --- MODALS --- */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(3px);
+        }
+
+        .modal-content {
+            background-color: #fff;
+            margin: 5% auto;
+            padding: 0;
+            border: 4px solid #000;
+            width: 80%;
+            max-width: 1000px;
+            box-shadow: 15px 15px 0 var(--c-accent-2);
+            position: relative;
+            animation: slideIn 0.2s ease-out;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+
+        .close {
+            color: white;
+            background: black;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            width: 50px;
+            height: 50px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            border-left: 3px solid white;
+            border-bottom: 3px solid white;
+            position: sticky;
+            top: 0;
+            right: 0;
+            z-index: 100;
+        }
+
+        .close:hover {
+            background: var(--c-accent-3);
+        }
+
+        .modal-header {
+            background: var(--c-accent-2);
+            padding: 15px;
+            border-bottom: 3px solid black;
+            color: white;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        /* Modal Forms */
+        form {
+            padding: 20px;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        form div {
+            display: flex;
+            flex-direction: column;
+        }
+
+        form label {
+            font-weight: bold;
+            margin-bottom: 5px;
+            background: black;
+            color: white;
+            display: inline-block;
+            width: fit-content;
+            padding: 2px 5px;
+        }
+
+        form input[type="text"],
+        form textarea,
+        form select {
+            border: 3px solid black;
+            padding: 10px;
+            font-family: inherit;
+            background: #fff;
+            transition: 0.2s;
+        }
+
+        form input:focus,
+        form textarea:focus {
+            background: var(--c-accent-1);
+            outline: none;
+            box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.2);
+        }
+
+        form div[style*="flex: 1 1 100%"],
+        form .full-width {
+            grid-column: span 2;
+        }
+
+        /* --- TERMINAL MODAL --- */
+        #outputModal .modal-content {
+            background: black;
+            border: 4px solid var(--c-accent-4);
+            box-shadow: 15px 15px 0 black;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #output {
+            flex: 1;
+            padding: 10px;
+            overflow: hidden;
+        }
+
+        .all-button {
+            padding: 10px;
+            background: #222;
+            border-bottom: 2px solid var(--c-accent-4);
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+
+        .stop-button {
+            background: var(--c-accent-3) !important;
+            color: white;
+        }
+
+        .clear-button {
+            background: white;
+        }
+
+        /* --- IMAGE MODAL --- */
+        #imageModal .close {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+        }
+
+        #imageModal img,
+        #imageModal video {
+            max-height: 90vh;
+            max-width: 90vw;
+            border: 5px solid black;
+            box-shadow: 0 0 50px black;
+            display: block;
+            margin: auto;
+            position: relative;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Responsive */
+        @media (max-width: 900px) {
+            body {
+                flex-direction: column;
+                overflow: auto;
+            }
+
+            .app-sidebar {
+                width: 100%;
+                height: auto;
+                min-height: auto;
+                border-right: none;
+                border-bottom: 3px solid black;
+            }
+
+            .app-main {
+                height: auto;
+                overflow: visible;
+            }
+
+            .table-wrapper {
+                overflow: visible;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SIDEBAR: Stats & Actions -->
+    <aside class="app-sidebar">
+        <div class="sidebar-header">
+            <h1>Entries</h1>
+        </div>
+
+        <div class="sidebar-content">
+            <div class="sidebar-section-title">Global Actions</div>
+
+            <!-- ADDED: Global Type Selector -->
+            <div>
+                <span class="sidebar-label">Select Target Type:</span>
+                <select id="selectType" class="sidebar-dropdown">
+                    <!-- Options populated by JS -->
+                </select>
+            </div>
+
+            <div class="actions-grid">
+                <button class="add-button" onclick="addEntry('open')">+ ADD NEW ENTRY</button>
+
+                <!-- These buttons use the selectType dropdown above -->
+                <button class="cmdaction-btn" onclick="runCommand('open', 'new_content')">New Content</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'create_publish')">Auto-Pilot</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'process')">Process</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'gen_video')">Gen Video</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'publish_to_youtube')">Pub YouTube</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'publish_to_x')">Pub X</button>
+                <button class="cmdaction-btn" onclick="runCommand('open', 'refactor')">Refactor</button>
+            </div>
+
+            <div class="sidebar-section-title">System Statistics</div>
+
+            <!-- This table is transformed by CSS into vertical cards -->
+            <table id="statsTable">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>No Audio</th>
+                        <th>Audio/Video</th>
+                        <th>Ready</th>
+                        <th>Published</th>
+                        <th>Total</th>
+                    </tr>
+                </thead>
+                <tbody id="statsBody"></tbody>
+            </table>
+        </div>
+    </aside>
+
+    <!-- MAIN CONTENT: Data Table -->
+    <main class="app-main">
+        <div class="toolbar">
+            <input type="text" class="search-box" id="searchInput" placeholder="SEARCH DATABASE...">
+            <!-- Table specific filter (visual only) -->
+            <select class="type-filter" id="typeFilter"></select>
+            <select class="type-filter" id="statusFilter" style="background: white;">
+                <option value="all">All Status</option>
+                <option value="published">Published</option>
+                <option value="not_published">Not Published</option>
+            </select>
+        </div>
+
+        <div class="table-wrapper">
+            <table id="entriesTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Actions</th>
+                        <th>Audio Path</th>
+                        <th>Video Path</th>
+                        <th>Title</th>
+                        <th>Description</th>
+                        <th>Thumb Text</th>
+                        <th>Answer</th>
+                        <th>Gen Video</th>
+                        <th>Gen Thumb</th>
+                        <th>YT Upload</th>
+                        <th>X Upload</th>
+                        <th>YT ID</th>
+                        <th>Tw ID</th>
+                        <th>Type</th>
+                    </tr>
+                </thead>
+                <tbody id="entriesBody"></tbody>
+            </table>
+        </div>
+    </main>
+
+    <!-- === MODALS === -->
+
+    <!-- Add Modal -->
+    <div id="addModal" class="modal">
+        <div class="modal-content">
+            <div class="close" onclick="addEntry('close')">×</div>
+            <div class="modal-header">:: NEW ENTRY ::</div>
+            <form id="audioForm">
+                <div><label>Audio Path:</label><input type="text" name="audioPath" /></div>
+                <div>
+                    <label>Video Path:</label>
+                    <input type="text" name="videoPath" list="videoPathOptions" id="inputSelectVideoPath" />
+                    <datalist id="videoPathOptions"></datalist>
+                </div>
+                <div><label>Title:</label><input type="text" name="title" id="inputTitle" /></div>
+                <div><label>Type:</label><select name="type" class="formDropdown" id="inputSelectType"
+                        style="padding: 10px; border: 3px solid black; width: 100%;"></select></div>
+                <div class="full-width"><label>Description:</label><textarea name="description" rows="3"></textarea>
+                </div>
+                <div><label>Thumb Text:</label><input type="text" name="thumbnailText" /></div>
+                <div><label>Answer:</label><input type="text" name="answer" /></div>
+                <div class="full-width"><input type="submit" value="SUBMIT"
+                        style="width: 100%; background: var(--c-accent-4); padding: 15px; font-size: 1.2rem;" /></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="editModal" class="modal">
+        <div class="modal-content">
+            <div class="close" onclick="closeModal()">×</div>
+            <div class="modal-header">:: EDIT RECORD ::</div>
+            <div style="background: #ddd; padding: 10px; text-align: center; border-bottom: 3px solid black;">
+                <div id="audioId"></div>
+                <div id="videoId"></div>
+            </div>
+            <form id="editForm" onsubmit="updateEntry(event)">
+                <input type="hidden" id="editId" name="editId" />
+                <div class="full-width"><label>Title:</label><input type="text" id="editTitle" name="title" /></div>
+                <div class="full-width"><label>Audio Path:</label><input type="text" id="editAudioPath"
+                        name="audioPath" /></div>
+                <div class="full-width"><label>Description:</label><textarea id="editDescription" name="description"
+                        rows="3"></textarea></div>
+                <div><label>Thumb Text:</label><input type="text" id="editThumbnailText" name="thumbnailText" /></div>
+                <div><label>Answer:</label><input type="text" id="editAnswer" name="answer" /></div>
+                <div><label>Gen Video:</label><input type="text" id="editGeneratedVideoPath"
+                        name="generatedVideoPath" /></div>
+                <div><label>Gen Thumb:</label><input type="text" id="editGeneratedThumbnailPath"
+                        name="generatedThumbnailPath" /></div>
+
+                <div class="full-width" style="background: var(--c-accent-1); padding: 10px; border: 3px solid black;">
+                    <label style="background: transparent; color: black;">Status Check:</label>
+                    <label style="background: transparent; color: black; border: none;"><input type="checkbox"
+                            id="edityoutubeUploadedTime" name="youtubeUploadedTime"> YT Uploaded</label>
+                    <label style="background: transparent; color: black; border: none;"><input type="checkbox"
+                            id="editxUploadedTime" name="xUploadedTime"> X Uploaded</label>
+                </div>
+
+                <div><label>YT ID:</label><input type="text" id="editYoutubeVideoId" name="youtubeVideoId" /></div>
+                <div><label>Tweet ID:</label><input type="text" id="editxId" name="xId" /></div>
+                <div class="full-width"><label>Other:</label><input type="text" id="editOtherDetails"
+                        name="editOtherDetails" /></div>
+
+                <div class="full-width"><button type="submit" id="submitBtn"
+                        style="width: 100%; padding: 15px; background: var(--c-accent-2); color: white; font-size: 1.2rem;">UPDATE</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Terminal Modal -->
+    <div id="outputModal" class="modal">
+        <div class="modal-content" style="max-width: 90%;">
+            <div class="all-button">
+                <span style="margin-right: auto; color: var(--c-accent-4); font-weight: bold; font-size: 1.2rem;">>
+                    SYSTEM_OUTPUT</span>
+                <button class="cmdaction-btn stop-button" onclick="stopCommand()">ABORT</button>
+                <button class="cmdaction-btn clear-button" onclick="clearOutput()">CLEAR</button>
+                <div class="close" onclick="runCommand('close')"
+                    style="position: relative; width: auto; padding: 0 15px;">×</div>
+            </div>
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <!-- Media Viewer Modal -->
+    <div id="imageModal" class="modal">
+        <span class="close" onclick="closeImage()">×</span>
+        <img id="viewId" src="" style="display: none;">
+        <div id="viewIdVideo" style="display: none; width: 100%; height: 100%;"></div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="authorizModal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="close" onclick="document.getElementById('authorizModal').style.display='none'">×</div>
+            <div class="modal-header" style="background: var(--c-accent-3);">AUTH REQUIRED</div>
+            <form onsubmit="save_authoriz_code(event)">
+                <div class="full-width">
+                    <div id="authoriz_url"
+                        style="word-break: break-all; max-height: 100px; overflow: auto; background: #eee; padding: 5px; border: 2px solid black;">
+                    </div>
+                    <button type="button" onclick="copyAuthUrl()" style="margin-top: 5px;">Copy URL</button>
+                </div>
+                <div class="full-width"><label>Paste Code:</label><input type="text" id="code" name="code" /></div>
+                <div class="full-width"><button type="submit" id="submitBtn"
+                        style="width: 100%; background: var(--c-accent-4);">SAVE</button></div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const form = document.getElementById('audioForm');
+        const entriesBody = document.getElementById('entriesBody');
+        const statsBody = document.getElementById('statsBody');
+        statsData = {}
+
+        let term;
+        let fitAddon;
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            const formData = new FormData(form);
+            const response = await fetch('/submit', {
+                method: 'POST',
+                body: formData,
+            });
+
+            if (response.ok) {
+                alert("Entry submitted successfully!");
+                loadEntries();
+                form.reset();
+            } else {
+                alert("Error submitting entry.");
+            }
+        });
+
+        let allEntries = [];
+
+        async function loadEntries() {
+            const response = await fetch('/entries');
+            const entries = await response.json();
+            allEntries = entries;
+            updateStats(entries);
+            filterEntries();
+        }
+
+        function displayFilteredEntries(entries) {
+            entriesBody.innerHTML = '';
+
+            entries.forEach(entry => {
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', entry.id);
+                row.setAttribute('id', entry.id);
+
+                if (!entry.type) {
+                    entry.type = "text";
+                }
+                generatedThumbnailPath = entry.generatedThumbnailPath == 'null' || !entry.generatedThumbnailPath ? '' : entry.generatedThumbnailPath
+                if (generatedThumbnailPath && generatedThumbnailPath !== "Done") {
+                    generatedThumbnailPath += `<button class="view-button" onclick="viewImage('${generatedThumbnailPath}')">View</button>`
+                }
+                generatedVideoPath = entry.generatedVideoPath == 'null' || !entry.generatedVideoPath ? '' : entry.generatedVideoPath
+                if (generatedVideoPath && generatedVideoPath !== "Done") {
+                    generatedVideoPath += `<button class="view-button" onclick="viewVideo('${generatedVideoPath}')">View</button>
+                        <a 
+                            class="download-button"
+                            href="/api/media/file?file_path=${encodeURIComponent(generatedVideoPath)}&as_attachment=true">
+                            DL
+                        </a>`;
+
+                }
+                show_gen_video_btn = false
+                show_publish_to_youtube_btn = false
+                show_publish_to_x_btn = false
+                if (entry.audioPath !== "Done") {
+                    if ((entry.audioPath || entry.videoPath) && !generatedVideoPath) {
+                        show_gen_video_btn = true
+                    }
+                    show_publish_to_youtube_btn = !show_gen_video_btn && !entry.youtubeVideoId
+
+                    show_publish_to_x_btn = !show_gen_video_btn && !entry.xId && entry.youtubeVideoId
+
+                    if (entry.type == 'anime_x_pic' || entry.type == 'movie_x_pic' || entry.type == 'anime_x_video' || entry.type == 'movie_x_video' || entry.type == 'comic_x_pic') {
+                        show_publish_to_youtube_btn = false
+                        show_publish_to_x_btn = !entry.xId
+                    }
+                }
+
+                youtubeVideoId = entry.youtubeVideoId == 'null' || !entry.youtubeVideoId ? '' : entry.youtubeVideoId
+                if (youtubeVideoId) {
+                    youtubeVideoId = `<a href="https://www.youtube.com/watch?v=${youtubeVideoId}" target="_blank">LINK</a>`
+                }
+
+                xId = entry.xId == 'null' || !entry.xId ? '' : entry.xId
+                if (xId) {
+                    xId = `<a href="https://x.com/TheFinalQueue/status/${xId}" target="_blank">LINK</a>`
+                }
+
+                row.innerHTML = `
+                    <td><b>${entry.id}</b></td>
+                    <td style="min-width: 200px;">
+                        ${'<button class="view-button" onclick="runCommand(\'open\', \'process\', \'' + entry.id + '\', \'' + entry.type + '\')">Proc</button>'}
+                        <button class="edit-button" onclick="editEntry(${entry.id})">Edit</button>
+                        <button class="delete-button" onclick="deleteEntry(${entry.id})">Del</button>
+                        <button class="view-button" onclick="viewEntry(${entry.id})">View</button>
+                        ${show_gen_video_btn ? '<button class="view-button" onclick="runCommand(\'open\', \'gen_video\', \'' + entry.id + '\', \'' + entry.type + '\')">Vid</button>' : ''}
+                        ${show_publish_to_youtube_btn ? '<button class="view-button" onclick="runCommand(\'open\', \'publish_to_youtube\', \'' + entry.id + '\', \'' + entry.type + '\')">YT</button>' : ''}
+                        ${show_publish_to_x_btn ? '<button class="view-button" onclick="runCommand(\'open\', \'publish_to_x\', \'' + entry.id + '\', \'' + entry.type + '\')">X</button>' : ''}
+                    </td>
+                    <td>${entry.audioPath || ''}</td>
+                    <td>${entry.videoPath || ''}</td>
+                    <td title="${entry.title}">${entry.title || ''}</td>
+                    <td>${entry.description ? entry.description.substring(0, 30) + '...' : ''}</td>
+                    <td>${entry.thumbnailText ? entry.thumbnailText.substring(0, 30) + '...' : ''}</td>
+                    <td>${entry.answer ? entry.answer.substring(0, 30) + '...' : ''}</td>
+                    <td>${generatedVideoPath}</td>
+                    <td>${generatedThumbnailPath}</td>
+                    <td>${entry.youtubeUploadedTime ? '✔️' : '❌'}</td>
+                    <td>${entry.xUploadedTime ? '✔️' : '❌'}</td>
+                    <td>${youtubeVideoId}</td>
+                    <td>${xId}</td>
+                    <td>${entry.type || ''}</td>`;
+                entriesBody.appendChild(row);
+            });
+        }
+
+        function updateStats(entries) {
+            statsBody.innerHTML = '';
+            statsData = {}
+            statProp = {
+                total_count: 0,
+                published: 0,
+                not_published: 0,
+                audio_generated: 0,
+                no_audio_generated: 0,
+                video_generated: 0
+            }
+            var oldTypeFilter = document.getElementById("typeFilter").value;
+            var oldSelectType = document.getElementById("selectType").value;
+            let statsOptions = `<option value="all">All Types</option>`;
+
+            entries.forEach(entry => {
+                const type = entry.type || "text";
+                if (!statsData[type]) {
+                    statsData[type] = JSON.parse(JSON.stringify(statProp));
+                    statsOptions += `<option value="${type}">${type}</option>`;
+                }
+                statsData[type].total_count++;
+                if (entry.youtubeUploadedTime || ((type === "anime_x_pic" || type === "movie_x_pic" || type === "anime_x_video" || type === "movie_x_video" || type === "comic_x_pic") && entry.xUploadedTime)) {
+                    statsData[type].published++;
+                } else {
+                    statsData[type].not_published++;
+                    if (entry.audioPath || (type === "anime_x_pic" || type === "movie_x_pic" || type === "anime_x_video" || type === "movie_x_video" || type === "comic_x_pic")) {
+                        statsData[type].audio_generated++;
+                        if (entry.generatedVideoPath || (type === "anime_x_pic" || type === "movie_x_pic" || type === "anime_x_video" || type === "movie_x_video" || type === "comic_x_pic")) {
+                            statsData[type].video_generated++;
+                        }
+                    } else {
+                        statsData[type].no_audio_generated++;
+                    }
+                }
+            });
+
+            // Update ALL 3 select boxes (Main filter, Global Sidebar, Add Modal)
+            document.getElementById("typeFilter").innerHTML = statsOptions;
+            document.getElementById("selectType").innerHTML = statsOptions;
+            document.getElementById("inputSelectType").innerHTML = statsOptions;
+
+            if (oldTypeFilter) {
+                document.getElementById("typeFilter").value = oldTypeFilter
+            }
+            if (oldSelectType) {
+                document.getElementById("selectType").value = oldSelectType
+            }
+
+            Object.keys(statsData).forEach(key => {
+                const row = document.createElement('tr');
+                color = statsData[key].video_generated < 2 ? "color: red" : ""
+                row.innerHTML = `
+                    <td>${key}</td>
+                    <td>${statsData[key].no_audio_generated}</td>
+                    <td>${statsData[key].audio_generated}/${statsData[key].video_generated}</td>
+                    <td style="${color}">${statsData[key].video_generated}</td>
+                    <td>${statsData[key].published}</td>
+                    <td>${statsData[key].total_count}</td>`;
+                statsBody.appendChild(row);
+            });
+        }
+
+        function filterEntries() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const selectedType = document.getElementById('typeFilter').value;
+            const statusFilter = document.getElementById('statusFilter').value;
+
+            const filteredEntries = allEntries.filter(entry => {
+                const matchesType = selectedType === "all" || entry.type === selectedType;
+                const specialType = (entry.type == 'anime_x_pic' || entry.type == 'movie_x_pic' || entry.type === "anime_x_video" || entry.type === "movie_x_video" || entry.type === "comic_x_pic")
+                const matchesSearch = Object.values(entry).some(value =>
+                    value && value.toString().toLowerCase().includes(searchTerm) &&
+                    (statusFilter == "all" ||
+                        (statusFilter == "published" && entry.youtubeVideoId && entry.xId) ||
+                        (statusFilter == "not_published" && (!entry.youtubeVideoId || !entry.xId) && !specialType) ||
+                        (statusFilter == "published" && specialType && entry.xId) ||
+                        (statusFilter == "not_published" && specialType && !entry.xId))
+                );
+                return matchesType && matchesSearch;
+            });
+
+            displayFilteredEntries(filteredEntries);
+        }
+
+        function autoFillNewEntry(event) {
+            var file_name = ""
+            if (event.target.value.includes("comic_review")) {
+                document.getElementById('inputSelectType').value = "comic_review"
+            }
+            file_name = file_name.replaceAll(".mp4", "")
+            file_name = file_name.replaceAll(".mkv", "")
+            document.getElementById('inputTitle').value = file_name
+        }
+
+        document.getElementById('searchInput').addEventListener('input', filterEntries);
+        document.getElementById('typeFilter').addEventListener('change', filterEntries);
+        document.getElementById('statusFilter').addEventListener('change', filterEntries);
+        document.getElementById('inputSelectVideoPath').addEventListener('change', autoFillNewEntry);
+
+        async function deleteEntry(id) {
+            const response = await fetch(`/delete/${id}`, {
+                method: 'DELETE',
+            });
+
+            if (response.ok) {
+                document.getElementById(id).remove();
+            } else {
+                alert("Error deleting entry.");
+            }
+        }
+
+        function openModal() {
+            document.getElementById('editModal').style.display = 'block';
+        }
+
+        function closeModal() {
+            document.getElementById('editModal').style.display = 'none';
+        }
+        window.onclick = function (event) {
+            if (event.target.classList.contains('modal')) {
+                event.target.style.display = 'none';
+                if (event.target.id === 'imageModal') closeImage();
+            }
+        };
+
+        async function addEntry(type) {
+            if (type == "open") {
+                const response = await fetch('/video_files');
+                const files = await response.json();
+                videoOptions = '<option value="">--none--</option>'
+                files.forEach(element => {
+                    videoOptions += `<option value="${element}">${element}</option>`;
+                });
+                document.getElementById("videoPathOptions").innerHTML = videoOptions;
+                document.getElementById('addModal').style.display = 'block';
+            } else {
+
+                document.getElementById('addModal').style.display = 'none';
+            }
+        }
+
+        async function editEntry(id) {
+            const entry = allEntries.filter(x => x.id === id)[0]
+            if (!entry) {
+                console.error(`No row found with ID: ${id}`);
+                return;
+            }
+
+            document.getElementById('editId').value = entry.id;
+            document.getElementById('editId').readOnly = true
+            document.getElementById('editAudioPath').value = entry.audioPath;
+            document.getElementById('editAudioPath').readOnly = false
+            document.getElementById('editTitle').value = entry.title;
+            document.getElementById('editTitle').readOnly = false
+            document.getElementById('editDescription').value = entry.description;
+            document.getElementById('editDescription').readOnly = false
+            document.getElementById('editThumbnailText').value = entry.thumbnailText;
+            document.getElementById('editThumbnailText').readOnly = false
+            document.getElementById('editAnswer').value = entry.answer;
+            document.getElementById('editAnswer').readOnly = false
+            document.getElementById('editGeneratedVideoPath').value = entry.generatedVideoPath;
+            document.getElementById('editGeneratedVideoPath').readOnly = false
+            document.getElementById('editGeneratedThumbnailPath').value = entry.generatedThumbnailPath;
+            document.getElementById('editGeneratedThumbnailPath').readOnly = false
+            document.getElementById('edityoutubeUploadedTime').checked = !!entry.youtubeUploadedTime;
+            document.getElementById('edityoutubeUploadedTime').readOnly = false
+            document.getElementById('editxUploadedTime').checked = !!entry.xUploadedTime;
+            document.getElementById('editxUploadedTime').readOnly = false
+            document.getElementById('editYoutubeVideoId').value = entry.youtubeVideoId;
+            document.getElementById('editYoutubeVideoId').readOnly = false
+            document.getElementById('editxId').value = entry.xId;
+            document.getElementById('editxId').readOnly = false
+            document.getElementById('submitBtn').style.display = '';
+            document.getElementById('editOtherDetails').style.display = 'none';
+            document.getElementById('audioId').innerHTML = '';
+            document.getElementById('videoId').innerHTML = '';
+
+            openModal();
+        }
+
+        async function updateEntry(event) {
+            event.preventDefault();
+            const id = document.getElementById('editId').value;
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData);
+
+            const response = await fetch(`/update/${id}`, {
+                method: 'PUT',
+                body: JSON.stringify(data),
+                headers: { 'Content-Type': 'application/json' },
+            });
+
+            if (response.ok) {
+                loadEntries();
+                document.getElementById('editModal').style.display = 'none';
+            } else {
+                alert("Error updating entry.");
+            }
+        }
+
+        async function viewEntry(id) {
+            const entry = allEntries.filter(x => x.id === id)[0]
+            if (!entry) { return; }
+
+            audioPath = ''
+            if (entry.audioPath && entry.audioPath.includes("audio/")) {
+                audioPath = "/audio/" + entry.audioPath.split("audio/")[1]
+            }
+            const audioPlayer = audioPath ? `<audio controls><source src="${audioPath}" type="audio/mpeg"></audio>` : '';
+
+            videoPath = ''
+            if (entry.videoPath && entry.videoPath) {
+                videoPath = "/video/" + entry.videoPath.split("video/")[1]
+            }
+            const videoPlayer = videoPath ? `<video width="320" height="240" controls><source src="${videoPath}" type="video/mp4"></video>` : '';
+
+            document.getElementById('audioId').innerHTML = audioPlayer;
+            document.getElementById('videoId').innerHTML = videoPlayer;
+            document.getElementById('editId').value = entry.id;
+            document.getElementById('editAudioPath').value = entry.audioPath;
+            document.getElementById('editAudioPath').readOnly = true
+            document.getElementById('editTitle').value = entry.title;
+            document.getElementById('editTitle').readOnly = true
+            document.getElementById('editDescription').value = entry.description;
+            document.getElementById('editDescription').readOnly = true
+            document.getElementById('editThumbnailText').value = entry.thumbnailText;
+            document.getElementById('editThumbnailText').readOnly = true
+            document.getElementById('editAnswer').value = entry.answer;
+            document.getElementById('editAnswer').readOnly = true
+            document.getElementById('editGeneratedVideoPath').value = entry.generatedVideoPath;
+            document.getElementById('editGeneratedVideoPath').readOnly = true
+            document.getElementById('editGeneratedThumbnailPath').value = entry.generatedThumbnailPath;
+            document.getElementById('editGeneratedThumbnailPath').readOnly = true
+            document.getElementById('edityoutubeUploadedTime').checked = !!entry.youtubeUploadedTime;
+            document.getElementById('edityoutubeUploadedTime').readOnly = true
+            document.getElementById('editxUploadedTime').checked = !!entry.xUploadedTime;
+            document.getElementById('editxUploadedTime').readOnly = true
+            document.getElementById('editYoutubeVideoId').value = entry.youtubeVideoId;
+            document.getElementById('editYoutubeVideoId').readOnly = true
+            document.getElementById('editxId').value = entry.xId;
+            document.getElementById('editxId').readOnly = true
+            document.getElementById('editOtherDetails').value = entry.otherDetails;
+            document.getElementById('editOtherDetails').readOnly = true
+            document.getElementById('editOtherDetails').style.display = '';
+            document.getElementById('submitBtn').style.display = 'none';
+
+            openModal();
+        }
+
+        async function viewImage(generatedThumbnailPath) {
+            document.getElementById("viewId").src = "/api/media/file?file_path=" + encodeURIComponent(generatedThumbnailPath);
+            document.getElementById("viewId").style.display = "block";
+            document.getElementById("viewIdVideo").style.display = "none";
+            document.getElementById('imageModal').style.display = 'block';
+        }
+        async function viewVideo(generatedVideoPath) {
+            const videoURL = `/api/media/file?file_path=${encodeURIComponent(generatedVideoPath)}`;
+            document.getElementById("viewId").style.display = "none";
+            document.getElementById("viewIdVideo").style.display = "block";
+            document.getElementById("viewIdVideo").innerHTML = `<video controls style="width:100%; height:100%; object-fit:contain;">
+                <source src="${videoURL}" type="video/mp4">
+            </video>`
+            document.getElementById('imageModal').style.display = 'block';
+        }
+        async function closeImage(name) {
+            document.getElementById("viewId").src = "";
+            document.getElementById("viewIdVideo").innerHTML = "";
+            document.getElementById('imageModal').style.display = 'none';
+        }
+
+        function clearOutput() {
+            if (term) {
+                term.clear();
+            }
+        }
+
+        function stopCommand() {
+            fetch('/stop-command/' + window.command, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            })
+        }
+
+        function getWebSocketURL() {
+            const isLocal = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+            if (isLocal) {
+                return 'ws://localhost:' + window.location.port + '/ws';
+            } else {
+                const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                return `${protocol}//${window.location.host}/ws`;
+            }
+        }
+
+        const socket = new WebSocket(getWebSocketURL());
+        const outputContainer = document.getElementById('output');
+
+        socket.onmessage = function (event) {
+            if (!term) return;
+            const data = JSON.parse(event.data);
+            if (data.type === 'command_output') {
+                if (data.data && data.data.trim()) {
+                    term.write(data.data + "\n");
+                }
+            } else if (data.type === 'authorization_url') {
+                show_authoriz_url(data.url);
+            } else if (data.type === 'command_finished') {
+                term.write(`\r\n\x1b[32m[Process finished with code: ${data.return_code}]\x1b[0m\r\n`);
+            }
+        };
+
+        function runCommand(status, action, id, type) {
+            if (!id) id = '';
+            const selectedType = type || document.getElementById("selectType").value;
+            const modal = document.getElementById('outputModal');
+
+            if (status === "open") {
+                modal.style.display = 'block';
+                if (!term) {
+                    term = new Terminal({
+                        cursorBlink: true,
+                        convertEol: true,
+                        fontFamily: 'monospace',
+                        theme: {
+                            background: '#000000',
+                            foreground: '#00e676',
+                            cursor: '#ff479c'
+                        }
+                    });
+                    fitAddon = new FitAddon.FitAddon();
+                    const webLinksAddon = new WebLinksAddon.WebLinksAddon();
+                    term.loadAddon(fitAddon);
+                    term.loadAddon(webLinksAddon);
+                    term.open(outputContainer);
+                }
+                setTimeout(() => fitAddon.fit(), 50);
+                term.clear();
+                term.focus();
+                term.write('\x1b[33mInitializing command...\x1b[0m\r\n');
+
+                window.command = action
+                fetch(`/run-command/${action}?type=${selectedType}&id=${id}`)
+                    .catch(error => {
+                        if (term) term.write(`\x1b[31m[Error starting command: ${error}]\x1b[0m\r\n`);
+                    });
+
+            } else {
+                modal.style.display = 'none';
+                return;
+            }
+        }
+
+        window.addEventListener('resize', () => {
+            if (document.getElementById('outputModal').style.display === 'block' && fitAddon) {
+                try { fitAddon.fit(); } catch (e) { }
+            }
+        });
+
+        function show_authoriz_url(url) {
+            document.querySelector("#authorizModal").style.display = 'block';
+            document.querySelector("#authoriz_url").textContent = url
+        }
+        async function save_authoriz_code(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            const data = Object.fromEntries(formData);
+            if (data.code.trim()) {
+                const response = await fetch(`/save_authoriz_code`, {
+                    method: 'POST',
+                    body: JSON.stringify(data),
+                    headers: { 'Content-Type': 'application/json' },
+                });
+
+                if (response.ok) {
+                    document.querySelector("#authorizModal").style.display = 'none';
+                } else {
+                    alert("Error updating entry.");
+                }
+            } else {
+                alert("Please paste the full success url");
+            }
+        }
+        function copyAuthUrl() {
+            const label = document.getElementById('authoriz_url');
+            const text = label.innerText || label.textContent;
+            navigator.clipboard.writeText(text).then(() => {
+                alert('URL copied!');
+            }, () => {
+                alert('Failed to copy');
+            });
+        }
+
+        window.onload = loadEntries;
+    </script>
+</body>
+
+</html>
