@@ -7,7 +7,6 @@ from typing import List, Tuple
 import common
 import custom_env
 import media_transitions
-from animate_image import ImageAnimator
 
 def start(temp_files: List[str], audioPath, fps: float, do_animate = False, output_video_path=None, need_transitions = True) -> Tuple[str, str]:
     gc.collect()
@@ -41,11 +40,6 @@ def start(temp_files: List[str], audioPath, fps: float, do_animate = False, outp
                 final_video = final_video.subclip(0, audio.duration)
 
             final_video = final_video.set_audio(audio)
-
-        if do_animate:
-            logger_config.debug(f"Adding animation {len(final_clips)} video clips")
-            animator = ImageAnimator("video", clip=final_video)
-            final_video = animator.diagonal_wave()
 
         final_video_audio = final_video.audio
         if final_video_audio:

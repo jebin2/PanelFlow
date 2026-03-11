@@ -7,7 +7,6 @@ from custom_logger import logger_config
 from typing import List, Dict
 import custom_env
 import common
-from animate_image import ImageAnimator
 import traceback
 import media_transitions
 import numpy as np
@@ -47,29 +46,18 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
         return clip
 
 def create_animated_image_clip(clip_info, animate_type=None):
-    animator = ImageAnimator("image", path=clip_info['img_path'], duration=clip_info['clip_duration'], start_time=clip_info['clip_start'])
-
-    if animate_type == "gentle_ripple":
-        clip = animator.gentle_ripple()
-    elif animate_type == "top_bottom_zoom":
-        clip = animator.create_top_bottom_zoom(zoom_height=custom_env.IMAGE_SIZE[1])
-    elif animate_type == "left_right_zoom":
-        clip = animator.create_left_right_zoom(zoom_width=custom_env.IMAGE_SIZE[1]) # shorts
-    elif animate_type == "zoom_out_zoom_in_to_full":
-        from scale_clip import create_scale_up_clip_multiple
-        if 'IMAGE_SIZE' not in clip_info:
-            clip_info['IMAGE_SIZE'] = custom_env.IMAGE_SIZE
-        clip = create_scale_up_clip_multiple(
-            main_image_path=clip_info['img_path'],
-            duration=clip_info['clip_duration'],
-            bg_size=clip_info['IMAGE_SIZE'],
-            zoom_coords={
-		        0: clip_info["face_location"] if "face_location" in clip_info and clip_info["face_location"] else (0, 0, clip_info["IMAGE_SIZE"][0], clip_info["IMAGE_SIZE"][1])
-            },
-            bg_blur=clip_info['bg_blur'] if 'bg_blur' in clip_info else True,
-        )
-    else:
-        clip = animator.diagonal_wave()
+    from scale_clip import create_scale_up_clip_multiple
+    if 'IMAGE_SIZE' not in clip_info:
+        clip_info['IMAGE_SIZE'] = custom_env.IMAGE_SIZE
+    clip = create_scale_up_clip_multiple(
+        main_image_path=clip_info['img_path'],
+        duration=clip_info['clip_duration'],
+        bg_size=clip_info['IMAGE_SIZE'],
+        zoom_coords={
+            0: clip_info["face_location"] if "face_location" in clip_info and clip_info["face_location"] else (0, 0, clip_info["IMAGE_SIZE"][0], clip_info["IMAGE_SIZE"][1])
+        },
+        bg_blur=clip_info['bg_blur'] if 'bg_blur' in clip_info else True,
+    )
 
     return clip
 
