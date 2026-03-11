@@ -1,4 +1,3 @@
-from prop_content import PropContent
 from custom_logger import logger_config
 import traceback
 import databasecon
@@ -9,6 +8,7 @@ import re
 import json
 import gc
 import time
+from datetime import datetime, timedelta
 from pydantic import BaseModel
 from gemini_config import pre_model_wrapper, compress
 from google import genai
@@ -20,7 +20,6 @@ from pathlib import Path
 from browser_manager.browser_config import BrowserConfig
 from chat_bot_ui_handler import GeminiUIChat, AIStudioUIChat
 import json_repair
-import os
 from jebin_lib import HFTTTClient, HFTTSClient
 
 CHAR_LEN = 4500
@@ -47,20 +46,125 @@ class titleAndDescription(BaseModel):
 	youtube_title: str
 	twitter_post: str
 
-class VideoReviewer(PropContent):
+class VideoReviewer:
 
-	def __init__(self, main_instance=None, create_new=False):
-		super().__init__(main_instance, create_new)
+	def __init__(self, main_instance=None, create_new=False, db_entry=None):
+		self.main_instance = main_instance
+		self.create_new = create_new
+		self._current_db_entry = db_entry
 
-	# def get_series_name(self):
-	#	 title = self.get_db_entry()[databasecon.getId("title")]
-	#	 anime_name = title.split("Episode")[0].strip() if " Episode" in title else title
-	#	 return anime_name
+	def allowed_to_create_new_content(self):
+		return self.create_new
+
+	def per_day_limit_exceeded(self):
+		today_start_ms = int(datetime.now().replace(hour=0, minute=0, second=0, microsecond=0).timestamp() * 1000)
+		db_entry = databasecon.execute(f"""SELECT * FROM {custom_env.TABLE_NAME} WHERE type = '{self.get_type()}' AND lastModifiedTime >= {today_start_ms} and video_processed = 1""", type="get")
+		return db_entry is not None
+
+	def allowed_to_publish_in_yt(self):
+		return True
+
+	def allowed_to_publish_in_x(self):
+		return True
+
+	def is_audio_allowed(self):
+		return True
+
+	def is_audio_creation_allowed(self):
+		return True
+
+	def add_bg_music(self):
+		try:
+			json_data = json.loads(self.get_db_entry()[databasecon.getId("json_data")])
+			return not "add_bg_music" in json_data
+		except: pass
+		return True
+
+	def is_video_allowed(self):
+		return True
+
+	def set_db_entry(self, db_entry):
+		self._current_db_entry = db_entry
+		return self.get_db_entry()
+
+	def get_db_entry(self):
+		return self._current_db_entry
+
+	def refresh_db_entry(self):
+		id = self.get_db_entry()[databasecon.getId("id")]
+		db_entry = databasecon.execute(f"select * from {custom_env.TABLE_NAME} where id = '{id}'", type="get")
+		return self.set_db_entry(db_entry)
+
+	def get_type(self):
+		return self.get_db_entry()[databasecon.getId("type")]
+
+	def get_user_prompt(self):
+		return None
+
+	def post_process(self, start_show_answer=None):
+		return None
+
+	def get_yt_category(self):
+		return '1'
+
+	def get_yt_title(self):
+		return self.get_db_entry()[databasecon.getId('title')]
+
+	def get_yt_description(self):
+		description = self.get_db_entry()[databasecon.getId('description')]
+		return f"Puzzle: {description}"
+
+	def get_yt_tags(self):
+		return ['riddle', 'thinking', 'fun', 'challenges']
+
+	def get_youtube_link(self):
+		youtubeVideoId = self.get_db_entry()[databasecon.getId('youtubeVideoId')]
+		return f"https://www.youtube.com/watch?v={youtubeVideoId}" if youtubeVideoId else ""
+
+	def get_x_title(self):
+		description = self.get_db_entry()[databasecon.getId('description')]
+		if not description or description == 'null':
+			description = ''
+		return description.strip()
+
+	def get_x_description(self):
+		return f"""Check out for detailed breakdown {self.get_youtube_link()}"""
+
+	def get_yt_publish_time(self, type, add_day=0, pub_hour=18):
+		publish_at_ist = datetime.now().replace(hour=pub_hour, minute=0, second=0, microsecond=0)
+		publish_at_ist = publish_at_ist + timedelta(days=add_day)
+		publish_at_utc = publish_at_ist - timedelta(hours=5, minutes=30)
+		publish_at_utc_iso = publish_at_utc.isoformat() + 'Z'
+		publish_at_time_mills = int(publish_at_ist.timestamp() * 1000)
+
+		publish_at_ist_start = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+		publish_at_ist_start = publish_at_ist_start + timedelta(days=add_day)
+		publish_at_time_mills_start = int(publish_at_ist_start.timestamp() * 1000)
+
+		publish_at_ist_end = datetime.now().replace(hour=23, minute=59, second=59, microsecond=999)
+		publish_at_ist_end = publish_at_ist_end + timedelta(days=add_day)
+		publish_at_time_mills_end = int(publish_at_ist_end.timestamp() * 1000)
+
+		filter = f" AND type = '{type}'"
+
+		entries = databasecon.execute(f"SELECT id FROM {custom_env.TABLE_NAME} WHERE youtubeUploadedTime >= '{publish_at_time_mills_start}' AND youtubeUploadedTime <= '{publish_at_time_mills_end}' {filter}", type="get")
+
+		if self.is_publish_day(publish_at_time_mills) and not entries:
+			return publish_at_utc_iso, publish_at_time_mills
+
+		return self.get_yt_publish_time(type, add_day + 1)
+
+	def is_publish_day(self, timestamp_in_mills):
+		timestamp_seconds = timestamp_in_mills / 1000
+		date_object = datetime.utcfromtimestamp(timestamp_seconds)
+		date_str = date_object.strftime('%Y-%m-%d')
+		logger_config.debug(f"Checking for date - {date_str}")
+		weekday = date_object.weekday()
+		return weekday in (4, 5, 6)
 
 	def get_welcome_phrase(self):
-		# return f"Hello Everyone, Welcome to our next episode of {self.get_series_name()}."
 		return ''
-	
+
 	def get_finish_phrase(self):
 		return "Thanks for tuning in. Stay curious, stay awesome, and don't forget to hit that subscribe button for more amazing content"
 
@@ -322,7 +426,6 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 
 		return None
 
-
 	def parse_content(self, content, is_lang_parser=False, exception_check=True, format=None):
 		try:
 			data = json_repair.loads(content)
@@ -332,7 +435,7 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 				return data
 		except Exception as e:
 			raise ValueError("LLM failed to correct the data")
-	
+
 	def merge_audio(self, audioPath):
 		return audioPath
 
@@ -404,18 +507,6 @@ Twitter: "Hot take:", "Am I the only one who thinks...", "This needs to be said:
 		lastrowid = databasecon.execute(f"""INSERT into {custom_env.TABLE_NAME} (videoPath, title, type, lastModifiedTime) VALUES (?, ?, ?, ?)""", (content['videoPath'], content['title'], self.get_type(), lastModifiedTime), type='lastrowid')
 
 		return databasecon.execute(f"select * from {custom_env.TABLE_NAME} where id = {lastrowid}", type='get')
-	
-	def get_yt_category(self):
-		return '1'
-	
-	def get_x_title(self):
-		description = self.get_db_entry()[databasecon.getId('description')]
-		if not description or description == 'null':
-			description = ''
-		return description.strip()
-	
-	def get_x_description(self):
-		return f"""Check out for detailed breakdown {self.get_youtube_link()}"""
 
 	def retry(self, recap, geminiWrapper, format, key):
 		if len(recap) > self.get_recap_length("max") or len(recap) < self.get_recap_length("min"):
