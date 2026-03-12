@@ -1,0 +1,56 @@
+Metadata-Version: 2.4
+Name: panelflow
+Version: 0.1.0
+Summary: AI-powered comic panel video content creator
+Requires-Python: >=3.10
+Requires-Dist: numpy
+Requires-Dist: opencv-python
+Requires-Dist: librosa
+Requires-Dist: pillow
+Requires-Dist: google-auth
+Requires-Dist: google-auth-oauthlib
+Requires-Dist: google-api-python-client
+Requires-Dist: ollama
+Requires-Dist: pyautogui
+Requires-Dist: requests-oauthlib
+Requires-Dist: cairosvg
+Requires-Dist: lxml
+Requires-Dist: pydub
+Requires-Dist: moviepy==1.0.3
+Requires-Dist: fastapi
+Requires-Dist: uvicorn
+Requires-Dist: python-multipart
+Requires-Dist: websockets
+Requires-Dist: pytesseract
+Requires-Dist: triton
+Requires-Dist: langdetect
+Requires-Dist: pysubs2
+Requires-Dist: hmmlearn
+Requires-Dist: eyed3
+Requires-Dist: imbalanced-learn
+Requires-Dist: ffmpeg-python
+Requires-Dist: scenedetect
+Requires-Dist: pyannote.audio
+Requires-Dist: google-generativeai
+Requires-Dist: rarfile
+Requires-Dist: ffmpeg
+Requires-Dist: pymediainfo
+Requires-Dist: beautifulsoup4
+Requires-Dist: piexif
+Requires-Dist: jebin_lib @ git+https://github.com/jebin2/lib.git
+Requires-Dist: custom_logger @ git+https://github.com/jebin2/custom_logger.git
+Requires-Dist: gemiwrap @ git+https://github.com/jebin2/gemiwrap.git
+Requires-Dist: browser_manager @ git+https://github.com/jebin2/browser_manager.git
+Requires-Dist: chat_bot_ui_handler @ git+https://github.com/jebin2/chat_bot_ui_handler.git
+Requires-Dist: youtube_auto_pub @ git+https://github.com/jebin2/youtube_auto_pub.git
+Requires-Dist: psutil
+Requires-Dist: svgwrite
+Requires-Dist: spacy
+Requires-Dist: json_repair
+Requires-Dist: pydantic
+Requires-Dist: imagehash
+Requires-Dist: huggingface_hub
+Requires-Dist: cryptography
+Requires-Dist: sentence_transformers
+Requires-Dist: easyocr
+Requires-Dist: chardet

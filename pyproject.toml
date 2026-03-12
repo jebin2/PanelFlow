@@ -1,11 +1,11 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "panelflow"
 version = "0.1.0"
-description = "Comic panel video content creator"
+description = "AI-powered comic panel video content creator"
 requires-python = ">=3.10"
 dependencies = [
     "numpy",
@@ -42,21 +42,21 @@ dependencies = [
     "pymediainfo",
     "beautifulsoup4",
     "piexif",
-    "jebin-lib @ git+https://github.com/jebin2/lib.git",
-    "custom-logger @ git+https://github.com/jebin2/custom_logger.git",
+    "jebin_lib @ git+https://github.com/jebin2/lib.git",
+    "custom_logger @ git+https://github.com/jebin2/custom_logger.git",
     "gemiwrap @ git+https://github.com/jebin2/gemiwrap.git",
-    "browser-manager @ git+https://github.com/jebin2/browser_manager.git",
-    "chat-bot-ui-handler @ git+https://github.com/jebin2/chat_bot_ui_handler.git",
-    "youtube-auto-pub @ git+https://github.com/jebin2/youtube_auto_pub.git",
+    "browser_manager @ git+https://github.com/jebin2/browser_manager.git",
+    "chat_bot_ui_handler @ git+https://github.com/jebin2/chat_bot_ui_handler.git",
+    "youtube_auto_pub @ git+https://github.com/jebin2/youtube_auto_pub.git",
     "psutil",
     "svgwrite",
     "spacy",
-    "json-repair",
+    "json_repair",
     "pydantic",
     "imagehash",
-    "huggingface-hub",
+    "huggingface_hub",
     "cryptography",
-    "sentence-transformers",
+    "sentence_transformers",
     "easyocr",
     "chardet",
 ]
@@ -64,5 +64,8 @@ dependencies = [
 [project.scripts]
 panelflow = "main:main"
 
-[tool.hatch.build.targets.wheel]
-packages = ["."]
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.setuptools.package-data]
+panelflow = ["assets/**", "prompt/**"]

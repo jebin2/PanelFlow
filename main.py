@@ -5,10 +5,10 @@ import gc
 import time
 import traceback
 from custom_logger import logger_config
-import custom_env
+from panelflow import config as custom_env
 import argparse
-from content_map import content_map
-from content_creator import ContentCreator
+from panelflow.categories.content_map import content_map
+from panelflow.content_creator import ContentCreator
 
 class MainContent:
 	create_new = False
@@ -28,7 +28,7 @@ class MainContent:
 				is_success = False
 				content_ref = None
 				for type in self.allowed_types:
-					content_ref = content_map.get_class_instance(type)(self, self.create_new)
+					content_ref = content_map.get_class_instance(type)(self.create_new)
 					contentCreator = ContentCreator(content_ref)
 					is_success = contentCreator.start()
 					contentCreator = None
