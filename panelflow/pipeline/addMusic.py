@@ -54,7 +54,7 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
         else:
             subprocess.run([sys.executable, "create_music.py", text, output_musicgen_path], check=True, env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'})
             audio_path = output_musicgen_path
-            common.manage_gpu(action="clear_cache")
+            utils.manage_gpu(action="clear_cache")
 
     new_audio = AudioFileClip(audio_path)
 

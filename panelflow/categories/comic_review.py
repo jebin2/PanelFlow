@@ -242,4 +242,4 @@ OUTPUT FORMAT:
                 if len(new_recap) <= self.get_recap_length("max") and len(new_recap) >= self.get_recap_length("min"):
                     recap = new_recap
                     break
-        return common.clean_text(recap)
+        return utils.clean_text(recap)

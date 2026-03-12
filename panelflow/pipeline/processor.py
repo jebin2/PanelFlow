@@ -150,7 +150,7 @@ class PanelProcessor(PipelineBase):
         )
         key = geminiWrapper.get_schema().required[0]
         model_responses = geminiWrapper.send_message(user_prompt=self.category.get_user_prompt())
-        recap_text = common.clean_text(self.category.parse_content(model_responses[0])[key])
+        recap_text = utils.clean_text(self.category.parse_content(model_responses[0])[key])
         recap_text = self.category.retry(recap_text, geminiWrapper, key)
 
         with open(self.recap_history_path, 'wb') as f:
@@ -228,7 +228,7 @@ class PanelProcessor(PipelineBase):
             for attempt in range(5):
                 try:
                     sanitised = remove_sound_effect.remove(res["impact"])
-                    if "<unused" in sanitised or not common.is_same_sentence(sanitised, res["impact"], threshold=0.6):
+                    if "<unused" in sanitised or not utils.is_same_sentence(sanitised, res["impact"], threshold=0.6):
                         raise ValueError("sanitise not correct")
                     break
                 except Exception as e:
@@ -245,7 +245,7 @@ class PanelProcessor(PipelineBase):
             for attempt in range(5):
                 try:
                     sanitised = remove_sound_effect.remove(rtd["recap_text"])
-                    if "<unused" in sanitised or not common.is_same_sentence(sanitised, rtd["recap_text"], threshold=0.6):
+                    if "<unused" in sanitised or not utils.is_same_sentence(sanitised, rtd["recap_text"], threshold=0.6):
                         raise ValueError("sanitise not correct")
                     break
                 except Exception as e:
@@ -496,7 +496,7 @@ class PanelProcessor(PipelineBase):
                 cwd=config.BASE_PATH,
                 env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
             )
-            common.manage_gpu(action="clear_cache")
+            utils.manage_gpu(action="clear_cache")
 
         video = VideoFileClip(abs_input_path)
         extracted_audio_path = abs_output_path + "_extracted.wav"

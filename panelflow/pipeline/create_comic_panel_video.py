@@ -83,8 +83,8 @@ class TextDetector:
 		"""Load OCR model separately."""
 		if self.reader is None:
 			logger_config.info("Loading EasyOCR model...")
-			is_gpu = common.is_gpu_available()
-			if common.get_device() == "cpu":
+			is_gpu = utils.is_gpu_available()
+			if utils.get_device() == "cpu":
 				is_gpu = False
 				os.environ['CUDA_VISIBLE_DEVICES'] = ""
 				os.environ['CUDA_LAUNCH_BLOCKING'] = '1'
@@ -108,7 +108,7 @@ class TextDetector:
 				del self.reader
 				self.reader = None
 				# Clear any GPU memory if EasyOCR uses GPU
-				common.manage_gpu("clear_cache")
+				utils.manage_gpu("clear_cache")
 				logger_config.info("EasyOCR model cleaned up")
 		except:
 			pass
@@ -232,7 +232,7 @@ class NarrationMapper:
 		if self.model is None:
 			from sentence_transformers import SentenceTransformer
 			logger_config.info("Loading SentenceTransformer model...")
-			self.model = SentenceTransformer(self.config.similarity_model, device=common.get_device())
+			self.model = SentenceTransformer(self.config.similarity_model, device=utils.get_device())
 
 	def cleanup_similarity_model(self):
 		"""Clean up similarity model to free CUDA memory."""
@@ -240,7 +240,7 @@ class NarrationMapper:
 			if self.model is not None:
 				del self.model
 				self.model = None
-				common.manage_gpu(action="clear_cache")
+				utils.manage_gpu(action="clear_cache")
 				logger_config.info("SentenceTransformer model cleaned up")
 		except:
 			pass
@@ -296,7 +296,7 @@ class NarrationMapper:
 				import difflib
 				best_match = max(
 					caption_generator_map,
-					key=lambda obj: difflib.SequenceMatcher(None, common.only_alpha(obj.get("recap_sentence", "")), common.only_alpha(narration)).ratio()
+					key=lambda obj: difflib.SequenceMatcher(None, utils.only_alpha(obj.get("recap_sentence", "")), utils.only_alpha(narration)).ratio()
 				)
 
 				image_path = best_match["frame_path"]
@@ -899,7 +899,7 @@ class ComicVideoPipeline:
 				import difflib
 				best_match = max(
 					match_scene,
-					key=lambda obj: difflib.SequenceMatcher(None, common.only_alpha(obj.get("scene_caption", "")), common.only_alpha(entry.get("scene_caption", ""))).ratio()
+					key=lambda obj: difflib.SequenceMatcher(None, utils.only_alpha(obj.get("scene_caption", "")), utils.only_alpha(entry.get("scene_caption", ""))).ratio()
 				)
 				entry["recap_sentence"] = best_match["recap_sentence"]
 
@@ -958,7 +958,7 @@ def main(narration_text, config):
 	output_video = pipeline.run(narration_text)
 	
 	# Final cleanup
-	common.manage_gpu("clear_cache")
+	utils.manage_gpu("clear_cache")
 	
 	print(f"\n🎬 Comic video generated: {output_video}\n")
 	return output_video
