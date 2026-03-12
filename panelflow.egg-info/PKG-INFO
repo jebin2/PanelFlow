@@ -16,7 +16,7 @@ Requires-Dist: requests-oauthlib
 Requires-Dist: cairosvg
 Requires-Dist: lxml
 Requires-Dist: pydub
-Requires-Dist: moviepy==1.0.3
+Requires-Dist: moviepy
 Requires-Dist: fastapi
 Requires-Dist: uvicorn
 Requires-Dist: python-multipart

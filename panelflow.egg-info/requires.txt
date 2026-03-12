@@ -11,7 +11,7 @@ requests-oauthlib
 cairosvg
 lxml
 pydub
-moviepy==1.0.3
+moviepy
 fastapi
 uvicorn
 python-multipart
