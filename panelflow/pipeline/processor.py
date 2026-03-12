@@ -491,7 +491,7 @@ class PanelProcessor(PipelineBase):
         if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
             recap_text = self.load_recap_title_desc().get("recap_text", "")
             subprocess.run(
-                [sys.executable, "-m", "jebin_lib.music_creator", recap_text, abs_musicgen_path],
+                [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, os.path.abspath(config.CREATE_MUSIC_SYSTEM_PROMPT)],
                 check=True,
                 cwd=config.BASE_PATH,
                 env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}

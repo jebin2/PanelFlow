@@ -22,7 +22,8 @@ import json_repair
 from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, utils
-from panelflow.pipeline.caption_generator import MultiTypeCaptionGenerator
+from caption_generator.core import MultiTypeCaptionGenerator
+from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch
 from jebin_lib import text_splitter
 from chat_bot_ui_handler import AIStudioUIChat
 from panelflow.pipeline.gemini_config import pre_model_wrapper
@@ -760,7 +761,7 @@ class ComicVideoPipeline:
 
 		fyi = f'This is an Anime frame from the anime called {self.config.comic_title}'
 
-		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, FYI=fyi)
+		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=fyi)
 
 		if utils.file_exists(output_path) and utils.is_valid_json(output_path):
 			with open(output_path, "r", encoding="utf-8") as f:
