@@ -6,9 +6,9 @@ try:
 	from functools import partial
 	from gemiwrap import GeminiWrapper
 	from gemiwrap.utils import compress_video as geminiwrap_compress_video
-	from panelflow import config as custom_env
+	from panelflow import config
 
-	pre_model_wrapper = partial(GeminiWrapper, model_name=custom_env.MODEL_NAME_LITE)
+	pre_model_wrapper = partial(GeminiWrapper, model_name=config.MODEL_NAME_LITE)
 
 	def compress(
 		input_path

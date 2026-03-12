@@ -5,7 +5,7 @@ import os
 from contextlib import ExitStack
 from custom_logger import logger_config
 from typing import List, Dict
-from panelflow import config as custom_env
+from panelflow import config
 from jebin_lib import utils
 import traceback
 from panelflow.pipeline import media_transitions
@@ -19,7 +19,7 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
         if 'overlay_clip' in clip_info and clip_info['overlay_clip']:
             background = Image.open(clip_info['img_path']).convert("RGBA")
             clip_duration = clip_info['clip_duration']
-            fps = custom_env.FPS
+            fps = config.FPS
             num_frames = int(clip_duration * fps)
             gif_path = clip_info['overlay_clip']
 
@@ -48,7 +48,7 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
 def create_animated_image_clip(clip_info, animate_type=None):
     from scale_clip import create_scale_up_clip_multiple
     if 'IMAGE_SIZE' not in clip_info:
-        clip_info['IMAGE_SIZE'] = custom_env.IMAGE_SIZE
+        clip_info['IMAGE_SIZE'] = config.IMAGE_SIZE
     clip = create_scale_up_clip_multiple(
         main_image_path=clip_info['img_path'],
         duration=clip_info['clip_duration'],
@@ -81,7 +81,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
         if not clips:
             raise ValueError("No valid clips in batch")
 
-        output_path = f"{custom_env.TEMP_PATH}/{utils.generate_random_string()}.mp4"
+        output_path = f"{config.TEMP_PATH}/{utils.generate_random_string()}.mp4"
         
         if os.path.exists(output_path):
             raise FileExistsError(f"File already exists: {output_path}")
@@ -107,7 +107,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
         logger_config.debug(f"Batch processing completed: {output_path}")
         return output_path
 
-def start(images: List[Dict], fps: float = custom_env.FPS, animate_type="zoom_out_zoom_in_to_full", need_transitions=True) -> List[str]:
+def start(images: List[Dict], fps: float = config.FPS, animate_type="zoom_out_zoom_in_to_full", need_transitions=True) -> List[str]:
     try:
         gc.collect()
         logger_config.debug("Starting image clip combination process...")

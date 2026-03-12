@@ -15,7 +15,7 @@ import numpy as np
 from moviepy.editor import *
 
 # Custom modules
-from panelflow import config as custom_env
+from panelflow import config
 from panelflow import common
 import re
 import json_repair
@@ -35,12 +35,12 @@ class Config:
 	comic_image: str = ""
 	distance_threshold: int = 70
 	vertical_threshold: int = 30
-	resolution: Tuple[int, int] = custom_env.IMAGE_SIZE
+	resolution: Tuple[int, int] = config.IMAGE_SIZE
 	margin_ratio: float = 0.08
 	auto_scroll: bool = True
 	zoom_enabled: bool = False
 	zoom_factor: float = 1.1
-	output_video: str = f"{custom_env.TEMP_PATH}/comic_focus.mp4"
+	output_video: str = f"{config.TEMP_PATH}/comic_focus.mp4"
 	min_text_length: int = 2
 	similarity_model: str = 'all-mpnet-base-v2'
 	split_output_dir: str = '',
@@ -871,7 +871,7 @@ class ComicVideoPipeline:
 				match_scene = match_scene.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
 
 			geminiWrapper = pre_model_wrapper(
-				model_name=custom_env.MODEL_NAME_LITE,
+				model_name=config.MODEL_NAME_LITE,
 				system_instruction=system_prompt,
 				schema=self._match_scene_schema(),
 				delete_files=True

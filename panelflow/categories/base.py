@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 import json
 import os
-from .. import config as custom_env
+from .. import config
 
 
 class CategoryBase(ABC):
@@ -22,10 +22,10 @@ class CategoryBase(ABC):
 
     @staticmethod
     def get_category(name, processor_obj):
-        if name == custom_env.COMIC_REVIEW:
+        if name == config.COMIC_REVIEW:
             from .comic_review import ComicReview
             return ComicReview(processor_obj)
-        elif name == custom_env.COMIC_SHORTS:
+        elif name == config.COMIC_SHORTS:
             from .comic_shorts_review import ComicShortsReview
             return ComicShortsReview(processor_obj)
         else:
@@ -52,10 +52,10 @@ class CategoryBase(ABC):
         progress = self.processor_obj._get_progress()
         progress.update({
             "FINAL_VIDEO_PATH": os.path.relpath(
-                self.processor_obj.final_video_path, custom_env.PANELS_TO_BE_PROCESSED
+                self.processor_obj.final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
             "SHORTS_VIDEO_PATH": os.path.relpath(
-                self.processor_obj.shorts_final_video_path, custom_env.PANELS_TO_BE_PROCESSED
+                self.processor_obj.shorts_final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
             "CREDENTIAL_NAME": self.get_cred_token_file_name()[0],
             "TOKEN_NAME": self.get_cred_token_file_name()[1],

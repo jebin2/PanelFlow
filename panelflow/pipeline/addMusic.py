@@ -1,7 +1,7 @@
 from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
 import numpy as np
 from panelflow import common
-from panelflow import config as custom_env
+from panelflow import config
 from jebin_lib import utils
 import subprocess, sys, os
 

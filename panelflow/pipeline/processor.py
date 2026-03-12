@@ -7,7 +7,7 @@ import zipfile
 
 from custom_logger import logger_config
 from panelflow import common
-from panelflow import config as custom_env
+from panelflow import config
 from jebin_lib import utils
 from panelflow.pipeline_base import PipelineBase
 from panelflow.pipeline import combineImageClip
@@ -121,7 +121,7 @@ class PanelProcessor(PipelineBase):
         combineVideo.start(
             clips,
             audioPath=None,  # audio already embedded per clip
-            fps=custom_env.FPS,
+            fps=config.FPS,
             output_video_path=self.output_no_music_path,
             need_transitions=True
         )
@@ -143,7 +143,7 @@ class PanelProcessor(PipelineBase):
                 "clip_duration": duration,
                 "clip_start": start,
                 "zoom_out_zoom_in_to_full": True,
-                "IMAGE_SIZE": (custom_env.IMAGE_SIZE[1], custom_env.IMAGE_SIZE[0]),  # 1080×1920
+                "IMAGE_SIZE": (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),  # 1080×1920
             })
             start = round(start + duration, 2)
 
@@ -158,11 +158,11 @@ class PanelProcessor(PipelineBase):
         ]
         common.combineAudio(audio_files, self.shorts_recap_audio_path, silence=0)
 
-        clips = combineImageClip.start(frame_params, custom_env.FPS)
+        clips = combineImageClip.start(frame_params, config.FPS)
         combineVideo.start(
             clips,
             audioPath=self.shorts_recap_audio_path,
-            fps=custom_env.FPS,
+            fps=config.FPS,
             output_video_path=self.shorts_output_no_music_path,
             need_transitions=False
         )
@@ -180,7 +180,7 @@ class PanelProcessor(PipelineBase):
             subprocess.run(
                 [sys.executable, "-m", "panelflow.pipeline.music_creator", recap_text, abs_musicgen_path],
                 check=True,
-                cwd=custom_env.BASE_PATH,
+                cwd=config.BASE_PATH,
                 env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
             )
             common.manage_gpu(action="clear_cache")

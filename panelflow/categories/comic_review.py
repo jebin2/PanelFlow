@@ -4,6 +4,7 @@ import re
 import pickle
 import traceback
 import shlex
+import subprocess
 
 from google import genai
 from pydantic import BaseModel
@@ -12,7 +13,7 @@ from PIL import Image, ImageOps
 import json_repair
 
 from .base import CategoryBase
-from panelflow import config as custom_env
+from panelflow import config
 from panelflow import common
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 from panelflow.pipeline import gemini_history_processor
@@ -35,7 +36,7 @@ class titleAndDescription(BaseModel):
 class ComicReview(CategoryBase):
 
     def __init__(self, processor_obj):
-        super().__init__(custom_env.COMIC_REVIEW, processor_obj)
+        super().__init__(config.COMIC_REVIEW, processor_obj)
 
     def get_cred_token_file_name(self):
         return ("ytcredentials.json", "yttoken.json")
@@ -480,20 +481,20 @@ OUTPUT FORMAT:
     # ------------------------------------------------------------------ step 6a
 
     def _resize_add_padding(self, background):
-        background = background.resize((custom_env.IMAGE_SIZE[1], custom_env.IMAGE_SIZE[1]))
-        add_width = (custom_env.IMAGE_SIZE[0] - custom_env.IMAGE_SIZE[1]) // 2
+        background = background.resize((config.IMAGE_SIZE[1], config.IMAGE_SIZE[1]))
+        add_width = (config.IMAGE_SIZE[0] - config.IMAGE_SIZE[1]) // 2
         background = ImageOps.expand(background, border=(add_width, 0), fill=(0, 0, 0))
         return background
 
     def resize_frame(self, img_path, i):
         base_name = os.path.basename(img_path)
-        output_path = os.path.join(custom_env.TEMP_PATH, f"{base_name}_resize_frame.jpg")
+        output_path = os.path.join(config.TEMP_PATH, f"{base_name}_resize_frame.jpg")
         if utils.file_exists(output_path):
             return output_path
         with Image.open(img_path) as bg:
             resized = (
                 self._resize_add_padding(bg) if i == 0
-                else bg.resize((custom_env.IMAGE_SIZE[0], bg.height), Image.LANCZOS)
+                else bg.resize((config.IMAGE_SIZE[0], bg.height), Image.LANCZOS)
             )
             resized.convert('RGB').save(output_path)
         return output_path
@@ -519,7 +520,7 @@ OUTPUT FORMAT:
         python_path = os.path.expanduser("~/.pyenv/versions/comic-panel-extractor_env/bin/comic-panel-extractor")
         cmd = f"{python_path} --config {shlex.quote(config_path)}"
 
-        result = subprocess.run(["bash", "-c", cmd], cwd=cwd, text=True, env=custom_env.SUBPROCESS_ENV)
+        result = subprocess.run(["bash", "-c", cmd], cwd=cwd, text=True, env=config.SUBPROCESS_ENV)
         if result.returncode != 0:
             raise ValueError(f"comic-panel-extractor failed with code {result.returncode}")
 
@@ -552,19 +553,19 @@ OUTPUT FORMAT:
                 continue
 
             if i == 0:
-                audio_out = os.path.join(custom_env.TEMP_PATH, f"{utils.generate_random_string()}.wav")
+                audio_out = os.path.join(config.TEMP_PATH, f"{utils.generate_random_string()}.wav")
                 HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
-                resized = os.path.join(custom_env.TEMP_PATH, os.path.basename(moment["key_moment"]))
+                resized = os.path.join(config.TEMP_PATH, os.path.basename(moment["key_moment"]))
                 resize_with_aspect.scale_keep_ratio(
-                    moment["key_moment"], custom_env.IMAGE_SIZE[0], custom_env.IMAGE_SIZE[1], resized, blur_bg=True
+                    moment["key_moment"], config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=True
                 )
                 clips = combineImageClip.start([{
                     "img_path": resized,
                     "clip_duration": duration,
                     "clip_start": 0,
                     "donot_animate": True
-                }], custom_env.FPS)
+                }], config.FPS)
                 addMusic.process(clips[0], audio_out, output_path=video_path, extend_video=True, trim_video=True)
             else:
                 image_path = self.resize_frame(moment["key_moment"], i)
@@ -612,7 +613,7 @@ OUTPUT FORMAT:
             base_name = os.path.basename(files[page_idx])
             resized = os.path.join(p.shorts_media_dir, f"resized_{base_name}.jpg")
             if not utils.file_exists(resized):
-                portrait = (custom_env.IMAGE_SIZE[1], custom_env.IMAGE_SIZE[0])  # 1080×1920
+                portrait = (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0])  # 1080×1920
                 with Image.open(files[page_idx]) as img:
                     img.resize(portrait, Image.LANCZOS).convert('RGB').save(resized)
             match["img_path"] = resized

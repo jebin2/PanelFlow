@@ -4,7 +4,7 @@ import os
 from contextlib import ExitStack
 from custom_logger import logger_config
 from typing import List, Tuple
-from panelflow import config as custom_env
+from panelflow import config
 from jebin_lib import utils
 from panelflow.pipeline import media_transitions
 
@@ -51,7 +51,7 @@ def start(temp_files: List[str], audioPath, fps: float, do_animate = False, outp
 
         output_path = output_video_path
         if not output_path:
-            output_path = f"{custom_env.TEMP_PATH}/{utils.generate_random_string()}.mp4"
+            output_path = f"{config.TEMP_PATH}/{utils.generate_random_string()}.mp4"
 
         if os.path.exists(output_path):
             raise FileExistsError(f"File already exists: {output_path}")

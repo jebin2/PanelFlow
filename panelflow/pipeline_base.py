@@ -4,13 +4,13 @@ import os
 from custom_logger import logger_config
 from jebin_lib import utils
 from .categories.base import CategoryBase
-from panelflow import config as custom_env  # needed for BASE_PATH in _to_rel
+from panelflow import config  # needed for BASE_PATH in _to_rel
 
 
 def _to_rel(path):
     """Convert an absolute path to relative (relative to BASE_PATH) for JSON storage."""
     if path and os.path.isabs(path):
-        return os.path.relpath(path, custom_env.BASE_PATH)
+        return os.path.relpath(path, config.BASE_PATH)
     return path
 
 
@@ -131,6 +131,8 @@ class PipelineBase(ABC):
             if attr_name.startswith('_') or attr_name in [
                 "set_all_paths", "allowed_create"
             ]:
+                continue
+            if attr_name.startswith('load_') or attr_name.startswith('get_'):
                 continue
             attr = getattr(self, attr_name)
             if callable(attr):

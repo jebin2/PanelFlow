@@ -1,4 +1,4 @@
-from panelflow import config as custom_env
+from panelflow import config
 from .comic_review import ComicReview
 
 
@@ -6,7 +6,7 @@ class ComicShortsReview(ComicReview):
 
     def __init__(self, processor_obj):
         super().__init__(processor_obj)
-        self.name = custom_env.COMIC_SHORTS
+        self.name = config.COMIC_SHORTS
 
     def get_cred_token_file_name(self):
         return ("ytcredentials.json", "yttoken.json")

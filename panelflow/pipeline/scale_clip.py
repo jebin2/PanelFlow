@@ -1,4 +1,4 @@
-from panelflow import config as custom_env
+from panelflow import config
 from jebin_lib import utils
 from PIL import Image, ImageFilter
 import numpy as np
@@ -33,7 +33,7 @@ def create_blurred_background(img_clip, coords, duration, resolution):
 	blurred = cropped.resize(resolution).fl(blur_frame)
 	return blurred.set_duration(duration)
 
-def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=custom_env.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True, temp_folder=None):
+def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=config.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True, temp_folder=None):
 	"""
 	Scale up multiple panel images from 90% to 100% of their individual sizes while evenly spreading them in the background.
 	Filters images based on width constraints.
@@ -65,7 +65,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 				if w * h > largest_w * largest_h:  # compare area
 					largest_w, largest_h = w, h
 		for image_path in multiple_image_path:
-			new_image_path = os.path.join(temp_folder or custom_env.TEMP_PATH, os.path.basename(image_path))
+			new_image_path = os.path.join(temp_folder or config.TEMP_PATH, os.path.basename(image_path))
 			resize_with_aspect.scale_keep_ratio(image_path, largest_w, largest_h, output_path=new_image_path)
 			panel = ImageClip(new_image_path).set_duration(duration)
 			img_width, img_height = panel.size
@@ -232,12 +232,12 @@ if __name__ == "__main__":
 			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
 			],
 			duration=5,
-			bg_size=custom_env.IMAGE_SIZE,
+			bg_size=config.IMAGE_SIZE,
 			scale_point=0.5,  # Scale > 1.0 for zoom in then out
 			zoom_coords={
-		        0: (0, 0, custom_env.IMAGE_SIZE[0], custom_env.IMAGE_SIZE[1]),
-		        1: (0, 0, custom_env.IMAGE_SIZE[0], custom_env.IMAGE_SIZE[1]),
-		        2: (0, 0, custom_env.IMAGE_SIZE[0], custom_env.IMAGE_SIZE[1])
+		        0: (0, 0, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1]),
+		        1: (0, 0, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1]),
+		        2: (0, 0, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])
             }
 		),
 		"text_output.mp4"

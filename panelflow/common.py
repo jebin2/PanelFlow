@@ -3,7 +3,7 @@ import os
 import shutil
 import string
 from custom_logger import logger_config
-from panelflow import config as custom_env
+from panelflow import config
 import secrets
 import hashlib
 import random
@@ -170,8 +170,8 @@ def get_media_metadata(file_path):
         logger_config.error(f"Error retrieving media metadata: {e}")
         return None, None, None, None
 
-def write_videofile(video_clip, output_path, fps=custom_env.FPS):
-    audio_file = f'{custom_env.TEMP_PATH}/{generate_random_string()}.mp3'
+def write_videofile(video_clip, output_path, fps=config.FPS):
+    audio_file = f'{config.TEMP_PATH}/{generate_random_string()}.mp3'
     video_clip.write_videofile(
         output_path,
         fps=fps,
@@ -337,7 +337,7 @@ def get_device(is_vision=False):
 
 def get_neko_additional_flags(config):
     additional_flags = []
-    additional_flags.append(f'-v {custom_env.PARENT_BASE_PATH}:{config.neko_attach_folder}')
+    additional_flags.append(f'-v {config.PARENT_BASE_PATH}:{config.neko_attach_folder}')
     additional_flags.append(config.policy_volume_mount(get_chrome_policies_json_path()))
     return additional_flags
 
@@ -346,11 +346,11 @@ def get_chrome_policies_json_path():
     Returns the path to policies.json, downloading it if it doesn't exist.
     """
 
-    local_path = f"{custom_env.PARENT_BASE_PATH}/neko-apps/chrome-remote-debug/policies.json"
+    local_path = f"{config.PARENT_BASE_PATH}/neko-apps/chrome-remote-debug/policies.json"
     if file_exists(local_path):
         return local_path
 
-    target_path = f"{custom_env.TEMP_PATH}/policies.json"
+    target_path = f"{config.TEMP_PATH}/policies.json"
     if file_exists(target_path):
         remove_file(target_path)
     

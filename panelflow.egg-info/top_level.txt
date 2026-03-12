@@ -1,7 +1,6 @@
-audio
-panels_to_be_processed
-databases
-media
+chat_bot_ui_handler_logs
 panelflow
-tempOutput
-video
+panels_to_be_processed
+temp
+temp_aistudio_ui_handler
+thread_id_129400865552064_search_google_ai_mode
