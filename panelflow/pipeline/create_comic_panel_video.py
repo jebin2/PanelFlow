@@ -23,7 +23,7 @@ from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, utils
 from panelflow.pipeline.caption_generator import MultiTypeCaptionGenerator
-from panelflow.pipeline import text_splitter as split_paragraph
+from jebin_lib import text_splitter as split_paragraph
 from chat_bot_ui_handler import AIStudioUIChat
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 

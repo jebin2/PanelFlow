@@ -24,6 +24,7 @@ from panelflow.pipeline import resize_with_aspect
 from panelflow.pipeline import remove_sound_effect
 from panelflow.pipeline import addMusic
 from panelflow.pipeline.create_comic_panel_video import main as main_ComicVideoPipeline, Config as CVP_Config
+from jebin_lib import video_optimizer as ffmpeg_optimise
 
 
 class PanelProcessor(PipelineBase):
@@ -404,6 +405,8 @@ class PanelProcessor(PipelineBase):
             return self.final_video_path
         self.create_sentence_clips()
         self._add_bg_music(self.output_no_music_path, self.final_video_path)
+        if utils.file_exists(self.final_video_path):
+            ffmpeg_optimise.convert_and_compare(self.final_video_path, f"/tmp/{self.folder_name}_final.hevc.mp4", overwrite_original=True)
         return self.final_video_path
 
     def create_shorts_final_video(self):
@@ -411,6 +414,8 @@ class PanelProcessor(PipelineBase):
             return self.shorts_final_video_path
         self.create_shorts_clips()
         self._add_bg_music(self.shorts_output_no_music_path, self.shorts_final_video_path, reuse_musicgen=True)
+        if utils.file_exists(self.shorts_final_video_path):
+            ffmpeg_optimise.convert_and_compare(self.shorts_final_video_path, f"/tmp/{self.folder_name}_shorts.hevc.mp4", overwrite_original=True)
         return self.shorts_final_video_path
 
     # ------------------------------------------------------------------ process
@@ -486,7 +491,7 @@ class PanelProcessor(PipelineBase):
         if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
             recap_text = self.load_recap_title_desc().get("recap_text", "")
             subprocess.run(
-                [sys.executable, "-m", "panelflow.pipeline.music_creator", recap_text, abs_musicgen_path],
+                [sys.executable, "-m", "jebin_lib.music_creator", recap_text, abs_musicgen_path],
                 check=True,
                 cwd=config.BASE_PATH,
                 env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}

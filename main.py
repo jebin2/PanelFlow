@@ -1,15 +1,16 @@
-from jebin_lib import load_env
+from jebin_lib import load_env, utils
 load_env()
 
 import gc
 import sys
 import os
+import shutil
 import traceback
 
+from jebin_lib import HFBucketClient
 from custom_logger import logger_config
 from panelflow import config
 from panelflow.pipeline.processor import PanelProcessor
-from jebin_lib import utils, HFBucketClient
 
 class ContentCreator:
 
@@ -27,7 +28,6 @@ class ContentCreator:
                     self.hf_client.upload_folder(local_cat_path, category, delete=True)
                 elif self.remote_only:
                     if os.path.isdir(local_cat_path):
-                        import shutil
                         shutil.rmtree(local_cat_path)
                     self.hf_client.download_folder(category, local_cat_path)
                 else:
@@ -82,7 +82,6 @@ class ContentCreator:
             finally:
                 gc.collect()
 
-
 def main():
     os.chdir(config.BASE_PATH)
 
@@ -99,7 +98,9 @@ def main():
             )
             creator.run()
         except Exception as e:
-            logger_config.error(f"ContentCreator failed: {e}\n{traceback.format_exc()}")
+            logger_config.error(f"Failed to process: {e}")
+            logger_config.error(traceback.format_exc())
+            del e
         finally:
             del creator
             gc.collect()
@@ -107,7 +108,6 @@ def main():
         if one_pass:
             break
         logger_config.info("Sleeping for 60 seconds", seconds=60)
-
 
 if __name__ == '__main__':
     main()

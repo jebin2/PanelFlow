@@ -170,29 +170,6 @@ def get_media_metadata(file_path):
         logger_config.error(f"Error retrieving media metadata: {e}")
         return None, None, None, None
 
-def write_videofile(video_clip, output_path, fps=config.FPS):
-    audio_file = f'{config.TEMP_PATH}/{generate_random_string()}.mp3'
-    video_clip.write_videofile(
-        output_path,
-        fps=fps,
-        codec='libx264',
-        # audio_codec='aac',
-        # preset='faster',  # Faster encoding, slightly larger file
-        threads=get_threads(),
-        bitrate='8000k',  # Adjust based on your quality needs
-        remove_temp=True,
-        temp_audiofile=audio_file
-    )
-    remove_file(audio_file)
-
-def write_audiofile(audio_clip, output_path, fps=44100, codec="libmp3lame", bitrate="192k"):
-    audio_clip.write_audiofile(
-        output_path,
-        fps=fps,
-        codec=codec,
-        bitrate=bitrate
-    )
-
 def delete_matching_videos(output_dir, match_text):
     """
     Delete all MP4 files matching pattern {index:04d}_*.mp4 in the given output directory.
