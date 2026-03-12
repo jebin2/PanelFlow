@@ -17,7 +17,7 @@ from jebin_lib import utils, HFTTSClient
 from panelflow.pipeline_base import PipelineBase
 from panelflow.pipeline import combineImageClip
 from panelflow.pipeline import combineVideo
-from panelflow.pipeline import merge_audio
+from jebin_lib import merge_audio
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 from panelflow.pipeline import gemini_history_processor
 from panelflow.pipeline import resize_with_aspect

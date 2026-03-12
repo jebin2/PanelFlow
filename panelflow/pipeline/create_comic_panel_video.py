@@ -23,7 +23,7 @@ from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, utils
 from panelflow.pipeline.caption_generator import MultiTypeCaptionGenerator
-from jebin_lib import text_splitter as split_paragraph
+from jebin_lib import text_splitter
 from chat_bot_ui_handler import AIStudioUIChat
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 
@@ -787,7 +787,7 @@ class ComicVideoPipeline:
 	
 	def process_narration_text(self, narration_text: str) -> List[str]:
 		"""Process narration text into individual lines."""
-		sentences = split_paragraph.split(narration_text)
+		sentences = text_splitter.split(narration_text)
 		return sentences
 
 	def _only_scene_caption_dialogue(self, caption_generator_map):
