@@ -60,6 +60,7 @@ class CategoryBase(ABC):
             "CREDENTIAL_NAME": self.get_cred_token_file_name()[0],
             "TOKEN_NAME": self.get_cred_token_file_name()[1],
             "YOUTUBE_TITLE": youtube_title,
-            "TWITTER_POST": twitter_post
+            "TWITTER_POST": twitter_post,
+            "PROCESSED": True
         })
         self.processor_obj._save_progress(progress)

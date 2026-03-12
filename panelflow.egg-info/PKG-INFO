@@ -38,6 +38,8 @@ Requires-Dist: pymediainfo
 Requires-Dist: beautifulsoup4
 Requires-Dist: piexif
 Requires-Dist: jebin_lib @ git+https://github.com/jebin2/lib.git
+Requires-Dist: music_creator @ git+https://github.com/jebin2/music-creator.git
+Requires-Dist: caption_generator @ git+https://github.com/jebin2/caption-generator.git
 Requires-Dist: custom_logger @ git+https://github.com/jebin2/custom_logger.git
 Requires-Dist: gemiwrap @ git+https://github.com/jebin2/gemiwrap.git
 Requires-Dist: browser_manager @ git+https://github.com/jebin2/browser_manager.git

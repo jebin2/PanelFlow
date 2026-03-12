@@ -110,7 +110,7 @@ class PanelProcessor(PipelineBase):
                 history_text = gemini_history_processor.history_to_text(review_history)
                 cfg = BrowserConfig()
                 cfg.user_data_dir = os.getenv("PROFILE_PATH", None)
-                cfg.additionl_docker_flag = ' '.join(common.get_neko_additional_flags(cfg))
+                cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.PARENT_BASE_PATH))
                 user_prompt = f"{self.folder_name} :: page {i + 1} of {file_len}"
                 result = json_repair.loads(
                     AIStudioUIChat(cfg).quick_chat(

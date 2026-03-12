@@ -4,7 +4,7 @@ import os
 from custom_logger import logger_config
 from jebin_lib import utils
 from .categories.base import CategoryBase
-from panelflow import config  # needed for BASE_PATH in _to_rel
+from . import config  # needed for BASE_PATH in _to_rel
 
 
 def _to_rel(path):
@@ -123,6 +123,10 @@ class PipelineBase(ABC):
 
     def allowed_create(self):
         return self.category.allowed_create()
+
+    def is_processed(self):
+        progress_json = self._get_progress()
+        return progress_json.get("PROCESSED", False)
 
     def _wrap_methods(self):
         if not self.sync_callback:
