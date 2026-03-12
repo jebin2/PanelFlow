@@ -132,8 +132,6 @@ class PipelineBase(ABC):
                 "set_all_paths", "allowed_create"
             ]:
                 continue
-            if attr_name.startswith('load_') or attr_name.startswith('get_'):
-                continue
             attr = getattr(self, attr_name)
             if callable(attr):
                 setattr(self, attr_name, self._create_sync_wrapper(attr))
