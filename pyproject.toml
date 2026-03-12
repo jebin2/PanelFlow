@@ -43,6 +43,8 @@ dependencies = [
     "beautifulsoup4",
     "piexif",
     "jebin_lib @ git+https://github.com/jebin2/lib.git",
+    "music_creator @ git+https://github.com/jebin2/music-creator.git",
+    "caption_generator @ git+https://github.com/jebin2/caption-generator.git",
     "custom_logger @ git+https://github.com/jebin2/custom_logger.git",
     "gemiwrap @ git+https://github.com/jebin2/gemiwrap.git",
     "browser_manager @ git+https://github.com/jebin2/browser_manager.git",
