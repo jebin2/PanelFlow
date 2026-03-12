@@ -4,8 +4,8 @@ import os
 from contextlib import ExitStack
 from custom_logger import logger_config
 from typing import List, Tuple
-from panelflow import common
 from panelflow import config as custom_env
+from jebin_lib import utils
 from panelflow.pipeline import media_transitions
 
 def start(temp_files: List[str], audioPath, fps: float, do_animate = False, output_video_path=None, need_transitions = True) -> Tuple[str, str]:
@@ -51,13 +51,13 @@ def start(temp_files: List[str], audioPath, fps: float, do_animate = False, outp
 
         output_path = output_video_path
         if not output_path:
-            output_path = f"{custom_env.VIDEO}/{common.generate_random_string()}.mp4"
+            output_path = f"{custom_env.TEMP_PATH}/{utils.generate_random_string()}.mp4"
 
         if os.path.exists(output_path):
             raise FileExistsError(f"File already exists: {output_path}")
 
         logger_config.debug(f"Rendering video: {output_path}")
-        common.write_videofile(final_video, output_path, fps=fps)
+        utils.write_videofile(final_video, output_path, fps=fps)
 
         # Force cleanup
         final_video.close()

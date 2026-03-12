@@ -14,6 +14,7 @@ import requests
 import subprocess
 import psutil
 from pydub import AudioSegment
+from jebin_lib import utils
 
 def file_exists(file_path):
     try:
@@ -170,7 +171,7 @@ def get_media_metadata(file_path):
         return None, None, None, None
 
 def write_videofile(video_clip, output_path, fps=custom_env.FPS):
-    audio_file = f'{custom_env.TEMP_OUTPUT}/{generate_random_string()}.mp3'
+    audio_file = f'{custom_env.TEMP_PATH}/{generate_random_string()}.mp3'
     video_clip.write_videofile(
         output_path,
         fps=fps,
@@ -336,7 +337,7 @@ def get_device(is_vision=False):
 
 def get_neko_additional_flags(config):
     additional_flags = []
-    additional_flags.append(f'-v {custom_env.CAPTION_CREATOR_BASE_PATH}:{config.neko_attach_folder}')
+    additional_flags.append(f'-v {custom_env.PARENT_BASE_PATH}:{config.neko_attach_folder}')
     additional_flags.append(config.policy_volume_mount(get_chrome_policies_json_path()))
     return additional_flags
 
@@ -349,7 +350,7 @@ def get_chrome_policies_json_path():
     if file_exists(local_path):
         return local_path
 
-    target_path = f"{custom_env.REUSE_PATH}/policies.json"
+    target_path = f"{custom_env.TEMP_PATH}/policies.json"
     if file_exists(target_path):
         remove_file(target_path)
     
@@ -369,31 +370,6 @@ def get_chrome_policies_json_path():
     except Exception as e:
         logger_config.error(f"Error downloading policies.json: {e}")
         return None
-
-_SUBPROCESS_ENV = {**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
-
-def run_subprocess_with_retry(cmd, cwd, repo_url, pip_name, requirements_file=None, timeout=None):
-    import subprocess
-    try:
-        result = subprocess.run(["bash", "-c", cmd], cwd=cwd, text=True, env=_SUBPROCESS_ENV, timeout=timeout)
-    except subprocess.TimeoutExpired:
-        raise TimeoutError(f"{pip_name} timed out after {timeout}s on: {cmd}")
-    if result.returncode != 0:
-        logger_config.warning(f"{pip_name} failed with code {result.returncode}. Reinstalling and retrying...")
-        setup_git_repo_get_install_pip(
-            repo_url=repo_url,
-            target_path=cwd,
-            pip_name=pip_name,
-            requirements_file=requirements_file,
-            force_install=True
-        )
-        try:
-            result = subprocess.run(["bash", "-c", cmd], cwd=cwd, text=True, env=_SUBPROCESS_ENV, timeout=timeout)
-        except subprocess.TimeoutExpired:
-            raise TimeoutError(f"{pip_name} timed out again after {timeout}s on: {cmd}")
-        if result.returncode != 0:
-            raise ValueError(f"{pip_name} failed again with code {result.returncode}")
-    return result
 
 def get_threads():
     return len(psutil.Process().cpu_affinity())
@@ -417,7 +393,7 @@ def combineAudio(file_names, path=None, silence=1000):  # Default silence = 1 se
     # Loop through the file names and append them to the combined audio
     file_len = len(file_names)
     for i, file_name in enumerate(file_names):
-        if not common.is_valid_wav(file_name):
+        if not utils.is_valid_audio(file_name):
             raise ValueError(f"Invalid audio. {file_name}")
         audio = AudioSegment.from_wav(file_name)
         combined += audio
@@ -427,7 +403,7 @@ def combineAudio(file_names, path=None, silence=1000):  # Default silence = 1 se
             combined += AudioSegment.silent(duration=silence)  # Corrected
 
     # Generate output path
-    audio_path = path if path else f'audio/{common.generate_random_string()}.wav'
+    audio_path = path if path else f'audio/{utils.generate_random_string()}.wav'
 
     combined.export(audio_path, format='wav')
     return audio_path

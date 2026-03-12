@@ -1,5 +1,5 @@
-from panelflow import common
 from panelflow import config as custom_env
+from jebin_lib import utils
 from PIL import Image, ImageFilter
 import numpy as np
 from panelflow.pipeline import resize_with_aspect
@@ -33,7 +33,7 @@ def create_blurred_background(img_clip, coords, duration, resolution):
 	blurred = cropped.resize(resolution).fl(blur_frame)
 	return blurred.set_duration(duration)
 
-def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=custom_env.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True):
+def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=custom_env.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True, temp_folder=None):
 	"""
 	Scale up multiple panel images from 90% to 100% of their individual sizes while evenly spreading them in the background.
 	Filters images based on width constraints.
@@ -65,7 +65,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 				if w * h > largest_w * largest_h:  # compare area
 					largest_w, largest_h = w, h
 		for image_path in multiple_image_path:
-			new_image_path = f'{custom_env.TEMP_OUTPUT}/{os.path.basename(image_path)}'
+			new_image_path = os.path.join(temp_folder or custom_env.TEMP_PATH, os.path.basename(image_path))
 			resize_with_aspect.scale_keep_ratio(image_path, largest_w, largest_h, output_path=new_image_path)
 			panel = ImageClip(new_image_path).set_duration(duration)
 			img_width, img_height = panel.size
@@ -218,18 +218,18 @@ if __name__ == "__main__":
 		# Panels not specified will use default center
 	}
 
-	common.write_videofile(
+	utils.write_videofile(
 		create_scale_up_clip_multiple(
-			'reuse/comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
+			'comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
 			[
 				
-			'reuse/comic_review_Sonja Reborn #2 (2025)/split_0002/0003_panel_(1127, 1616, 1473, 3056).jpg',
-			'reuse/comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
-			# 	'reuse/comic_review_Sonja Reborn #2 (2025)/split_0002/0002_panel_(1525, 1636, 1917, 3056).jpg',
-			# 	'reuse/comic_review_Bloodletter #1 (2025)/split_0015/panel_2_(73, 1402, 508, 2989).jpg',
-			# 	'reuse/comic_review_Bloodletter #1 (2025)/split_0015/panel_3_(539, 1402, 955, 2989).jpg',
-			# 	'reuse/comic_review_Bloodletter #1 (2025)/split_0015/panel_4_(987, 1402, 1402, 2989).jpg',
-			# 	'reuse/comic_review_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
+			'comic_review_Sonja Reborn #2 (2025)/split_0002/0003_panel_(1127, 1616, 1473, 3056).jpg',
+			'comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
+			# 	'comic_review_Sonja Reborn #2 (2025)/split_0002/0002_panel_(1525, 1636, 1917, 3056).jpg',
+			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_2_(73, 1402, 508, 2989).jpg',
+			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_3_(539, 1402, 955, 2989).jpg',
+			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_4_(987, 1402, 1402, 2989).jpg',
+			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
 			],
 			duration=5,
 			bg_size=custom_env.IMAGE_SIZE,

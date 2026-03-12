@@ -5,19 +5,19 @@ from browser_manager.browser_config import BrowserConfig
 from chat_bot_ui_handler import GeminiUIChat
 import json_repair
 import os
-from panelflow import config as custom_env
 import torch
 from contextlib import contextmanager
 import time
-from panelflow import common
 import gc
 import subprocess, sys
-from jebin_lib import HFTTTClient
+
+from .. import config, common
+from jebin_lib import utils
 
 # ---------------------------------
 # 1. SYSTEM PROMPT
 # ---------------------------------
-with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "panelflow", "prompt", "create_music_system_prompt.md"), 'r') as file:
+with open(config.CREATE_MUSIC_SYSTEM_PROMPT, 'r') as file:
     SYSTEM_PROMPT = file.read()
 
 # ---------------------------------
@@ -63,12 +63,6 @@ def get_music_prompt(system_prompt, text, max_attempts=5):
 
         time.sleep(10)
 
-    hf_ttt_client = HFTTTClient()
-    model_response = hf_ttt_client.generate(text=text, system_prompt=system_prompt)
-    music_prompt_json = json_repair.loads(model_response)
-    return music_prompt_json["prompt"]
-    # return f"Generate high-quality background audio suitable for looping and extended playback for the context: {text}"
-
 def process_audio(audio_data, background_volume=0.3):
     """
     Scales raw audio for background use and converts to int16.
@@ -86,22 +80,18 @@ def save_audio(filename, audio_data_int16, sampling_rate):
 # ---------------------------------
 # 4. MAIN PIPELINE
 # ---------------------------------
-def run_musicgen_pipeline(text, background_volume=0.3, outfile=None):
+def run_musicgen_pipeline(text, outfile, background_volume=0.3):
     """
     Main function to run the MusicGen pipeline end-to-end.
     Uses context manager to load/unload model automatically.
     """
-    if outfile is None:
-        outfile = f"{custom_env.TEMP_OUTPUT}/musicgen_out.wav"
-        # common.remove_file(outfile.replace(".wav", ".txt"))
-
-    if common.file_exists(outfile):
+    if utils.file_exists(outfile):
         return outfile
 
     prompt_outfile = outfile.replace(".wav", ".txt")
 
     # Step 1: Create Music Prompt
-    if common.file_exists(prompt_outfile):
+    if utils.file_exists(prompt_outfile):
         with open(prompt_outfile, 'r') as file:
             music_prompt = file.read()
     else:

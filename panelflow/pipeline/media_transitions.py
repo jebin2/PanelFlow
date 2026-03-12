@@ -1,7 +1,7 @@
 from moviepy.editor import VideoClip, AudioClip, concatenate_audioclips, concatenate_videoclips
 import numpy as np
 from panelflow import config as custom_env
-from panelflow import common
+from jebin_lib import utils
 from custom_logger import logger_config
 
 def get_last_valid_frame(clip):
@@ -157,10 +157,10 @@ if __name__ == "__main__":
     clip2 = ImageClip("media/anime/AnyxNGMDsx_captioned_anime_review.png").set_duration(3)
     clip3 = ImageClip("media/anime/AXHKtwunBw_captioned_anime_review.png").set_duration(2)
     clip4 = ImageClip("media/anime/AKEhQxrRFT_captioned_anime_review.png").set_duration(2)
-    clip5 = VideoFileClip(f"CaptionCreator/video/jhPjBwMSWn.mp4")
-    clip6 = VideoFileClip(f"CaptionCreator/video/ZYGMetYPVU.mp4")
+    clip5 = VideoFileClip(f"CaptionCreator/jhPjBwMSWn.mp4")
+    clip6 = VideoFileClip(f"CaptionCreator/ZYGMetYPVU.mp4")
 
     final_video = make([clip5, clip6])
-    output_path = f'{custom_env.TEMP_OUTPUT}/{common.generate_random_string()}.mp4'
-    common.write_videofile(final_video, output_path)
+    output_path = f'{custom_env.TEMP_PATH}/{utils.generate_random_string()}.mp4'
+    utils.write_videofile(final_video, output_path)
     logger_config.debug(output_path)

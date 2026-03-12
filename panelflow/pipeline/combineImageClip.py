@@ -6,7 +6,7 @@ from contextlib import ExitStack
 from custom_logger import logger_config
 from typing import List, Dict
 from panelflow import config as custom_env
-from panelflow import common
+from jebin_lib import utils
 import traceback
 from panelflow.pipeline import media_transitions
 import numpy as np
@@ -81,7 +81,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
         if not clips:
             raise ValueError("No valid clips in batch")
 
-        output_path = f"{custom_env.TEMP_OUTPUT}/{common.generate_random_string()}.mp4"
+        output_path = f"{custom_env.TEMP_PATH}/{utils.generate_random_string()}.mp4"
         
         if os.path.exists(output_path):
             raise FileExistsError(f"File already exists: {output_path}")
@@ -97,7 +97,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
                 method="chain"
             )
 
-        common.write_videofile(final_video, output_path, fps=fps)
+        utils.write_videofile(final_video, output_path, fps=fps)
 
         final_video.close()
         del final_video

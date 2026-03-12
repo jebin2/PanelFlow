@@ -2,6 +2,7 @@ from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, con
 import numpy as np
 from panelflow import common
 from panelflow import config as custom_env
+from jebin_lib import utils
 import subprocess, sys, os
 
 def get_audio_rms(audio_clip, sample_duration=1.0):
@@ -48,7 +49,7 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
         video = VideoFileClip(video)
 
     if not audio_path and text:
-        if common.file_exists(output_musicgen_path):
+        if utils.file_exists(output_musicgen_path):
             audio_path = output_musicgen_path
         else:
             subprocess.run([sys.executable, "create_music.py", text, output_musicgen_path], check=True, env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'})
@@ -121,17 +122,6 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
         video = video.set_audio(new_audio.volumex(bg_volume))
 
     if output_path:
-        common.write_videofile(video, output_path)
+        utils.write_videofile(video, output_path)
 
     return video
-
-
-if __name__ == "__main__":
-    process(
-        "video/031_-_Saiyan_Sized_Secret_WfyBWBLnhX_caption_zoSdTlfRkC.mp4",
-        output_path='tempOutput/test1.mp4',
-        audio_path="reuse/anime_shorts_031_-_Saiyan_Sized_Secret/musicgen_out.wav",
-        # audio_path="reuse/comic_shorts_Clementine Chapter 01/musicgen_out.wav",
-        text="""Tense orchestral score, somber and dramatic mood. Low string piano and powerful war piano create a slow, building tension. Seamless loop."""
-    )
-    print('tempOutput/test1.mp4')

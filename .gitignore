@@ -16,12 +16,12 @@ chess/moves/
 chess/chess_board_with_puzzle*
 chess/moves/
 tempOutput/
+temp/
 background_videos/
 media/
 whoa/
 .venv/
 temp*.py
-reuse
 prev_window_handle.txt
 encrypt
 prev_window_handle.txt
@@ -51,3 +51,4 @@ entries_backup.db
 cc_youtube_auto_pub/
 thread_id_*/
 temp_dir/
+panels_to_be_processed/

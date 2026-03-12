@@ -1,110 +1,68 @@
-from moviepy.editor import AudioFileClip, CompositeAudioClip
-from moviepy.audio.fx.all import audio_loop, volumex
-from panelflow import common
-from panelflow import config as custom_env
+from moviepy.editor import AudioFileClip, CompositeAudioClip, concatenate_audioclips
+from moviepy.audio.fx.all import audio_fadein, audio_fadeout
+import numpy as np
 from custom_logger import logger_config
-import random
 
-MUSIC= {
-    "1": {
-        "path": "media/background_music/Somewhere Fuse - French Fuse.mp3",
-        "sub_clip":(1, 11),
-        "volume_1": 1.4,
-        "volume_2": 0.1
-    },
-    "2": {
-        "path": "media/background_music/Today Remains Sweet - Lish Grooves.mp3",
-        "sub_clip":(2, 14),
-        "volume_1": 1.4,
-        "volume_2": 0.3
-    },
-    "3": {
-        "path": "media/background_music/Lazy River Dream.mp3",
-        "sub_clip":(0, 12.324),
-        "volume_1": 1.4,
-        "volume_2": 0.2
-    },
-    "4": {
-        "path": "media/background_music/Lazy River Dream.mp3",
-        "sub_clip":(104.332, 111.511),
-        "volume_1": 1.4,
-        "volume_2": 0.1
-    },
-    "5": {
-        "path": "media/background_music/The New Order - Aaron Kenny.mp3",
-        "sub_clip":(0, 4.490),
-        "volume_1": 1.4,
-        "volume_2": 0.6
-    },
-    "6": {
-        "path": "media/background_music/The New Order - Aaron Kenny.mp3",
-        "sub_clip":(24.480, 26.756),
-        "volume_1": 1.4,
-        "volume_2": 0.05
-    },
-    "7": {
-        "path": "media/background_music/Midnight Whispers.mp3",
-        "sub_clip":(1.975, 8.325),
-        "volume_1": 2,
-        "volume_2": 0.1
-    },
-    "8": {
-        "path": "media/background_music/Midnight Whispers.mp3",
-        "sub_clip":(98.907, 114.850),
-        "volume_1": 2,
-        "volume_2": 0.05
-    },
-    "9": {
-        "path": "media/background_music/output.wav",
-        "sub_clip":(0, -1),
-        "volume_1": 2,
-        "volume_2": 1
-    }
-}
 
-def merge(audio_1, audio_2=None, audio_2_index=[3, 4, 7, 8], volume_1=None, volume_2=None, fps=44100):
+def get_audio_rms(audio_clip, sample_duration=1.0):
+    duration = min(sample_duration, audio_clip.duration)
+    audio_segment = audio_clip.subclip(0, duration)
+    audio_array = audio_segment.to_soundarray(fps=44100)
+    return np.sqrt(np.mean(audio_array**2))
 
-    bg_music = None
-    if audio_2_index:
-        audio_2_index = random.choice(audio_2_index) if audio_2_index else random.choice(list(MUSIC.keys()))
 
-        bg_music = MUSIC[f"{audio_2_index}"]
-        audio_2 = bg_music['path']
+def calculate_bg_volume(main_rms, bg_rms):
+    if main_rms > 0.03:
+        base_volume = 0.3
+    elif main_rms > 0.01:
+        base_volume = 0.4
+    else:
+        base_volume = 0.5
 
-    volume_1 = volume_1 if volume_1 else bg_music['volume_1']
-    volume_2 = volume_2 if volume_2 else bg_music['volume_2']
+    if bg_rms > 0.15:
+        bg_volume = base_volume * 0.2
+    elif bg_rms > 0.08:
+        bg_volume = base_volume * 0.4
+    elif bg_rms > 0.03:
+        bg_volume = base_volume * 0.6
+    elif bg_rms > 0.01:
+        bg_volume = base_volume * 0.8
+    else:
+        bg_volume = base_volume * 1.2
 
-    # Load audio clips and set fps
-    audio_clip_1 = AudioFileClip(audio_1).set_fps(fps)
-    audio_clip_2 = AudioFileClip(audio_2).set_fps(fps)
-    if bg_music['sub_clip'][1] == -1:
-        audio_clip_2 = audio_clip_2.subclip(bg_music['sub_clip'][0], bg_music['sub_clip'][1]) if bg_music else audio_clip_2
+    return max(0.1, min(0.8, bg_volume))
 
-    # Loop audio_clip_2 to match audio_clip_1 duration if needed
-    if audio_clip_1.duration > audio_clip_2.duration:
-        audio_clip_2 = audio_loop(audio_clip_2, duration=audio_clip_1.duration)
 
-    if audio_clip_2.duration > audio_clip_1.duration:
-        audio_clip_2 = audio_clip_2.subclip(0, audio_clip_1.duration)
+def process(audio_path_1, audio_path_2, output_path, fps=44100):
+    original_audio = AudioFileClip(audio_path_1).set_fps(fps)
+    bg_music = AudioFileClip(audio_path_2).set_fps(fps)
 
-    # Adjust volume levels
-    audio_clip_1 = volumex(audio_clip_1, volume_1)
-    audio_clip_2 = volumex(audio_clip_2, volume_2)
+    if bg_music.duration > original_audio.duration:
+        bg_music = bg_music.subclip(0, original_audio.duration)
+    elif bg_music.duration < original_audio.duration:
+        fade_dur = 1.0
+        clips = []
+        t = 0
+        while t < original_audio.duration:
+            part = bg_music.subclip(0, min(bg_music.duration, original_audio.duration - t))
+            part = audio_fadein(part, fade_dur)
+            part = audio_fadeout(part, fade_dur)
+            clips.append(part)
+            t += part.duration
+        bg_music = concatenate_audioclips(clips).set_duration(original_audio.duration)
 
-    # Combine audio clips
-    combined_audio = CompositeAudioClip([audio_clip_1, audio_clip_2])
-    combined_audio.fps = fps
+    main_rms = get_audio_rms(original_audio)
+    bg_rms = get_audio_rms(bg_music)
+    bg_volume = calculate_bg_volume(main_rms, bg_rms)
 
-    # Generate output path and check for existence
-    output_path = f'{custom_env.AUDIO_PATH}/{common.generate_random_string()}_merge_audio.wav'
-    if common.file_exists(output_path):
-        raise Exception(f"file already exists: {output_path}")
+    logger_config.debug(f"Main RMS: {main_rms:.4f}, BG RMS: {bg_rms:.4f}, BG Volume: {bg_volume:.2f}")
 
-    # Write combined audio to file
-    common.write_audiofile(combined_audio, output_path, fps=fps)
-    combined_audio.close()
-    logger_config.debug(output_path)
+    bg_music = bg_music.volumex(bg_volume)
+    original_audio = original_audio.volumex(0.8)
+
+    combined = CompositeAudioClip([original_audio, bg_music])
+    combined.fps = fps
+    combined.write_audiofile(output_path)
+    combined.close()
+
     return output_path
-
-if __name__ == "__main__":
-    merge(f"CaptionCreator/tempOutput/tZHedxvzPD.wav")

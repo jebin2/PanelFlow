@@ -2,80 +2,142 @@ from jebin_lib import load_env
 load_env()
 
 import gc
-import time
+import sys
+import os
 import traceback
+
 from custom_logger import logger_config
 from panelflow import config as custom_env
-import argparse
-from panelflow.categories.content_map import content_map
-from panelflow.content_creator import ContentCreator
+from panelflow.pipeline.processor import PanelProcessor
+from jebin_lib import utils, HFDatasetClient
 
-class MainContent:
-	create_new = False
+class ContentCreator:
 
-	allowed_types = content_map.get_types()
+    def __init__(self, local_only=True, remote_only=False):
+        self.hf_client = HFDatasetClient(repo_id=custom_env.PUBLISH_HF_REPO_ID) if custom_env.PUBLISH_HF_REPO_ID else None
+        self.sync_states = {}
+        self.local_only = local_only
+        self.remote_only = remote_only
+        self.setup()
 
-	def __init__(self, allowed_types, create_new = False):
-		self.create_new = create_new
-		if len(allowed_types) > 0:
-			self.allowed_types = allowed_types
+    def _snapshot_comic_folders(self, cat_path):
+        if not os.path.isdir(cat_path):
+            return
+        for entry in os.scandir(cat_path):
+            if entry.is_dir():
+                self.sync_states[entry.path] = self._get_dir_fingerprint(entry.path)
 
-		logger_config.debug(f'Starting with {self.allowed_types} create_new: {self.create_new}')
+    def setup(self):
+        if self.hf_client:
+            for category in custom_env.CATEGORY:
+                local_cat_path = os.path.join(custom_env.PANELS_TO_BE_PROCESSED, category)
+                if self.local_only:
+                    self.hf_client.upload_folder(local_cat_path, category, delete_patterns=["*"])
+                elif self.remote_only:
+                    if os.path.isdir(local_cat_path):
+                        import shutil
+                        shutil.rmtree(local_cat_path)
+                    self.hf_client.download_folder(category, custom_env.PANELS_TO_BE_PROCESSED)
+                else:
+                    self.hf_client.download_folder(category, custom_env.PANELS_TO_BE_PROCESSED)
+                self._snapshot_comic_folders(local_cat_path)
 
-	def create(self, interval: int = 10):
-		while True:
-			try:
-				is_success = False
-				content_ref = None
-				for type in self.allowed_types:
-					content_ref = content_map.get_class_instance(type)(self.create_new)
-					contentCreator = ContentCreator(content_ref)
-					is_success = contentCreator.start()
-					contentCreator = None
-					gc.collect()
-					logger_config.debug(f"Waiting {interval} seconds before next type of content generation", seconds=interval)
-				
-				content_ref = None
+    def _get_dir_fingerprint(self, path):
+        if not os.path.exists(path):
+            return frozenset()
+        result = set()
+        for root, _, files in os.walk(path):
+            for f in files:
+                fpath = os.path.join(root, f)
+                try:
+                    st = os.stat(fpath)
+                    result.add((os.path.relpath(fpath, path), st.st_mtime_ns, st.st_size))
+                except OSError:
+                    continue
+        return frozenset(result)
 
-				if interval == 0 or (is_success):
-					break
+    def sync(self, local_path, remote_path):
+        if self.hf_client:
+            current_fp = self._get_dir_fingerprint(local_path)
+            if self.sync_states.get(local_path) == current_fp:
+                return
+            self.hf_client.upload_folder(local_path, remote_path)
+            self.sync_states[local_path] = self._get_dir_fingerprint(local_path)
 
-			except Exception as e:
-				logger_config.error(f"Error in MainContent::create: {e}\n{traceback.format_exc()}")
-				time.sleep(interval)
+    def force_sync(self, local_path, remote_path):
+        if self.hf_client:
+            self.hf_client.upload_folder(local_path, remote_path, delete_patterns=["*"])
+            self.sync_states[local_path] = self._get_dir_fingerprint(local_path)
 
-def parse_arguments() -> argparse.Namespace:
-	parser = argparse.ArgumentParser(description="Content Generation Utility")
+    def run(self):
+        if not os.path.isdir(custom_env.PANELS_TO_BE_PROCESSED):
+            logger_config.warning(f"Input folder not found: {custom_env.PANELS_TO_BE_PROCESSED}")
+            return
 
-	# Shared args
-	parser.add_argument("--new-content", action="store_true", help="Create new content without audio/video")
+        comic_folders = []
+        for category in custom_env.CATEGORY:
+            cat_path = os.path.join(custom_env.PANELS_TO_BE_PROCESSED, category)
+            if not os.path.isdir(cat_path):
+                continue
+            for entry in sorted(os.scandir(cat_path), key=lambda e: e.name):
+                if entry.is_dir():
+                    comic_folders.append((os.path.relpath(entry.path, custom_env.BASE_PATH), category))
+                elif entry.name.lower().endswith('.cbz'):
+                    folder_name = os.path.splitext(entry.name)[0]
+                    folder_path = os.path.join(cat_path, folder_name)
+                    utils.create_directory(folder_path)
+                    dest = os.path.join(folder_path, entry.name)
+                    if not os.path.exists(dest):
+                        os.rename(entry.path, dest)
+                    comic_folders.append((os.path.relpath(folder_path, custom_env.BASE_PATH), category))
 
-	# Dynamically add content type args
-	for key, value in content_map.get_type_class_map().items():
-		parser.add_argument(
-			value["parse_arguments"],
-			value["long_parse_arguments"],
-			action="store_true",
-			help=f"Enable {key} generation"
-		)
+        for idx, (folder, category) in enumerate(comic_folders):
+            try:
+                Pipeline = PanelProcessor
+                logger_config.info(f"{Pipeline.__name__} {idx+1}/{len(comic_folders)}: {folder}")
 
-	return parser.parse_args()
+                remote_path = os.path.relpath(folder, custom_env.PANELS_TO_BE_PROCESSED)
+                kwargs = dict(
+                    folder=folder,
+                    category=category,
+                    sync_callback=lambda lp=folder, rp=remote_path: self.sync(lp, rp)
+                )
+
+                instance = Pipeline(**kwargs)
+                if instance.allowed_create():
+                    instance.process()
+
+            except Exception as e:
+                logger_config.error(f"Failed: {folder}: {e}\n{traceback.format_exc()}")
+            finally:
+                gc.collect()
+
 
 def main():
-	args = parse_arguments()
+    os.chdir(custom_env.BASE_PATH)
 
-	allowed_types = []
+    local_only = '--localonly' in sys.argv
+    remote_only = '--remoteonly' in sys.argv
+    one_pass = '--onepass' in sys.argv
 
-	# Set allowed content types
-	for key, value in content_map.get_type_class_map().items():
-		if getattr(args, value["long_parse_arguments"].lstrip("--").replace("-", "_")):
-			allowed_types.append(key)
-			if key == custom_env.COMIC_REVIEW:
-				allowed_types.append(custom_env.COMIC_SHORTS)
+    while True:
+        creator = None
+        try:
+            creator = ContentCreator(
+                local_only=local_only,
+                remote_only=remote_only
+            )
+            creator.run()
+        except Exception as e:
+            logger_config.error(f"ContentCreator failed: {e}\n{traceback.format_exc()}")
+        finally:
+            del creator
+            gc.collect()
 
-	mainContent = MainContent(allowed_types, create_new=args.new_content)
-	mainContent.create()
+        if one_pass:
+            break
+        logger_config.info("Sleeping for 60 seconds", seconds=60)
 
-# main entry point
-if __name__ == "__main__":
-	main()
+
+if __name__ == '__main__':
+    main()

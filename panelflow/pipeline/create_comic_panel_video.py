@@ -7,7 +7,6 @@ import json
 from custom_logger import logger_config
 from typing import List, Tuple, Optional
 from dataclasses import dataclass
-from pathlib import Path
 from panelflow.pipeline.scale_clip import create_scale_up_clip_multiple
 
 from PIL import Image, ImageFilter
@@ -26,6 +25,7 @@ from jebin_lib import HFTTSClient, utils
 from panelflow.pipeline.caption_generator import MultiTypeCaptionGenerator
 from panelflow.pipeline import text_splitter as split_paragraph
 from chat_bot_ui_handler import AIStudioUIChat
+from panelflow.pipeline.gemini_config import pre_model_wrapper
 
 @dataclass
 class Config:
@@ -33,7 +33,6 @@ class Config:
 	comic_title: str = ""
 	main_file_name: str = ""
 	comic_image: str = ""
-	temp_folder: str = custom_env.TEMP_OUTPUT
 	distance_threshold: int = 70
 	vertical_threshold: int = 30
 	resolution: Tuple[int, int] = custom_env.IMAGE_SIZE
@@ -41,7 +40,7 @@ class Config:
 	auto_scroll: bool = True
 	zoom_enabled: bool = False
 	zoom_factor: float = 1.1
-	output_video: str = f"{custom_env.TEMP_OUTPUT}/comic_focus.mp4"
+	output_video: str = f"{custom_env.TEMP_PATH}/comic_focus.mp4"
 	min_text_length: int = 2
 	similarity_model: str = 'all-mpnet-base-v2'
 	split_output_dir: str = '',
@@ -187,9 +186,9 @@ class TextDetector:
 		try:
 			with open(output_path, "r", encoding="utf-8") as f:
 				groups_data = json.load(f)
-		except: common.remove_file(output_path)
+		except: utils.remove_file(output_path)
 
-		if not common.file_exists(output_path):
+		if not utils.file_exists(output_path):
 			detections = self.detect_text(image_path)
 			groups = self.group_text_regions(detections)
 			groups_data = []
@@ -254,13 +253,13 @@ class NarrationMapper:
 				existing_mappings = json.load(f)
 				# Check if audio files exist for all mappings
 				all_audio_exists = all(
-					common.is_valid_wav(mapping.get("audio", "")) 
+					utils.is_valid_audio(mapping.get("audio", "")) 
 					for mapping in existing_mappings
 				)
 				if all_audio_exists:
 					return True, str(output_path)
 		except:
-			common.remove_file(output_path)
+			utils.remove_file(output_path)
 		
 		try:
 			self.load_similarity_model()
@@ -315,8 +314,8 @@ class NarrationMapper:
 				# 	matched_bubble = bubbles[best_bubble_idx]
 				
 				# Prepare audio path but don't generate yet
-				file_name = common.generate_random_string_from_input(narration)
-				final_audio_path = f'{self.config.temp_folder}/{idx+1:04d}_{file_name}.wav'
+				file_name = utils.generate_random_string_from_input(narration)
+				final_audio_path = f'{self.config.page_specific_dir}/{idx+1:04d}_{file_name}.wav'
 				
 				mapping = NarrationMapping(
 					narration_id=idx + 1,
@@ -343,11 +342,9 @@ class NarrationMapper:
 		try:
 			hf_tts_client = HFTTSClient()
 			for mapping in tqdm(mappings, total=len(mappings), desc="Processing audio"):
-				if not common.is_valid_wav(mapping.audio):
+				if not utils.is_valid_audio(mapping.audio):
 					# Generate TTS audio
-					temp_path = f'{self.config.temp_folder}/{mapping.narration_id:04d}_{mapping.narration_text}.wav'
-					hf_tts_client.generate_audio_segment(mapping.narration_text, temp_path)
-					common.copy(temp_path, mapping.audio)
+					hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
 				
 				# Get audio duration and update mapping
 				_, duration, _, _ = common.get_media_metadata(mapping.audio)
@@ -497,7 +494,7 @@ class VideoGenerator:
 		# Step 1: get all panel frame paths
 		all_frame_paths = [
 			os.path.abspath(file)
-			for file in common.list_files(self.config.split_output_dir)
+			for file in utils.list_files(self.config.split_output_dir)
 			if "_panel_" in os.path.basename(file)
 		]
 
@@ -706,7 +703,8 @@ class VideoGenerator:
 					multiple_image_path=all_image_path,
 					duration=duration,
 					bg_size=self.config.resolution,
-					zoom_coords=zoom_coordinates
+					zoom_coords=zoom_coordinates,
+					temp_folder=self.config.page_specific_dir
 				)
 
 				previous_end_coords = coords
@@ -730,7 +728,8 @@ class VideoGenerator:
 					duration=duration,
 					bg_size=self.config.resolution,
 					scale_point=img_h/self.config.resolution[1],
-					zoom_coords=zoom_coordinates
+					zoom_coords=zoom_coordinates,
+					temp_folder=self.config.page_specific_dir
 				)
 
 				previous_end_coords = coords
@@ -741,9 +740,7 @@ class VideoGenerator:
 
 		# Combine all clips
 		final_video = concatenate_videoclips(clips, method="compose")
-		temp_output_path = f'{custom_env.TEMP_OUTPUT}/{common.generate_random_string()}.mp4'
-		common.write_videofile(final_video, temp_output_path)
-		common.copy(temp_output_path, output_path)
+		utils.write_videofile(final_video, output_path)
 
 		logger_config.info(f"Video saved to {output_path}")
 		return output_path
@@ -755,8 +752,6 @@ class ComicVideoPipeline:
 		self.config = config
 		self.video_generator = VideoGenerator(config)
 		
-		# Ensure temp folder exists
-		Path(config.temp_folder).mkdir(parents=True, exist_ok=True)
 		utils.create_directory(self.config.page_specific_dir)
 
 	def caption_generator(self, narration_text):
@@ -767,7 +762,7 @@ class ComicVideoPipeline:
 
 		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, FYI=fyi)
 
-		if common.file_exists(output_path) and utils.is_valid_json(output_path):
+		if utils.file_exists(output_path) and utils.is_valid_json(output_path):
 			with open(output_path, "r", encoding="utf-8") as f:
 				frame_paths = json.load(f)
 		else:
@@ -775,7 +770,7 @@ class ComicVideoPipeline:
 				{
 					"frame_path": [os.path.abspath(file)]
 				}
-				for file in common.list_files(self.config.split_output_dir)
+				for file in utils.list_files(self.config.split_output_dir)
 				if "_panel_" in os.path.basename(file)
 			]
 
@@ -845,7 +840,7 @@ class ComicVideoPipeline:
 		while match_scene is None and retry_times < 5:
 			retry_times += 1
 			# first check for reponses in a file
-			if common.file_exists(f"{self.config.page_specific_dir}/match_scene.txt"):
+			if utils.file_exists(f"{self.config.page_specific_dir}/match_scene.txt"):
 				with open(f"{self.config.page_specific_dir}/match_scene.txt", "r", encoding="utf-8") as f:
 					match_scene = f.read()
 
@@ -874,7 +869,7 @@ class ComicVideoPipeline:
 			# Use surrogatepass→replace pattern which reliably strips lone surrogates.
 			if isinstance(match_scene, str):
 				match_scene = match_scene.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
-			from gemini_config import pre_model_wrapper
+
 			geminiWrapper = pre_model_wrapper(
 				model_name=custom_env.MODEL_NAME_LITE,
 				system_instruction=system_prompt,

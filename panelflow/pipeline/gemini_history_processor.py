@@ -77,5 +77,3 @@ def append_history(pkl_path, user_prompt, system_response):
     history.append(new_model)
     save_history(pkl_path, history)
     return history
-
-# print(deduplicate_history(load_history("reuse/comic_review_1001 Arabian Nights v01 - The Eyes Of Fire/review_history.pkl")))

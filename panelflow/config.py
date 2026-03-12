@@ -2,27 +2,29 @@ import os
 import platform
 
 _arch = platform.machine()
-BASE_PATH = os.path.dirname(os.path.dirname(__file__))
+_pkg_dir = os.path.dirname(__file__)
 
-PARENT_BASE_PATH = os.path.dirname(BASE_PATH)
+BASE_PATH = os.path.dirname(_pkg_dir)
 
-DATABASE = f'{BASE_PATH}/databases/entries.db'
-TABLE_NAME='entries'
-AUDIO_PATH = f'{BASE_PATH}/audio'
-VIDEO="video"
-VIDEO_PATH = f'{BASE_PATH}/{VIDEO}'
-TEMP_OUTPUT = f'{BASE_PATH}/tempOutput'
-FPS=24
-IMAGE_SIZE=(1920, 1080)
-MEDIA="media"
-MODEL_NAME="gemini-3-flash-preview"
-MODEL_NAME_LITE="gemini-flash-lite-latest"
+TEMP_PATH = os.path.join(BASE_PATH, 'temp')
+os.makedirs(TEMP_PATH, exist_ok=True)
+os.environ["TEMP_OUTPUT"] = TEMP_PATH
 
-REUSE_PATH = f"{BASE_PATH}/reuse"
-REUSE_SPECIFIC_PATH = "."
-SERVER_PORT=int(os.getenv("SERVER_PORT", "3000"))
-AUTHORIZATION_CODE_PATH=f"{TEMP_OUTPUT}/code.txt"
+PANELS_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'panels_to_be_processed')
+os.makedirs(PANELS_TO_BE_PROCESSED, exist_ok=True)
 
 COMIC_REVIEW="comic_review"
 COMIC_SHORTS="comic_shorts"
-COMIC_REVIEW_PATH=f'media/{COMIC_REVIEW}'
+CATEGORY=[COMIC_REVIEW, COMIC_SHORTS]
+
+PUBLISH_HF_REPO_ID = os.getenv("PUBLISH_HF_REPO_ID")
+
+FPS = 24
+IMAGE_SIZE = (1920, 1080)
+
+# Prompts
+CREATE_MUSIC_SYSTEM_PROMPT = BASE_PATH + "/panelflow/prompt/create_music_system_prompt.md"
+MODEL_NAME="gemini-3-flash-preview"
+MODEL_NAME_LITE="gemini-flash-lite-latest"
+
+SUBPROCESS_ENV = {**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
