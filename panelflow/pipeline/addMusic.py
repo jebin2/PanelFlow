@@ -1,4 +1,5 @@
-from moviepy.editor import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips
+from moviepy import VideoFileClip, AudioFileClip, CompositeAudioClip, concatenate_videoclips, concatenate_audioclips
+from moviepy.audio.fx import AudioFadeIn, AudioFadeOut, MultiplyVolume
 import numpy as np
 from panelflow import common
 from panelflow import config
@@ -11,7 +12,7 @@ def get_audio_rms(audio_clip, sample_duration=1.0):
     To avoid processing very long audio, we sample the first `sample_duration` seconds.
     """
     duration = min(sample_duration, audio_clip.duration)
-    audio_segment = audio_clip.subclip(0, duration)
+    audio_segment = audio_clip.subclipped(0, duration)
     audio_array = audio_segment.to_soundarray(fps=44100)
     return np.sqrt(np.mean(audio_array**2))
 
@@ -26,7 +27,7 @@ def calculate_bg_volume(main_rms, bg_rms):
         base_volume = 0.4
     else:  # Low main audio level
         base_volume = 0.5
-    
+
     # Adjust based on background music loudness
     if bg_rms > 0.15:  # Very loud background music
         bg_volume = base_volume * 0.2  # Reduce significantly
@@ -38,10 +39,10 @@ def calculate_bg_volume(main_rms, bg_rms):
         bg_volume = base_volume * 0.8  # Boost slightly
     else:  # Very quiet background music
         bg_volume = base_volume * 1.2  # Boost more
-    
+
     # Ensure volume stays within reasonable bounds
     bg_volume = max(0.1, min(0.8, bg_volume))
-    
+
     return bg_volume
 
 def process(video, audio_path=None, output_path=None, text=None, extend_video=False, trim_video=False, output_musicgen_path=None):
@@ -63,26 +64,23 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
         if extend_video:
             loops_required = int(new_audio.duration // video.duration) + 2
             video = concatenate_videoclips([video] * loops_required)
-            video = video.subclip(0, new_audio.duration)
+            video = video.subclipped(0, new_audio.duration)
         else:
-            new_audio = new_audio.subclip(0, video.duration)
+            new_audio = new_audio.subclipped(0, video.duration)
     else:
         if trim_video:
-            video = video.subclip(0, new_audio.duration)
+            video = video.subclipped(0, new_audio.duration)
         else:
-            from moviepy.audio.fx.all import audio_fadein, audio_fadeout
-            from moviepy.editor import concatenate_audioclips
             fade_dur = 1.0
             clips = []
             t = 0
 
             while t < video.duration:
-                part = new_audio.subclip(0, min(new_audio.duration, video.duration - t))
-                part = audio_fadein(part, fade_dur)
-                part = audio_fadeout(part, fade_dur)
+                part = new_audio.subclipped(0, min(new_audio.duration, video.duration - t))
+                part = part.with_effects([AudioFadeIn(fade_dur), AudioFadeOut(fade_dur)])
                 clips.append(part)
                 t += part.duration
-            new_audio = concatenate_audioclips(clips).set_duration(video.duration)
+            new_audio = concatenate_audioclips(clips).with_duration(video.duration)
 
     original_audio = video.audio
 
@@ -91,23 +89,23 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
         # Calculate RMS for both audio sources
         main_rms = get_audio_rms(original_audio)
         bg_rms = get_audio_rms(new_audio)
-        
+
         # Calculate optimal background volume
         bg_volume = calculate_bg_volume(main_rms, bg_rms)
-        
+
         print(f"Main RMS: {main_rms:.4f}, BG RMS: {bg_rms:.4f}, BG Volume: {bg_volume:.2f}")
-        
+
         # Apply volumes
-        new_audio = new_audio.volumex(bg_volume)
-        original_audio = original_audio.volumex(0.8)  # Keep main audio strong
-        
+        new_audio = new_audio.with_effects([MultiplyVolume(bg_volume)])
+        original_audio = original_audio.with_effects([MultiplyVolume(0.8)])  # Keep main audio strong
+
         # Combine audio tracks
         combined_audio = CompositeAudioClip([original_audio, new_audio])
-        video = video.set_audio(combined_audio)
+        video = video.with_audio(combined_audio)
     else:
         # If no original audio, still adjust background music based on its own level
         bg_rms = get_audio_rms(new_audio)
-        
+
         # For videos without original audio, use a different scaling approach
         if bg_rms > 0.15:
             bg_volume = 0.5
@@ -117,9 +115,9 @@ def process(video, audio_path=None, output_path=None, text=None, extend_video=Fa
             bg_volume = 0.8
         else:
             bg_volume = 1.0
-            
+
         print(f"No main audio, BG RMS: {bg_rms:.4f}, BG Volume: {bg_volume:.2f}")
-        video = video.set_audio(new_audio.volumex(bg_volume))
+        video = video.with_audio(new_audio.with_effects([MultiplyVolume(bg_volume)]))
 
     if output_path:
         utils.write_videofile(video, output_path)

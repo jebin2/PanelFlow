@@ -12,7 +12,7 @@ from panelflow.pipeline.scale_clip import create_scale_up_clip_multiple
 from PIL import Image, ImageFilter
 
 import numpy as np
-from moviepy.editor import *
+from moviepy import AudioFileClip, ImageClip, VideoClip, concatenate_audioclips, concatenate_videoclips
 
 # Custom modules
 from panelflow import config
@@ -425,13 +425,13 @@ class VideoGenerator:
 			y1_crop = max(y_offset + (view_height - crop_height) // 2, 0)
 			
 			# Crop and resize
-			frame = img_clip.crop(
+			frame = img_clip.cropped(
 				x1=x1,
 				y1=y1_crop,
 				x2=x1 + crop_width,
 				y2=y1_crop + crop_height
 			)
-			return frame.resize((view_width, view_height)).get_frame(t)
+			return frame.resized((view_width, view_height)).get_frame(t)
 
 		# Calculate the end crop box for chaining
 		final_crop_box = [
@@ -736,7 +736,7 @@ class VideoGenerator:
 				previous_end_coords = coords
 
 			# Attach merged audio
-			clip = clip.set_audio(audio_clip)
+			clip = clip.with_audio(audio_clip)
 			clips.append(clip)
 
 		# Combine all clips
@@ -759,9 +759,7 @@ class ComicVideoPipeline:
 		output_path = f"{self.config.page_specific_dir}/caption_generator.json"
 		all_captions = f"{self.config.page_specific_dir}/all_captions.json"
 
-		fyi = f'This is an Anime frame from the anime called {self.config.comic_title}'
-
-		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=fyi)
+		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
 
 		if utils.file_exists(output_path) and utils.is_valid_json(output_path):
 			with open(output_path, "r", encoding="utf-8") as f:

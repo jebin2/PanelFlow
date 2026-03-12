@@ -17,10 +17,13 @@ class titleAndDescription(BaseModel):
     twitter_post: str
 
 
-class ComicReview(CategoryBase):
+class Comic(CategoryBase):
 
     def __init__(self, processor_obj):
-        super().__init__(custom_env.COMIC_REVIEW, processor_obj)
+        super().__init__(custom_env.COMIC, processor_obj)
+
+    def get_fyi(self, file_base_name_without_ext):
+        return f'This is an Comic panel from the comic called {file_base_name_without_ext}'
 
     def get_cred_token_file_name(self):
         return ("ytcredentials.json", "yttoken.json")

@@ -22,12 +22,9 @@ class CategoryBase(ABC):
 
     @staticmethod
     def get_category(name, processor_obj):
-        if name == config.COMIC_REVIEW:
-            from .comic_review import ComicReview
-            return ComicReview(processor_obj)
-        elif name == config.COMIC_SHORTS:
-            from .comic_shorts_review import ComicShortsReview
-            return ComicShortsReview(processor_obj)
+        if name == config.COMIC:
+            from .comic import Comic
+            return Comic(processor_obj)
         else:
             raise ValueError(f"Invalid category: {name}")
 
@@ -57,8 +54,6 @@ class CategoryBase(ABC):
             "SHORTS_VIDEO_PATH": os.path.relpath(
                 self.processor_obj.shorts_final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
-            "CREDENTIAL_NAME": self.get_cred_token_file_name()[0],
-            "TOKEN_NAME": self.get_cred_token_file_name()[1],
             "YOUTUBE_TITLE": youtube_title,
             "TWITTER_POST": twitter_post,
             "PROCESSED": True

@@ -21,17 +21,16 @@ def create_blurred_background(img_clip, coords, duration, resolution):
 	x1, y1, x2, y2 = coords
 
 	# Crop expanded region
-	cropped = img_clip.crop(x1=x1, y1=y1, x2=x2, y2=y2)
+	cropped = img_clip.cropped(x1=x1, y1=y1, x2=x2, y2=y2)
 
 	# Blur using Pillow
-	def blur_frame(get_frame, t):
-		frame = get_frame(t)
+	def blur_frame(frame):
 		pil_img = Image.fromarray(frame)
 		pil_img = pil_img.filter(ImageFilter.GaussianBlur(radius=20))
 		return np.array(pil_img)
 
-	blurred = cropped.resize(resolution).fl(blur_frame)
-	return blurred.set_duration(duration)
+	blurred = cropped.resized(resolution).image_transform(blur_frame)
+	return blurred.with_duration(duration)
 
 def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=config.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True, temp_folder=None):
 	"""
@@ -50,7 +49,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 	Returns:
 		CompositeVideoClip: Combined clip with all scaled panels.
 	"""
-	from moviepy.editor import ImageClip, CompositeVideoClip
+	from moviepy import ImageClip, CompositeVideoClip
 
 	bg_width, bg_height = bg_size
 	
@@ -67,13 +66,13 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 		for image_path in multiple_image_path:
 			new_image_path = os.path.join(temp_folder or config.TEMP_PATH, os.path.basename(image_path))
 			resize_with_aspect.scale_keep_ratio(image_path, largest_w, largest_h, output_path=new_image_path)
-			panel = ImageClip(new_image_path).set_duration(duration)
+			panel = ImageClip(new_image_path).with_duration(duration)
 			img_width, img_height = panel.size
 			image_data.append((new_image_path, panel, img_width, img_height))
 
 	if main_image_path:
 		# First check if the main image_path is 80-90% of background width
-		main_image_panel = ImageClip(main_image_path).set_duration(duration)
+		main_image_panel = ImageClip(main_image_path).with_duration(duration)
 		main_img_width, main_img_height = main_image_panel.size
 		main_width_ratio = main_img_width / bg_width
 	
@@ -105,7 +104,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 	# Create blurred background if blur_coords and main_image_path are provided
 	background_clips = []
 	if main_image_path and 0 in zoom_coords:
-		main_image_clip = ImageClip(main_image_path).set_duration(duration)
+		main_image_clip = ImageClip(main_image_path).with_duration(duration)
 		if bg_blur:
 			blurred_bg = create_blurred_background(main_image_clip, zoom_coords[0], duration, bg_size)
 			background_clips.append(blurred_bg)
@@ -140,7 +139,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 
 		delay = panel_index * delay_per_panel
 		# Resize dynamically
-		scaled_panel = panel.resize(
+		scaled_panel = panel.resized(
 			lambda t, scale=scale_to_fit_all, delay=delay: scale_func(t, scale, delay)
 		)
 
@@ -192,7 +191,7 @@ def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, dur
 			
 			return (final_x, final_y)
 
-		scaled_panel = scaled_panel.set_pos(get_position)
+		scaled_panel = scaled_panel.with_position(get_position)
 		panel_clips.append(scaled_panel)
 		panel_index += 1
 
@@ -220,16 +219,16 @@ if __name__ == "__main__":
 
 	utils.write_videofile(
 		create_scale_up_clip_multiple(
-			'comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
+			'comic_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
 			[
 				
-			'comic_review_Sonja Reborn #2 (2025)/split_0002/0003_panel_(1127, 1616, 1473, 3056).jpg',
-			'comic_review_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
-			# 	'comic_review_Sonja Reborn #2 (2025)/split_0002/0002_panel_(1525, 1636, 1917, 3056).jpg',
-			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_2_(73, 1402, 508, 2989).jpg',
-			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_3_(539, 1402, 955, 2989).jpg',
-			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_4_(987, 1402, 1402, 2989).jpg',
-			# 	'comic_review_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
+			'comic_Sonja Reborn #2 (2025)/split_0002/0003_panel_(1127, 1616, 1473, 3056).jpg',
+			'comic_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
+			# 	'comic_Sonja Reborn #2 (2025)/split_0002/0002_panel_(1525, 1636, 1917, 3056).jpg',
+			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_2_(73, 1402, 508, 2989).jpg',
+			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_3_(539, 1402, 955, 2989).jpg',
+			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_4_(987, 1402, 1402, 2989).jpg',
+			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
 			],
 			duration=5,
 			bg_size=config.IMAGE_SIZE,

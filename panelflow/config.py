@@ -13,9 +13,8 @@ os.environ["TEMP_OUTPUT"] = TEMP_PATH
 PANELS_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'panels_to_be_processed')
 os.makedirs(PANELS_TO_BE_PROCESSED, exist_ok=True)
 
-COMIC_REVIEW="comic_review"
-COMIC_SHORTS="comic_shorts"
-CATEGORY=[COMIC_REVIEW, COMIC_SHORTS]
+COMIC="comic"
+CATEGORY=[COMIC]
 
 HF_BUCKET_ID = os.getenv("HF_BUCKET_ID")
 

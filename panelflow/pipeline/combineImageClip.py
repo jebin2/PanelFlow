@@ -1,4 +1,4 @@
-from moviepy.editor import ImageClip, concatenate_videoclips, ImageSequenceClip
+from moviepy import ImageClip, concatenate_videoclips, ImageSequenceClip
 from PIL import Image, ImageSequence
 import gc
 import os
@@ -15,7 +15,6 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
     if animate_type and (('donot_animate' in clip_info and not clip_info['donot_animate']) or 'donot_animate' not in clip_info):
         return create_animated_image_clip(clip_info, animate_type)
     else:
-        # Check for overlay GIF
         if 'overlay_clip' in clip_info and clip_info['overlay_clip']:
             background = Image.open(clip_info['img_path']).convert("RGBA")
             clip_duration = clip_info['clip_duration']
@@ -23,7 +22,6 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
             num_frames = int(clip_duration * fps)
             gif_path = clip_info['overlay_clip']
 
-            # Load and resize GIF frames
             gif = Image.open(gif_path)
             gif_frames = [frame.convert("RGBA") for frame in ImageSequence.Iterator(gif)]
             gif_frame_count = len(gif_frames)
@@ -34,15 +32,14 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
             for i in range(num_frames):
                 bg_copy = background.copy()
                 gif_frame = gif_frames[i % gif_frame_count]
-                bg_copy.paste(gif_frame, position, gif_frame)  # Paste with transparency
+                bg_copy.paste(gif_frame, position, gif_frame)
                 composited_frames.append(np.array(bg_copy.convert("RGB")))
 
-            # Create video from merged frames
             final_clip = ImageSequenceClip(composited_frames, fps=fps)
-            return final_clip.set_start(clip_info['clip_start'])
+            return final_clip.with_start(clip_info['clip_start'])
 
         clip = ImageClip(clip_info['img_path'])
-        clip = clip.set_duration(clip_info['clip_duration']).set_start(clip_info['clip_start'])
+        clip = clip.with_duration(clip_info['clip_duration']).with_start(clip_info['clip_start'])
         return clip
 
 def create_animated_image_clip(clip_info, animate_type=None):
@@ -58,10 +55,9 @@ def create_animated_image_clip(clip_info, animate_type=None):
         },
         bg_blur=clip_info['bg_blur'] if 'bg_blur' in clip_info else True,
     )
-
     return clip
 
-def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: int, animate_type="zoom_out_zoom_in_to_full", need_transitions = False) -> str:
+def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: int, animate_type="zoom_out_zoom_in_to_full", need_transitions=False) -> str:
     with ExitStack() as stack:
         clips = []
         logger_config.debug("for overwrite")
@@ -82,7 +78,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
             raise ValueError("No valid clips in batch")
 
         output_path = f"{config.TEMP_PATH}/{utils.generate_random_string()}.mp4"
-        
+
         if os.path.exists(output_path):
             raise FileExistsError(f"File already exists: {output_path}")
 
@@ -91,11 +87,7 @@ def process_batch(batch: List[Dict], fps: float, batch_index: int, total_size: i
             final_video = media_transitions.make(clips)
         else:
             logger_config.debug(f"Combining {len(clips)} images at index {batch_index} (total: {total_size})")
-
-            final_video = concatenate_videoclips(
-                clips,
-                method="chain"
-            )
+            final_video = concatenate_videoclips(clips, method="chain")
 
         utils.write_videofile(final_video, output_path, fps=fps)
 
@@ -113,13 +105,10 @@ def start(images: List[Dict], fps: float = config.FPS, animate_type="zoom_out_zo
         logger_config.debug("Starting image clip combination process...")
 
         temp_files = []
-        batch_size = 500  # Reduced batch size for better memory management
+        batch_size = 500
         total_size = len(images)
 
-        batches = [
-            images[i:i + batch_size]
-            for i in range(0, total_size, batch_size)
-        ]
+        batches = [images[i:i + batch_size] for i in range(0, total_size, batch_size)]
         for i, batch in enumerate(batches):
             output_path = process_batch(batch, fps, i * batch_size, total_size, animate_type, need_transitions)
             temp_files.append(output_path)

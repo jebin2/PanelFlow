@@ -12,8 +12,7 @@ panelflow.egg-info/requires.txt
 panelflow.egg-info/top_level.txt
 panelflow/categories/__init__.py
 panelflow/categories/base.py
-panelflow/categories/comic_review.py
-panelflow/categories/comic_shorts_review.py
+panelflow/categories/comic.py
 panelflow/pipeline/__init__.py
 panelflow/pipeline/addMusic.py
 panelflow/pipeline/combineImageClip.py

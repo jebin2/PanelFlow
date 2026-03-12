@@ -482,7 +482,7 @@ class PanelProcessor(PipelineBase):
             raise ValueError("comic-panel-extractor produced no panels.")
 
     def _add_bg_music(self, input_path, output_path, reuse_musicgen=False):
-        from moviepy.editor import VideoFileClip
+        from moviepy import VideoFileClip
 
         abs_input_path = os.path.abspath(input_path)
         abs_output_path = os.path.abspath(output_path)

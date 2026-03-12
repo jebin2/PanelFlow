@@ -1,4 +1,4 @@
-from moviepy.editor import VideoFileClip, concatenate_videoclips, AudioFileClip
+from moviepy import VideoFileClip, concatenate_videoclips, AudioFileClip
 import gc
 import os
 from contextlib import ExitStack
@@ -37,15 +37,15 @@ def start(temp_files: List[str], audioPath, fps: float, do_animate = False, outp
             audio = AudioFileClip(audioPath)
             if final_video.duration > audio.duration:
                 logger_config.debug(f'trimming video: {final_video.duration - audio.duration}')
-                final_video = final_video.subclip(0, audio.duration)
+                final_video = final_video.subclipped(0, audio.duration)
 
-            final_video = final_video.set_audio(audio)
+            final_video = final_video.with_audio(audio)
 
         final_video_audio = final_video.audio
         if final_video_audio:
-            final_video_audio = final_video_audio.subclip(0, final_video_audio.duration-0.1)
+            final_video_audio = final_video_audio.subclipped(0, final_video_audio.duration-0.1)
 
-        final_video = final_video.set_audio(final_video_audio)
+        final_video = final_video.with_audio(final_video_audio)
 
         gc.collect()
 

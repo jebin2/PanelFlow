@@ -1,4 +1,4 @@
-from moviepy.editor import VideoClip, AudioClip, concatenate_audioclips, concatenate_videoclips
+from moviepy import VideoClip, AudioClip, concatenate_audioclips, concatenate_videoclips
 import numpy as np
 from panelflow import config
 from jebin_lib import utils
@@ -34,8 +34,8 @@ def create_smooth_transition(clip1, clip2, transition_duration=1, transition_typ
     """
     # Ensure clips have the same size
     size = clip1.size
-    clip1 = clip1.resize(size)
-    clip2 = clip2.resize(size)
+    clip1 = clip1.resized(size)
+    clip2 = clip2.resized(size)
     
     def make_transition_frame(t):
         """
@@ -106,9 +106,9 @@ def create_video_with_transitions(clips, transition_duration=1, transition_type=
     for i in range(len(clips) - 1):
         temp_audio = clips[i].audio
         if temp_audio:
-            temp_audio = temp_audio.subclip(temp_audio.duration-transition_duration, temp_audio.duration-0.1)
+            temp_audio = temp_audio.subclipped(temp_audio.duration-transition_duration, temp_audio.duration-0.1)
 
-        clips[i] = clips[i].subclip(0, clips[i].duration-transition_duration)
+        clips[i] = clips[i].subclipped(0, clips[i].duration-transition_duration)
         # Add first clip
         final_clips.append(clips[i])
         
@@ -121,7 +121,7 @@ def create_video_with_transitions(clips, transition_duration=1, transition_type=
         )
         if temp_audio:
             extended_audio = concatenate_audioclips([temp_audio, silent_audio])
-            transition = transition.set_audio(extended_audio)
+            transition = transition.with_audio(extended_audio)
 
         final_clips.append(transition)
     
@@ -152,11 +152,11 @@ def make(clips, transition_duration=1, transition_type="crossfade"):
 
 # Uncomment to run
 if __name__ == "__main__":
-    from moviepy.editor import VideoFileClip, ImageClip
-    clip1 = ImageClip("media/anime/AknXXqpgPc_captioned_anime_review.png").set_duration(2)
-    clip2 = ImageClip("media/anime/AnyxNGMDsx_captioned_anime_review.png").set_duration(3)
-    clip3 = ImageClip("media/anime/AXHKtwunBw_captioned_anime_review.png").set_duration(2)
-    clip4 = ImageClip("media/anime/AKEhQxrRFT_captioned_anime_review.png").set_duration(2)
+    from moviepy import VideoFileClip, ImageClip
+    clip1 = ImageClip("media/anime/AknXXqpgPc_captioned_anime_review.png").with_duration(2)
+    clip2 = ImageClip("media/anime/AnyxNGMDsx_captioned_anime_review.png").with_duration(3)
+    clip3 = ImageClip("media/anime/AXHKtwunBw_captioned_anime_review.png").with_duration(2)
+    clip4 = ImageClip("media/anime/AKEhQxrRFT_captioned_anime_review.png").with_duration(2)
     clip5 = VideoFileClip(f"CaptionCreator/jhPjBwMSWn.mp4")
     clip6 = VideoFileClip(f"CaptionCreator/ZYGMetYPVU.mp4")
 
