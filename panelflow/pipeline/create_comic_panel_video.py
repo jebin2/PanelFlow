@@ -341,7 +341,7 @@ class NarrationMapper:
 		output_path = f"{self.config.page_specific_dir}/map_narration_to_bubbles.json"
 		try:
 			hf_tts_client = HFTTSClient()
-			for mapping in tqdm(mappings, total=len(mappings), desc="Processing audio"):
+			for mapping in mappings:
 				if not utils.is_valid_audio(mapping.audio):
 					# Generate TTS audio
 					hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
