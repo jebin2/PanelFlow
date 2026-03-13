@@ -110,15 +110,16 @@ class PanelProcessor(PipelineBase):
                 history_text = gemini_history_processor.history_to_text(review_history)
                 cfg = BrowserConfig()
                 cfg.user_data_dir = os.getenv("PROFILE_PATH", None)
-                cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, self.folder))
+                cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, os.path.abspath(self.folder)))
                 user_prompt = f"{self.folder_name} :: page {i + 1} of {file_len}"
-                result = json_repair.loads(
-                    AIStudioUIChat(cfg).quick_chat(
-                        user_prompt=f"Previous Pages Narration:: {history_text}\n\nNext Page:: {user_prompt}",
-                        system_prompt=self.category.review_system_prompt(),
-                        file_path=files[i]
-                    )
+                response = AIStudioUIChat(cfg).quick_chat(
+                    user_prompt=f"Previous Pages Narration:: {history_text}\n\nNext Page:: {user_prompt}",
+                    system_prompt=self.category.review_system_prompt(),
+                    file_path=files[i]
                 )
+                if not response:
+                    raise ValueError(f"AIStudioUIChat returned empty response for page {i + 1}")
+                result = json_repair.loads(response)
                 impact_value = result[key]
                 if impact_value and len(impact_value) > 10:
                     review_responses.append({"key_moment": files[i], "impact": impact_value})
