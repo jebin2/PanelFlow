@@ -82,7 +82,6 @@ class PanelProcessor(PipelineBase):
             else:
                 impact_value = "Missing from review_history"
             review_responses.append({"key_moment": files[i], "impact": impact_value})
-            self.save_review_responses(review_responses)
 
         try:
             for i in range(already_processed, len(files)):
