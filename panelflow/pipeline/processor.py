@@ -421,9 +421,15 @@ class PanelProcessor(PipelineBase):
     # ------------------------------------------------------------------ process
 
     def process(self):
+        if self.is_processed():
+            logger_config.info(f"Already processed: {self.folder}")
+            return
+
         self.create_final_video()
         self.create_shorts_final_video()
         self.category.create_progress_file()
+        if self.sync_callback:
+            self.sync_callback()
 
     # ------------------------------------------------------------------ private helpers
 

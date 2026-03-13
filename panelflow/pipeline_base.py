@@ -133,7 +133,7 @@ class PipelineBase(ABC):
             return
         for attr_name in dir(self.__class__):
             if attr_name.startswith('_') or attr_name in [
-                "set_all_paths", "allowed_create"
+                "is_processed", "set_all_paths", "allowed_create", "process"
             ]:
                 continue
             attr = getattr(self, attr_name)
