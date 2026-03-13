@@ -82,6 +82,7 @@ class PanelProcessor(PipelineBase):
             else:
                 impact_value = "Missing from review_history"
             review_responses.append({"key_moment": files[i], "impact": impact_value})
+            self.save_review_responses(review_responses)
 
         try:
             for i in range(already_processed, len(files)):
@@ -94,6 +95,7 @@ class PanelProcessor(PipelineBase):
                 except Exception as e:
                     impact_value = f"Error: {e}"
                 review_responses.append({"key_moment": files[i], "impact": impact_value})
+                self.save_review_responses(review_responses)
                 gemini_history_processor.save_history(
                     self.review_history_path, review_history + geminiWrapper.get_history()
                 )
@@ -123,6 +125,7 @@ class PanelProcessor(PipelineBase):
                 impact_value = result[key]
                 if impact_value and len(impact_value) > 10:
                     review_responses.append({"key_moment": files[i], "impact": impact_value})
+                    self.save_review_responses(review_responses)
                     gemini_history_processor.append_history(
                         self.review_history_path, user_prompt, json.dumps(result)
                     )
