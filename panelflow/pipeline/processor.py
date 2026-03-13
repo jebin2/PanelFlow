@@ -110,7 +110,7 @@ class PanelProcessor(PipelineBase):
                 history_text = gemini_history_processor.history_to_text(review_history)
                 cfg = BrowserConfig()
                 cfg.user_data_dir = os.getenv("PROFILE_PATH", None)
-                cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, os.path.abspath(self.folder)))
+                cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
                 user_prompt = f"{self.folder_name} :: page {i + 1} of {file_len}"
                 response = AIStudioUIChat(cfg).quick_chat(
                     user_prompt=f"Previous Pages Narration:: {history_text}\n\nNext Page:: {user_prompt}",
