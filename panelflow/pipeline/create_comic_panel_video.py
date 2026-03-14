@@ -47,6 +47,7 @@ class Config:
 	split_output_dir: str = '',
 	pattern = re.compile(r"\d+_panel_\((\d+), (\d+), (\d+), (\d+)\)\.jpg")
 	page_specific_dir: str = '', # should be parent for all
+	category_obj: object = None
 
 
 @dataclass

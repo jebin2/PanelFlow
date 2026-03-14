@@ -363,6 +363,7 @@ class PanelProcessor(PipelineBase):
                 cvp_config.output_video = video_path
                 cvp_config.page_specific_dir = page_dir
                 cvp_config.split_output_dir = split_dir
+                cvp_config.category_obj = self.category
                 main_ComicVideoPipeline(impact, cvp_config)
 
         clips = self._get_ordered_sentence_clips()
