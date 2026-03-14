@@ -110,7 +110,6 @@ class PanelProcessor(PipelineBase):
                 review_history = gemini_history_processor.deduplicate_history(review_history)
                 history_text = gemini_history_processor.history_to_text(review_history)
                 cfg = BrowserConfig()
-                cfg.user_data_dir = os.getenv("PROFILE_PATH", None)
                 cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
                 user_prompt = f"{self.folder_name} :: page {i + 1} of {file_len}"
                 response = AIStudioUIChat(cfg).quick_chat(
@@ -152,9 +151,27 @@ class PanelProcessor(PipelineBase):
             history=review_history
         )
         key = geminiWrapper.get_schema().required[0]
-        model_responses = geminiWrapper.send_message(user_prompt=self.category.get_user_prompt())
-        recap_text = utils.clean_text(self.category.parse_content(model_responses[0])[key])
-        recap_text = self.category.retry(recap_text, geminiWrapper, key)
+        try:
+            model_responses = geminiWrapper.send_message(user_prompt=self.category.get_user_prompt())
+            recap_text = utils.clean_text(self.category.parse_content(model_responses[0])[key])
+            recap_text = self.category.retry(recap_text, geminiWrapper, key)
+        except Exception:
+            from browser_manager.browser_config import BrowserConfig
+            from chat_bot_ui_handler import AIStudioUIChat
+
+            review_history = gemini_history_processor.load_history(self.review_history_path)
+            review_history = gemini_history_processor.deduplicate_history(review_history)
+            history_text = gemini_history_processor.history_to_text(review_history)
+            cfg = BrowserConfig()
+            cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
+            response = AIStudioUIChat(cfg).quick_chat(
+                user_prompt=f"Previous Pages Narration:: {history_text}\n\n{self.category.get_user_prompt()}",
+                system_prompt=self.category.review_system_prompt()
+            )
+            if not response:
+                raise ValueError("AIStudioUIChat returned empty response for recap")
+            result = json_repair.loads(response)
+            recap_text = utils.clean_text(result[key])
 
         with open(self.recap_history_path, 'wb') as f:
             pickle.dump(geminiWrapper.get_history(), f)
