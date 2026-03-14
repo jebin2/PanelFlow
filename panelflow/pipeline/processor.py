@@ -196,8 +196,25 @@ class PanelProcessor(PipelineBase):
             schema=self.category.title_desc_schema(),
             history=recap_history
         )
-        model_responses = geminiWrapper.send_message(user_prompt=self.category.title_desc_user_prompt())
-        title_desc = self.category.parse_content(model_responses[0])
+        try:
+            model_responses = geminiWrapper.send_message(user_prompt=self.category.title_desc_user_prompt())
+            title_desc = self.category.parse_content(model_responses[0])
+        except Exception:
+            from browser_manager.browser_config import BrowserConfig
+            from chat_bot_ui_handler import AIStudioUIChat
+
+            recap_history = gemini_history_processor.load_history(self.recap_history_path)
+            recap_history = gemini_history_processor.deduplicate_history(recap_history)
+            history_text = gemini_history_processor.history_to_text(recap_history)
+            cfg = BrowserConfig()
+            cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
+            response = AIStudioUIChat(cfg).quick_chat(
+                user_prompt=f"Previous Recap:: {history_text}\n\n{self.category.title_desc_user_prompt()}",
+                system_prompt=self.category.title_and_desc_system_prompt()
+            )
+            if not response:
+                raise ValueError("AIStudioUIChat returned empty response for title/desc")
+            title_desc = json_repair.loads(response)
         rtd["youtube_title"] = re.sub(r'\{.*?\}|\[.*?\]', '', title_desc["youtube_title"])
         rtd["twitter_post"] = re.sub(r'\{.*?\}|\[.*?\]', '', title_desc["twitter_post"])
         self.save_recap_title_desc(rtd)
@@ -226,10 +243,27 @@ class PanelProcessor(PipelineBase):
             history=recap_history
         )
         key = geminiWrapper.get_schema().required[0]
-        model_responses = geminiWrapper.send_message(
-            user_prompt=self.category.get_recap_match_user_prompt(rtd.get("recap_text", ""))
-        )
-        self.save_recap_match(self.category.parse_content(model_responses[0])[key])
+        user_prompt = self.category.get_recap_match_user_prompt(rtd.get("recap_text", ""))
+        try:
+            model_responses = geminiWrapper.send_message(user_prompt=user_prompt)
+            result = self.category.parse_content(model_responses[0])[key]
+        except Exception:
+            from browser_manager.browser_config import BrowserConfig
+            from chat_bot_ui_handler import AIStudioUIChat
+
+            recap_history = gemini_history_processor.load_history(self.recap_history_path)
+            recap_history = gemini_history_processor.deduplicate_history(recap_history)
+            history_text = gemini_history_processor.history_to_text(recap_history)
+            cfg = BrowserConfig()
+            cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
+            response = AIStudioUIChat(cfg).quick_chat(
+                user_prompt=f"Previous Recap:: {history_text}\n\n{user_prompt}",
+                system_prompt=self.category.dialogue_matcher_system_prompt()
+            )
+            if not response:
+                raise ValueError("AIStudioUIChat returned empty response for recap match")
+            result = json_repair.loads(response)[key]
+        self.save_recap_match(result)
 
     # ------------------------------------------------------------------ step 5
 
