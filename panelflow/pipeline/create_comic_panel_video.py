@@ -23,9 +23,8 @@ from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, utils
 from caption_generator.core import MultiTypeCaptionGenerator
-from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch
+from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch, AIStudioUIChat
 from jebin_lib import text_splitter
-from chat_bot_ui_handler import AIStudioUIChat
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 
 @dataclass
@@ -870,23 +869,37 @@ class ComicVideoPipeline:
 			if isinstance(match_scene, str):
 				match_scene = match_scene.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
 
-			geminiWrapper = pre_model_wrapper(
-				model_name=config.MODEL_NAME_LITE,
-				system_instruction=system_prompt,
-				schema=self._match_scene_schema(),
-				delete_files=True
-			)
-			model_responses = geminiWrapper.send_message(
-				user_prompt=match_scene
-			)
-
+			# Try direct JSON parse first (no AI needed)
+			validated_scene = None
 			try:
-				match_scene = json_repair.loads(model_responses[0])["data"]
-				all_recap = [sent["recap_sentence"] for sent in match_scene]
-				all_recap[len(narration_lines) - 1]
-			except Exception as e:
-				logger_config.error(f"Sentence not similar retry: {e}")
-				match_scene = None
+				validated_scene = utils.parse_json(match_scene, schema={
+					"type": list,
+					"items": {"required": ["scene_caption", "recap_sentence"]},
+				})
+			except Exception:
+				pass
+
+			if validated_scene is not None:
+				match_scene = validated_scene
+			else:
+				# Fall back to AI JSON validation
+				geminiWrapper = pre_model_wrapper(
+					model_name=config.MODEL_NAME_LITE,
+					system_instruction=system_prompt,
+					schema=self._match_scene_schema(),
+					delete_files=True
+				)
+				model_responses = geminiWrapper.send_message(
+					user_prompt=match_scene
+				)
+
+				try:
+					match_scene = json_repair.loads(model_responses[0])["data"]
+					all_recap = [sent["recap_sentence"] for sent in match_scene]
+					all_recap[len(narration_lines) - 1]
+				except Exception as e:
+					logger_config.error(f"Sentence not similar retry: {e}")
+					match_scene = None
 
 		if match_scene is None:
 			utils.remove_file(f"{self.config.page_specific_dir}/match_scene.txt")
