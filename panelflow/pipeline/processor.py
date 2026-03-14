@@ -365,6 +365,8 @@ class PanelProcessor(PipelineBase):
                 cvp_config.split_output_dir = split_dir
                 cvp_config.category_obj = self.category
                 main_ComicVideoPipeline(impact, cvp_config)
+            if self.sync_callback:
+                self.sync_callback()
 
         clips = self._get_ordered_sentence_clips()
         if not clips:
