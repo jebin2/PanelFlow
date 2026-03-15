@@ -70,7 +70,10 @@ class ContentCreator:
                 kwargs = dict(
                     folder=folder,
                     category=category,
-                    sync_callback=lambda lp=folder, rp=remote_path: self.sync(lp, rp)
+                    sync_callback=lambda lp=folder, rp=remote_path, sub=None: self.sync(
+                        os.path.join(lp, sub) if sub else lp,
+                        os.path.join(rp, sub) if sub else rp
+                    )
                 )
 
                 instance = Pipeline(**kwargs)
