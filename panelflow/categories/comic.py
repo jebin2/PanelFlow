@@ -46,120 +46,16 @@ class Comic(CategoryBase):
     # ------------------------------------------------------------------ prompts
 
     def review_system_prompt(self):
-        return """You are an engaging comic narrator, skilled at transforming comic chapters into immersive storytelling content for YouTube. Your job is to:
-
-### 🎬 Transform Comic Panels Into Narrative Storytelling
-
-* Convert visual panels into vivid, flowing narration.
-* Focus on **story-relevant content only**, including:
-
-  * Key plot points and major developments
-  * Character actions, dialogue, and meaningful interactions
-  * Visual cues that drive the story (e.g. setting, props, expressions)
-  * Scene atmosphere and tone
-
-### 🎙 Maintain Immersive, Natural Storytelling
-
-* Use a **conversational, emotionally resonant style**
-* Describe character **expressions, tone of voice, and emotional shifts**
-* Create atmosphere through descriptive language and mood-setting details
-* Adapt tone to match each scene: **dramatic, intense, comedic, or heartfelt**
-* Distinguish characters with **unique vocal styles or descriptors** where appropriate
-* Avoid all sound effects, onomatopoeia, or audio cues - focus purely on narrative description
-
-### 🧭 Ensure Seamless Narrative Flow
-
-* Narrate as **one continuous story** — no references to panels, pages, or transitions
-* Keep pacing tight and focused, matching story beats
-* Avoid any mention of publishing info, credits, or metadata
-
-### 🎧 Keep the YouTube Audience Engaged
-
-* Use **dynamic, cinematic descriptions** that complement what viewers see
-* Balance action, dialogue, and quiet moments for emotional impact
-* Set scenes clearly, but concisely — **let mood and moment lead**
-* Make viewers feel invested in the characters and their journey
-* Write only speakable content that flows naturally when read by TTS systems
-
-Response ONLY IN JSON FORMAT:
-{
-\t"data":""
-}
-"""
+        return custom_env.COMIC_REVIEW_SYSTEM_PROMPT
 
     def get_user_prompt(self):
-        return """Transform these comic pages into a dynamic 1 minute Recap.
-
-Recap Text Requirements:
-
-Start with a powerful 1-2 sentence hook
-Analyze main narrative content only
-Focus on key plot points, dramatic moments within the core story, clear and punchy sentences that sound natural when read aloud
-Avoid complex words or phrases that might trip up TTS engines
-Build tension through pacing and word choice
-MUST be 1 minute when read at natural speaking pace
-Include clear beginning, middle, and end
-Use engaging, present-tense narrative style
-Maintain suspense and viewer interest
-Length guideline: 1 minute duration
-Include natural pauses and breathing room (using punctuation like ..., —, !)
-
-Write in a style that balances descriptive storytelling with fast-paced energy suitable for Shorts.
-
-VALIDATION STEPS:
-Make sure recap is 1 minute duration
-Confirm focus on core narrative only"""
+        return custom_env.COMIC_RECAP_USER_PROMPT
 
     def dialogue_matcher_system_prompt(self):
-        return """Task: ComicPage-Recap Matching
-
-Goal: Match recap/summary sentences to their most relevant source Comic Page. Each recap sentence must be paired with at least one corresponding Comic Page excerpt.
-
-Matching Rules:
-- Every recap sentence must have at least one Comic Page match.
-- Prioritize the most relevant Comic Page for each recap.
-
-Output Format (JSON):
-
-{
-\t"data":[{
-\t\t"recap_sentence": "string",
-\t\t"comic_page_number": "string"
-\t}]
-}"""
+        return custom_env.COMIC_DIALOGUE_MATCHER_PROMPT
 
     def title_and_desc_system_prompt(self):
-        return """# Social Media Content Creator
-
-Create engaging YouTube titles and Twitter posts that get clicks and engagement.
-
-## Output Format
-```json
-{
-\t"youtube_title": "Your title here",
-\t"twitter_post": "Your post here"
-}
-```
-
-## YouTube Title Rules
-- **Max 100 characters** (best: 60-70)
-- Use casual, conversational tone
-- Create curiosity without revealing everything
-- **Never mention movie names** - keep them mysterious
-- **Never use words**: "review", "recap", "breakdown"
-- Use hooks like: "This comic changed everything", "You won't believe what happens"
-- Include emotional triggers: "shocking", "unexpected", "incredible", "mind-blowing"
-
-## Twitter Post Rules
-- **Max 280 characters**
-- Add 1-2 emojis, 2-3 hashtags
-- **Absolutely NO link references**
-- Write complete standalone thoughts
-
-## Exclude
-- **Never mention movie/comic/anime names**
-- **Never use words**: "review", "recap", "breakdown", "analysis"
-"""
+        return custom_env.COMIC_TITLE_DESC_SYSTEM_PROMPT
 
     def title_desc_user_prompt(self):
         return "Create a suitable youtube title and twitter post for the above."
@@ -217,7 +113,7 @@ OUTPUT FORMAT:
         return ''
 
     def get_finish_phrase(self):
-        return "Thanks for tuning in. Stay curious, stay awesome, and don't forget to hit that subscribe button for more amazing content"
+        return "If you want to see what happens next, the next chapter is already up. Go watch it."
 
     # ------------------------------------------------------------------ helpers
 

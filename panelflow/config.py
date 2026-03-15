@@ -23,6 +23,17 @@ IMAGE_SIZE = (1920, 1080)
 
 # Prompts
 CREATE_MUSIC_SYSTEM_PROMPT = BASE_PATH + "/panelflow/prompt/create_music_system_prompt.md"
+with open(BASE_PATH + "/panelflow/prompt/all_page_recap_prompt.md", "r") as f:
+    ALL_PAGE_RECAP_PROMPT = f.read()
+with open(BASE_PATH + "/panelflow/prompt/comic_review_system_prompt.md", "r") as f:
+    COMIC_REVIEW_SYSTEM_PROMPT = f.read()
+with open(BASE_PATH + "/panelflow/prompt/comic_recap_user_prompt.md", "r") as f:
+    COMIC_RECAP_USER_PROMPT = f.read()
+with open(BASE_PATH + "/panelflow/prompt/comic_dialogue_matcher_prompt.md", "r") as f:
+    COMIC_DIALOGUE_MATCHER_PROMPT = f.read()
+with open(BASE_PATH + "/panelflow/prompt/comic_title_desc_system_prompt.md", "r") as f:
+    COMIC_TITLE_DESC_SYSTEM_PROMPT = f.read()
+
 MODEL_NAME="gemini-3-flash-preview"
 MODEL_NAME_LITE="gemini-flash-lite-latest"
 

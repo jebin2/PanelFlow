@@ -146,7 +146,7 @@ class PanelProcessor(PipelineBase):
         self.get_page_review()
 
         geminiWrapper = pre_model_wrapper(
-            system_instruction=self.category.review_system_prompt(),
+            system_instruction=config.ALL_PAGE_RECAP_PROMPT,
             schema=self.category.recap_schema(),
             history=review_history
         )
@@ -166,7 +166,7 @@ class PanelProcessor(PipelineBase):
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
             response = AIStudioUIChat(cfg).quick_chat(
                 user_prompt=f"Previous Pages Narration:: {history_text}\n\n{self.category.get_user_prompt()}",
-                system_prompt=self.category.review_system_prompt()
+                system_prompt=config.ALL_PAGE_RECAP_PROMPT
             )
             if not response:
                 raise ValueError("AIStudioUIChat returned empty response for recap")
