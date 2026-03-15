@@ -900,6 +900,7 @@ class ComicVideoPipeline:
 				except Exception as e:
 					logger_config.error(f"Sentence not similar retry: {e}")
 					match_scene = None
+					utils.remove_file(f"{self.config.page_specific_dir}/match_scene.txt")
 
 		if match_scene is None:
 			utils.remove_file(f"{self.config.page_specific_dir}/match_scene.txt")
