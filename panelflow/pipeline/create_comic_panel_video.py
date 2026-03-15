@@ -882,18 +882,17 @@ class ComicVideoPipeline:
 			if validated_scene is not None:
 				match_scene = validated_scene
 			else:
-				# Fall back to AI JSON validation
-				geminiWrapper = pre_model_wrapper(
-					model_name=config.MODEL_NAME_LITE,
-					system_instruction=system_prompt,
-					schema=self._match_scene_schema(),
-					delete_files=True
-				)
-				model_responses = geminiWrapper.send_message(
-					user_prompt=match_scene
-				)
-
 				try:
+					# Fall back to AI JSON validation
+					geminiWrapper = pre_model_wrapper(
+						model_name=config.MODEL_NAME_LITE,
+						system_instruction=system_prompt,
+						schema=self._match_scene_schema(),
+						delete_files=True
+					)
+					model_responses = geminiWrapper.send_message(
+						user_prompt=match_scene
+					)
 					match_scene = json_repair.loads(model_responses[0])["data"]
 					all_recap = [sent["recap_sentence"] for sent in match_scene]
 					all_recap[len(narration_lines) - 1]
