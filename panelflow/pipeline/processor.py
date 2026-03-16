@@ -13,7 +13,7 @@ from PIL import Image, ImageOps
 from custom_logger import logger_config
 from panelflow import common
 from panelflow import config
-from jebin_lib import utils, HFTTSClient
+from jebin_lib import utils, HFTTSClient, normalize_loudness
 from panelflow.pipeline_base import PipelineBase
 from panelflow.pipeline import combineImageClip
 from panelflow.pipeline import combineVideo
@@ -463,6 +463,7 @@ class PanelProcessor(PipelineBase):
         self.create_sentence_clips()
         self._add_bg_music(self.output_no_music_path, self.final_video_path)
         if utils.file_exists(self.final_video_path):
+            normalize_loudness(self.final_video_path)
             ffmpeg_optimise.convert_and_compare(self.final_video_path, f"/tmp/{self.folder_name}_final.hevc.mp4", overwrite_original=True)
         return self.final_video_path
 
@@ -472,6 +473,7 @@ class PanelProcessor(PipelineBase):
         self.create_shorts_clips()
         self._add_bg_music(self.shorts_output_no_music_path, self.shorts_final_video_path, reuse_musicgen=True)
         if utils.file_exists(self.shorts_final_video_path):
+            normalize_loudness(self.shorts_final_video_path)
             ffmpeg_optimise.convert_and_compare(self.shorts_final_video_path, f"/tmp/{self.folder_name}_shorts.hevc.mp4", overwrite_original=True)
         return self.shorts_final_video_path
 
