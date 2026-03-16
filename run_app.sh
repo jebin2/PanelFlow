@@ -1,5 +1,8 @@
 #!/bin/bash
 
+find /tmp -maxdepth 1 -name "browser_manager_*" -type d -mmin +720 -exec sudo rm -rf {} +
+find /tmp -maxdepth 1 -name "org.chromium.Chromium*" -type d -mmin +720 -exec sudo rm -rf {} +
+
 # Kill any existing instance
 pkill -f "panelflow_env/.*python main.py $*$" 2>/dev/null || true
 
