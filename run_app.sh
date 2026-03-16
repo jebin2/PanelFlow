@@ -2,6 +2,11 @@
 
 find /tmp -maxdepth 1 -name "browser_manager_*" -type d -mmin +720 -exec sudo rm -rf {} +
 find /tmp -maxdepth 1 -name "org.chromium.Chromium*" -type d -mmin +720 -exec sudo rm -rf {} +
+find /tmp -maxdepth 1 -name "hffs-*" -mmin +720 -exec sudo rm -rf {} +
+find /tmp -maxdepth 1 -name "perf-*.map" -mmin +720 -exec sudo rm -f {} +
+find /tmp -maxdepth 1 -name "pip-unpack-*" -mmin +720 -exec sudo rm -rf {} +
+find /tmp -maxdepth 1 -name "playwright-artifacts-*" -mmin +720 -exec sudo rm -rf {} +
+find /tmp -maxdepth 1 -name "neko_port_state.*" -mmin +720 -exec sudo rm -f {} +
 
 # Kill any existing instance
 pkill -f "panelflow_env/.*python main.py $*$" 2>/dev/null || true
