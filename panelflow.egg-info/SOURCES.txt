@@ -26,6 +26,11 @@ panelflow/pipeline/remove_sound_effect.py
 panelflow/pipeline/resize_with_aspect.py
 panelflow/pipeline/scale_clip.py
 panelflow/prompt/STT_spelling_corrector.md
+panelflow/prompt/all_page_recap_prompt.md
+panelflow/prompt/comic_dialogue_matcher_prompt.md
+panelflow/prompt/comic_recap_user_prompt.md
+panelflow/prompt/comic_review_system_prompt.md
+panelflow/prompt/comic_title_desc_system_prompt.md
 panelflow/prompt/create_music_system_prompt.md
 panelflow/prompt/json_validator_system_prompt.md
 panelflow/prompt/scene_matching_system_prompt_dup.md

@@ -10,6 +10,7 @@ from jebin_lib import utils
 import traceback
 from panelflow.pipeline import media_transitions
 import numpy as np
+from panelflow.pipeline.scale_clip import create_scale_up_clip_multiple
 
 def create_image_clip(clip_info, animate_type=None) -> ImageClip:
     if animate_type and (('donot_animate' in clip_info and not clip_info['donot_animate']) or 'donot_animate' not in clip_info):
@@ -43,7 +44,6 @@ def create_image_clip(clip_info, animate_type=None) -> ImageClip:
         return clip
 
 def create_animated_image_clip(clip_info, animate_type=None):
-    from scale_clip import create_scale_up_clip_multiple
     if 'IMAGE_SIZE' not in clip_info:
         clip_info['IMAGE_SIZE'] = config.IMAGE_SIZE
     clip = create_scale_up_clip_multiple(
