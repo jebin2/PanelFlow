@@ -55,6 +55,9 @@ class PipelineBase(ABC):
         # Music (shared by review + shorts)
         self.musicgen_path = os.path.join(self.folder, "musicgen.wav")
 
+        # Thumbnail (cover page resized to 1920x1080)
+        self.thumbnail_path = os.path.join(self.folder, "thumbnail.jpg")
+
         # Final videos
         self.output_no_music_path = os.path.join(self.folder, "output_no_music.mp4")
         self.final_video_path = os.path.join(self.folder, "output.mp4")

@@ -479,6 +479,22 @@ class PanelProcessor(PipelineBase):
 
     # ------------------------------------------------------------------ process
 
+    def _create_thumbnail(self):
+        if utils.file_exists(self.thumbnail_path):
+            return
+        files = self._get_panel_files()
+        if not files:
+            return
+        target_w, target_h = config.IMAGE_SIZE  # 1920x1080
+        with Image.open(files[0]) as img:
+            img = img.convert("RGB")
+            iw, ih = img.size
+            # Scale to fill the full width, then crop from the top
+            scale = target_w / iw
+            resized = img.resize((target_w, int(ih * scale)), Image.LANCZOS)
+            cropped = resized.crop((0, 0, target_w, target_h))
+            cropped.save(self.thumbnail_path, "JPEG", quality=95)
+
     def process(self):
         if self.is_processed():
             logger_config.info(f"Already processed: {self.folder}")
@@ -486,6 +502,7 @@ class PanelProcessor(PipelineBase):
 
         self.create_final_video()
         self.create_shorts_final_video()
+        self._create_thumbnail()
         self.category.create_progress_file()
         if self.sync_callback:
             self.sync_callback()

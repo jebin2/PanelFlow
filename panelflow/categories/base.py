@@ -54,6 +54,9 @@ class CategoryBase(ABC):
             "SHORTS_VIDEO_PATH": os.path.relpath(
                 self.processor_obj.shorts_final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
+            "THUMBNAIL_PATH": os.path.relpath(
+                self.processor_obj.thumbnail_path, config.PANELS_TO_BE_PROCESSED
+            ) if os.path.exists(self.processor_obj.thumbnail_path) else None,
             "YOUTUBE_TITLE": youtube_title,
             "TWITTER_POST": twitter_post,
             "PROCESSED": True
