@@ -171,6 +171,8 @@ class PanelProcessor(PipelineBase):
             if not response:
                 raise ValueError("AIStudioUIChat returned empty response for recap")
             result = json_repair.loads(response)
+            if not isinstance(result, dict) or key not in result:
+                raise ValueError(f"AIStudioUIChat returned unexpected response: {response!r}")
             recap_text = utils.clean_text(result[key])
 
         with open(self.recap_history_path, 'wb') as f:
