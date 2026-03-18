@@ -255,6 +255,16 @@ class PanelProcessor(PipelineBase):
             result = json_repair.loads(response)[key]
         if not result:
             raise ValueError("get_recap_match returned empty result")
+
+        # Normalise consecutive entries with the same comic_page_number
+        normalised = []
+        for entry in result:
+            if normalised and normalised[-1]["comic_page_number"] == entry["comic_page_number"]:
+                normalised[-1]["recap_sentence"] += " " + entry["recap_sentence"]
+            else:
+                normalised.append(dict(entry))
+        result = normalised
+
         self.save_recap_match(result)
 
         return result
