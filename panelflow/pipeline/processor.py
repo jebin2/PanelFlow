@@ -152,7 +152,7 @@ class PanelProcessor(PipelineBase):
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
             response = AIStudioUIChat(cfg).quick_chat(
-                user_prompt=f"Previous Pages Narration:: {history_text}\n\n{self.category.get_user_prompt()}",
+                user_prompt=f"Previous Pages Narration:: {history_text}\n\nGenerate Recap:: {self.category.get_user_prompt()}",
                 system_prompt=config.ALL_PAGE_RECAP_PROMPT
             )
             if not response:
@@ -195,7 +195,7 @@ class PanelProcessor(PipelineBase):
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
             response = AIStudioUIChat(cfg).quick_chat(
-                user_prompt=f"Previous Recap:: {history_text}\n\n{self.category.title_desc_user_prompt()}",
+                user_prompt=f"Previous Recap:: {history_text}\n\nGenerate Title & Description:: {self.category.title_desc_user_prompt()}",
                 system_prompt=self.category.title_and_desc_system_prompt()
             )
             if not response:
@@ -247,7 +247,7 @@ class PanelProcessor(PipelineBase):
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
             response = AIStudioUIChat(cfg).quick_chat(
-                user_prompt=f"Previous Recap:: {history_text}\n\n{user_prompt}",
+                user_prompt=f"Previous Recap:: {history_text}\n\nMatch Sentences to Pages:: {user_prompt}",
                 system_prompt=self.category.dialogue_matcher_system_prompt()
             )
             if not response:
