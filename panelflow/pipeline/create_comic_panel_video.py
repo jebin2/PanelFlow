@@ -329,7 +329,12 @@ class NarrationMapper:
 					duration=0,  # Will be set after audio generation
 					image_path=image_path
 				)
-				mappings.append(mapping)
+
+				# Merge consecutive identical bubble targeting into a single narration
+				if mappings and mappings[-1].image_path == mapping.image_path:
+					mappings[-1].narration_text += " " + mapping.narration_text
+				else:
+					mappings.append(mapping)
 			
 			return False, mappings
 
