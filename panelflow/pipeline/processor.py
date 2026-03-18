@@ -230,7 +230,7 @@ class PanelProcessor(PipelineBase):
     # ------------------------------------------------------------------ step 4
 
     def get_recap_match(self):
-        if os.path.exists(self.recap_match_path):
+        if self.load_recap_match():
             return
 
         self.get_main_title()
@@ -265,6 +265,8 @@ class PanelProcessor(PipelineBase):
             if not response:
                 raise ValueError("AIStudioUIChat returned empty response for recap match")
             result = json_repair.loads(response)[key]
+        if not result:
+            raise ValueError("get_recap_match returned empty result")
         self.save_recap_match(result)
 
     # ------------------------------------------------------------------ step 5
