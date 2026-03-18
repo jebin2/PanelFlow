@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
 import json
 import os
+import pickle
 from custom_logger import logger_config
 from jebin_lib import utils
 from .categories.base import CategoryBase
 from . import config  # needed for BASE_PATH in _to_rel
-
+from panelflow.pipeline import gemini_history_processor
 
 def _to_rel(path):
     """Convert an absolute path to relative (relative to BASE_PATH) for JSON storage."""
@@ -27,7 +28,7 @@ class PipelineBase(ABC):
 
         # ── AI state: three clean JSON files ──────────────────────────────
         # 1. Per-page narrations only
-        self.review_responses_path = os.path.join(self.folder, "review_responses.json")
+        self.review_responses_json_path = os.path.join(self.folder, "review_responses.json")
         # 2. Recap text + YouTube title + Twitter post
         self.recap_title_desc_path = os.path.join(self.folder, "recap_title_desc.json")
         # 3. Sentence → comic page mapping (with duration + img_path added later)
@@ -39,8 +40,8 @@ class PipelineBase(ABC):
         utils.create_directory(self.panels_dir)
 
         # Gemini conversation history (pickles)
-        self.review_history_path = os.path.join(self.folder, "review_history.pkl")
-        self.recap_history_path = os.path.join(self.folder, "recap_history.pkl")
+        self.review_history_pkl_path = os.path.join(self.folder, "review_history.pkl")
+        self.recap_history_pkl_path = os.path.join(self.folder, "recap_history.pkl")
 
         # Per-sentence clip dirs
         self.sentence_media_dir = os.path.join(self.folder, "sentence_media")
@@ -70,26 +71,50 @@ class PipelineBase(ABC):
 
     # ------------------------------------------------------------------ review_responses
 
-    def load_review_responses(self):
-        if not os.path.exists(self.review_responses_path):
-            return []
-        with open(self.review_responses_path, 'r') as f:
-            return json.load(f)
+    def load_review_responses_json_path(self):
+        data = []
+        if os.path.exists(self.review_responses_json_path):
+            with open(self.review_responses_json_path, 'r') as f:
+                data = json.load(f)
+
+        return data
+
+    def load_review_history_pkl(self):
+        data = []
+        if os.path.exists(self.review_history_pkl_path):
+            with open(self.review_history_pkl_path, 'rb') as f:
+                data = pickle.load(f)
+
+        return gemini_history_processor.deduplicate_history(data)
 
     def save_review_responses(self, data):
-        with open(self.review_responses_path, 'w') as f:
+        with open(self.review_responses_json_path, 'w') as f:
             json.dump([
                 {**entry, "key_moment": _to_rel(entry["key_moment"])} if "key_moment" in entry else entry
                 for entry in data
             ], f, indent=4, ensure_ascii=False)
 
+    # ------------------------------------------------------------------ recap_history
+
+    def load_recap_history_pkl(self):
+        data = []
+        if os.path.exists(self.recap_history_pkl_path):
+            with open(self.recap_history_pkl_path, 'rb') as f:
+                data = pickle.load(f)
+        return gemini_history_processor.deduplicate_history(data)
+
+    def save_recap_history_pkl(self, data):
+        with open(self.recap_history_pkl_path, 'wb') as f:
+            pickle.dump(data, f)
+
     # ------------------------------------------------------------------ recap_title_desc
 
     def load_recap_title_desc(self):
-        if not os.path.exists(self.recap_title_desc_path):
-            return {}
-        with open(self.recap_title_desc_path, 'r') as f:
-            return json.load(f)
+        data = {}
+        if os.path.exists(self.recap_title_desc_path):
+            with open(self.recap_title_desc_path, 'r') as f:
+                data = json.load(f)
+        return data
 
     def save_recap_title_desc(self, data):
         with open(self.recap_title_desc_path, 'w') as f:
@@ -98,10 +123,11 @@ class PipelineBase(ABC):
     # ------------------------------------------------------------------ recap_match
 
     def load_recap_match(self):
-        if not os.path.exists(self.recap_match_path):
-            return []
-        with open(self.recap_match_path, 'r') as f:
-            return json.load(f)
+        data = []
+        if os.path.exists(self.recap_match_path):
+            with open(self.recap_match_path, 'r') as f:
+                data = json.load(f)
+        return data
 
     def save_recap_match(self, data):
         with open(self.recap_match_path, 'w') as f:
@@ -113,10 +139,11 @@ class PipelineBase(ABC):
     # ------------------------------------------------------------------ progress
 
     def _get_progress(self):
-        if not os.path.exists(self.progress_path):
-            return {}
-        with open(self.progress_path, 'r') as f:
-            return json.load(f)
+        data = {}
+        if os.path.exists(self.progress_path):
+            with open(self.progress_path, 'r') as f:
+                data = json.load(f)
+        return data
 
     def _save_progress(self, data):
         with open(self.progress_path, 'w') as f:

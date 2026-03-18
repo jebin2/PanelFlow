@@ -1,7 +1,6 @@
 import os
 import re
 import json
-import pickle
 import shlex
 import subprocess
 import sys
@@ -51,37 +50,34 @@ class PanelProcessor(PipelineBase):
 
     def get_page_review(self):
         files = self._get_panel_files()
-        review_responses = self.load_review_responses()
-        if len(files) > 0 and len(review_responses) >= len(files):
-            return review_responses
-
         file_len = len(files)
-        review_history = []
-        if os.path.exists(self.review_history_path):
-            with open(self.review_history_path, 'rb') as f:
-                review_history = pickle.load(f)
 
-        review_history = gemini_history_processor.deduplicate_history(review_history)
+        review_responses_json = self.load_review_responses_json_path()
+        review_history_pkl = self.load_review_history_pkl()
+
+        if file_len > 0 and len(review_responses_json) >= file_len:
+            return review_responses_json, review_history_pkl
+
         geminiWrapper = pre_model_wrapper(
             system_instruction=self.category.review_system_prompt(),
             schema=self.category.recap_schema(),
-            history=review_history
+            history=review_history_pkl
         )
         key = geminiWrapper.get_schema().required[0]
-        already_processed = len(review_history) // 2
+        already_processed = len(review_history_pkl) // 2
 
         for i in range(min(already_processed, len(files))):
-            if i < len(review_responses):
+            if i < len(review_responses_json):
                 continue
             model_index = i * 2 + 1
-            if model_index < len(review_history):
+            if model_index < len(review_history_pkl):
                 try:
-                    impact_value = json_repair.loads(review_history[model_index].parts[0].text).get(key)
+                    impact_value = json_repair.loads(review_history_pkl[model_index].parts[0].text).get(key)
                 except Exception as e:
                     impact_value = f"Error: {e}"
             else:
                 impact_value = "Missing from review_history"
-            review_responses.append({"key_moment": files[i], "impact": impact_value})
+            review_responses_json.append({"key_moment": files[i], "impact": impact_value})
 
         try:
             for i in range(already_processed, len(files)):
@@ -93,22 +89,20 @@ class PanelProcessor(PipelineBase):
                     impact_value = json_repair.loads(model_responses[0]).get(key)
                 except Exception as e:
                     impact_value = f"Error: {e}"
-                review_responses.append({"key_moment": files[i], "impact": impact_value})
+                review_responses_json.append({"key_moment": files[i], "impact": impact_value})
                 gemini_history_processor.save_history(
-                    self.review_history_path, review_history + geminiWrapper.get_history()
+                    self.review_history_pkl_path, review_history_pkl + geminiWrapper.get_history()
                 )
-                self.save_review_responses(review_responses)
+                self.save_review_responses(review_responses_json)
         except Exception:
             gemini_history_processor.save_history(
-                self.review_history_path, review_history + geminiWrapper.get_history()
+                self.review_history_pkl_path, review_history_pkl + geminiWrapper.get_history()
             )
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            for i in range(len(review_responses), len(files)):
-                review_history = gemini_history_processor.load_history(self.review_history_path)
-                review_history = gemini_history_processor.deduplicate_history(review_history)
-                history_text = gemini_history_processor.history_to_text(review_history)
+            for i in range(len(review_responses_json), len(files)):
+                history_text = gemini_history_processor.history_to_text(self.load_review_history_pkl())
                 cfg = BrowserConfig()
                 cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
                 user_prompt = f"{self.folder_name} :: page {i + 1} of {file_len}"
@@ -122,33 +116,28 @@ class PanelProcessor(PipelineBase):
                 result = json_repair.loads(response)
                 impact_value = result[key]
                 if impact_value and len(impact_value) > 10:
-                    review_responses.append({"key_moment": files[i], "impact": impact_value})
+                    review_responses_json.append({"key_moment": files[i], "impact": impact_value})
                     gemini_history_processor.append_history(
-                        self.review_history_path, user_prompt, json.dumps(result)
+                        self.review_history_pkl_path, user_prompt, json.dumps(result)
                     )
-                    self.save_review_responses(review_responses)
+                    self.save_review_responses(review_responses_json)
 
-        self.save_review_responses(review_responses)
-        return review_responses
+        self.save_review_responses(review_responses_json)
+        return self.load_review_responses_json_path(), self.load_review_history_pkl()
 
     # ------------------------------------------------------------------ step 2
 
     def get_all_page_recap(self):
         rtd = self.load_recap_title_desc()
         if rtd.get("recap_text"):
-            return
+            return rtd
 
-        review_history = []
-        if os.path.exists(self.review_history_path):
-            with open(self.review_history_path, 'rb') as f:
-                review_history = pickle.load(f)
-
-        self.get_page_review()
+        review_responses_json, review_history_pkl = self.get_page_review()
 
         geminiWrapper = pre_model_wrapper(
             system_instruction=config.ALL_PAGE_RECAP_PROMPT,
             schema=self.category.recap_schema(),
-            history=review_history
+            history=review_history_pkl
         )
         key = geminiWrapper.get_schema().required[0]
         try:
@@ -159,9 +148,7 @@ class PanelProcessor(PipelineBase):
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            review_history = gemini_history_processor.load_history(self.review_history_path)
-            review_history = gemini_history_processor.deduplicate_history(review_history)
-            history_text = gemini_history_processor.history_to_text(review_history)
+            history_text = gemini_history_processor.history_to_text(review_history_pkl)
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
             response = AIStudioUIChat(cfg).quick_chat(
@@ -175,23 +162,20 @@ class PanelProcessor(PipelineBase):
                 raise ValueError(f"AIStudioUIChat returned unexpected response: {response!r}")
             recap_text = utils.clean_text(result[key])
 
-        with open(self.recap_history_path, 'wb') as f:
-            pickle.dump(geminiWrapper.get_history(), f)
+        self.save_recap_history_pkl(geminiWrapper.get_history())
 
         rtd["recap_text"] = recap_text
         self.save_recap_title_desc(rtd)
+        return rtd
 
     # ------------------------------------------------------------------ step 3
 
     def get_main_title(self):
-        rtd = self.load_recap_title_desc()
+        rtd = self.get_all_page_recap()
         if rtd.get("youtube_title"):
-            return
+            return rtd
 
-        self.get_all_page_recap()
-
-        with open(self.recap_history_path, 'rb') as f:
-            recap_history = pickle.load(f)
+        recap_history = self.load_recap_history_pkl()
 
         geminiWrapper = pre_model_wrapper(
             system_instruction=self.category.title_and_desc_system_prompt(),
@@ -205,7 +189,7 @@ class PanelProcessor(PipelineBase):
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            recap_history = gemini_history_processor.load_history(self.recap_history_path)
+            recap_history = gemini_history_processor.load_history(self.recap_history_pkl_path)
             recap_history = gemini_history_processor.deduplicate_history(recap_history)
             history_text = gemini_history_processor.history_to_text(recap_history)
             cfg = BrowserConfig()
@@ -221,23 +205,27 @@ class PanelProcessor(PipelineBase):
         rtd["twitter_post"] = re.sub(r'\{.*?\}|\[.*?\]', '', title_desc["twitter_post"])
         self.save_recap_title_desc(rtd)
 
-        review_responses = self.load_review_responses()
-        if review_responses:
-            review_responses[0]["impact"] = rtd["youtube_title"]
-            review_responses[0]["is_sanitise_done"] = False
-            self.save_review_responses(review_responses)
+        review_responses_json = self.load_review_responses_json_path()
+        if review_responses_json:
+            review_responses_json[0]["impact"] = rtd["youtube_title"]
+            review_responses_json[0]["is_sanitise_done"] = False
+            self.save_review_responses(review_responses_json)
+        else:
+            raise ValueError("review_responses_json is empty, cannot generate recap match")
+
+        return rtd
 
     # ------------------------------------------------------------------ step 4
 
     def get_recap_match(self):
-        if self.load_recap_match():
-            return
+        recap_match = self.load_recap_match()
+        if recap_match:
+            return recap_match
 
-        self.get_main_title()
-
-        rtd = self.load_recap_title_desc()
-        with open(self.recap_history_path, 'rb') as f:
-            recap_history = pickle.load(f)
+        rtd = self.get_main_title()
+        if not rtd.get("recap_text"):
+            raise ValueError("recap_text is empty, cannot generate recap match")
+        recap_history = self.load_recap_history_pkl()
 
         geminiWrapper = pre_model_wrapper(
             system_instruction=self.category.dialogue_matcher_system_prompt(),
@@ -245,7 +233,7 @@ class PanelProcessor(PipelineBase):
             history=recap_history
         )
         key = geminiWrapper.get_schema().required[0]
-        user_prompt = self.category.get_recap_match_user_prompt(rtd.get("recap_text", ""))
+        user_prompt = self.category.get_recap_match_user_prompt(rtd.get("recap_text"))
         try:
             model_responses = geminiWrapper.send_message(user_prompt=user_prompt)
             result = self.category.parse_content(model_responses[0])[key]
@@ -253,7 +241,7 @@ class PanelProcessor(PipelineBase):
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            recap_history = gemini_history_processor.load_history(self.recap_history_path)
+            recap_history = gemini_history_processor.load_history(self.recap_history_pkl_path)
             recap_history = gemini_history_processor.deduplicate_history(recap_history)
             history_text = gemini_history_processor.history_to_text(recap_history)
             cfg = BrowserConfig()
@@ -269,18 +257,18 @@ class PanelProcessor(PipelineBase):
             raise ValueError("get_recap_match returned empty result")
         self.save_recap_match(result)
 
+        return result
+
     # ------------------------------------------------------------------ step 5
 
     def sanitise_sentences(self):
-        self.get_recap_match()
-
-        review_responses = self.load_review_responses()
+        review_responses_json = self.load_review_responses_json_path()
         rtd = self.load_recap_title_desc()
-        if all(r.get("is_sanitise_done") for r in review_responses) and rtd.get("recap_text_sanitised"):
-            return review_responses
+        if all(r.get("is_sanitise_done") for r in review_responses_json) and rtd.get("recap_text_sanitised"):
+            return review_responses_json
 
-        for i, res in enumerate(review_responses):
-            logger_config.info(f"sanitise_sentences page {i+1}/{len(review_responses)}", overwrite=True)
+        for i, res in enumerate(review_responses_json):
+            logger_config.info(f"sanitise_sentences page {i+1}/{len(review_responses_json)}", overwrite=True)
             if res.get("is_sanitise_done") and "```" not in res.get("impact", ""):
                 continue
             for attempt in range(5):
@@ -297,7 +285,7 @@ class PanelProcessor(PipelineBase):
             if i == 0:
                 res["impact"] = re.sub(r"recap", "", res["impact"], flags=re.IGNORECASE)
             res["is_sanitise_done"] = True
-            self.save_review_responses(review_responses)
+            self.save_review_responses(review_responses_json)
 
         if rtd.get("recap_text") and not rtd.get("recap_text_sanitised"):
             for attempt in range(5):
@@ -313,13 +301,13 @@ class PanelProcessor(PipelineBase):
             rtd["recap_text_sanitised"] = True
             self.save_recap_title_desc(rtd)
 
-        return self.load_review_responses()
+        return self.load_review_responses_json_path()
 
     # ------------------------------------------------------------------ step 6a
 
     def create_sentence_clips(self):
         if utils.file_exists(self.output_no_music_path):
-            return
+            return self.output_no_music_path
 
         review_responses = self.sanitise_sentences()
 
@@ -383,18 +371,16 @@ class PanelProcessor(PipelineBase):
             need_transitions=True
         )
 
+        return self.output_no_music_path
+
     # ------------------------------------------------------------------ step 6b
 
     def create_shorts_clips(self):
         if utils.file_exists(self.shorts_output_no_music_path):
-            return
-
-        self.get_recap_match()
+            return self.shorts_output_no_music_path
 
         files = self._get_panel_files()
-        recap_match = self.load_recap_match()
-        if not recap_match:
-            return
+        recap_match = self.get_recap_match()
 
         hf_tts = HFTTSClient()
         changed = False
@@ -423,7 +409,7 @@ class PanelProcessor(PipelineBase):
         if changed:
             self.save_recap_match(recap_match)
 
-        recap_match = self.load_recap_match()
+        recap_match = self.get_recap_match()
         frame_params = []
         start = 0.0
         for match in recap_match:
@@ -459,13 +445,15 @@ class PanelProcessor(PipelineBase):
             need_transitions=False
         )
 
+        return self.shorts_output_no_music_path
+
     # ------------------------------------------------------------------ step 7+8
 
     def create_final_video(self):
         if utils.file_exists(self.final_video_path):
             return self.final_video_path
-        self.create_sentence_clips()
-        self._add_bg_music(self.output_no_music_path, self.final_video_path)
+
+        self._add_bg_music(self.create_sentence_clips(), self.final_video_path)
         if utils.file_exists(self.final_video_path):
             normalize_loudness(self.final_video_path)
             ffmpeg_optimise.convert_and_compare(self.final_video_path, f"/tmp/{self.folder_name}_final.hevc.mp4", overwrite_original=True)
@@ -474,8 +462,8 @@ class PanelProcessor(PipelineBase):
     def create_shorts_final_video(self):
         if utils.file_exists(self.shorts_final_video_path):
             return self.shorts_final_video_path
-        self.create_shorts_clips()
-        self._add_bg_music(self.shorts_output_no_music_path, self.shorts_final_video_path, reuse_musicgen=True)
+
+        self._add_bg_music(self.create_shorts_clips(), self.shorts_final_video_path, reuse_musicgen=True)
         if utils.file_exists(self.shorts_final_video_path):
             normalize_loudness(self.shorts_final_video_path)
             ffmpeg_optimise.convert_and_compare(self.shorts_final_video_path, f"/tmp/{self.folder_name}_shorts.hevc.mp4", overwrite_original=True)
@@ -485,10 +473,10 @@ class PanelProcessor(PipelineBase):
 
     def _create_thumbnail(self):
         if utils.file_exists(self.thumbnail_path):
-            return
+            return self.thumbnail_path
+
         files = self._get_panel_files()
-        if not files:
-            return
+
         target_w, target_h = config.IMAGE_SIZE  # 1920x1080
         with Image.open(files[0]) as img:
             img = img.convert("RGB")
@@ -498,6 +486,8 @@ class PanelProcessor(PipelineBase):
             resized = img.resize((target_w, int(ih * scale)), Image.LANCZOS)
             cropped = resized.crop((0, 0, target_w, target_h))
             cropped.save(self.thumbnail_path, "JPEG", quality=95)
+
+        return self.thumbnail_path
 
     def process(self):
         if self.is_processed():
