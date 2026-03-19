@@ -341,20 +341,34 @@ class PanelProcessor(PipelineBase):
                 continue
 
             if i == 0:
-                audio_out = os.path.join(config.TEMP_PATH, f"{utils.generate_random_string()}.wav")
-                HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
+                file_name = utils.generate_random_string_from_input(impact)
+                audio_out = os.path.join(page_dir, f"{file_name}.wav")
+                if not utils.file_exists(audio_out):
+                    HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
-                resized = os.path.join(config.TEMP_PATH, os.path.basename(moment["key_moment"]))
+                resized = os.path.join(page_dir, os.path.basename(moment["key_moment"]))
                 resize_with_aspect.scale_keep_ratio(
-                    moment["key_moment"], config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=True
+                    moment["key_moment"], config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=False
                 )
-                clips = combineImageClip.start([{
-                    "img_path": resized,
-                    "clip_duration": duration,
-                    "clip_start": 0,
-                    "donot_animate": True
-                }], config.FPS)
-                addMusic.process(clips[0], audio_out, output_path=video_path, extend_video=True, trim_video=True)
+                from PIL import Image
+                try:
+                    with Image.open(moment["key_moment"]) as img:
+                        orig_w, orig_h = img.size
+                except Exception:
+                    orig_w, orig_h = config.IMAGE_SIZE
+
+                ratio = min(config.IMAGE_SIZE[0] / orig_w, config.IMAGE_SIZE[1] / orig_h)
+                final_w, final_h = int(orig_w * ratio), int(orig_h * ratio)
+                box_x, box_y = (config.IMAGE_SIZE[0] - final_w) // 2, (config.IMAGE_SIZE[1] - final_h) // 2
+                content_bbox = [box_x, box_y, final_w, final_h]
+
+                from panelflow.pipeline.create_comic_panel_video import generate_intro_video, Config as CVP_Config
+                cvp_config = CVP_Config()
+                cvp_config.comic_title = self.folder_name
+                cvp_config.output_video = video_path
+                cvp_config.page_specific_dir = page_dir
+                
+                generate_intro_video(resized, audio_out, duration, cvp_config, content_bbox)
             else:
                 image_path = moment["key_moment"]
                 split_dir = os.path.join(page_dir, f"split_{i+1:04d}")

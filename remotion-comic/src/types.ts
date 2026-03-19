@@ -30,7 +30,8 @@ export type PanelAnimation =
   | "pan_down"     // camera drifts downward
   | "breathe"      // gentle oscillating zoom — calm meditative pause
   | "creep"        // extremely slow zoom 1.0→1.03 — dread, horror
-  | "fade_in";     // fade from black
+  | "fade_in"      // fade from black
+  | "assemble";    // pieces fly in and snap together
 
 export type PanelTransition = "none" | "fade" | "slide" | "wipe" | "flip" | "toss";
 

@@ -986,8 +986,7 @@ class ComicVideoPipeline:
 		animations = parsed.get("panels", [])
 		# Fallback: if LLM returns wrong count, fill with ken_burns
 		if len(animations) != len(panels):
-			logger_config.warning(f"Animation count mismatch ({len(animations)} vs {len(panels)}), padding with ken_burns.")
-			animations = [{"panel_index": i, "animation": "ken_burns", "reasoning": "fallback"} for i in range(len(panels))]
+			raise ValueError("Animation count mismatch")
 
 		with open(output_path, "w", encoding="utf-8") as f:
 			json.dump(animations, f, indent=4, ensure_ascii=False)
@@ -1149,6 +1148,40 @@ class ComicVideoPipeline:
 		
 		logger_config.info(f"Comic video pipeline completed! Output: {output_path}")
 		return output_path
+
+
+def generate_intro_video(image_path: str, audio_path: str, duration: float, cvp_config: Config, content_bbox: list = None) -> str:
+	"""Generate the Remotion intro video with 'assemble' animation."""
+	pipeline = ComicVideoPipeline(cvp_config)
+	output_path = f"{cvp_config.page_specific_dir}/remotion_manifest.json"
+
+	width, height = cvp_config.resolution
+	
+	manifest = {
+		"fps": config.FPS,
+		"width": width,
+		"height": height,
+		"comicTitle": cvp_config.comic_title,
+		"pageNumber": 1,
+		"panels": [
+			{
+				"imageSrc": f"render_assets/{os.path.basename(image_path)}",
+				"audioSrc": f"render_assets/{os.path.basename(audio_path)}",
+				"durationInSeconds": duration,
+				"bubbleBbox": content_bbox if content_bbox else [0, 0, width, height],
+				"narrationText": "",
+				"sceneCaption": "",
+				"animation": "assemble",
+				"transitionIn": "none",
+				"events": []
+			}
+		]
+	}
+
+	with open(output_path, "w", encoding="utf-8") as f:
+		json.dump({"manifest": manifest}, f, indent=4, ensure_ascii=False)
+
+	return pipeline.render_with_remotion(output_path)
 
 
 def main(narration_text, config):

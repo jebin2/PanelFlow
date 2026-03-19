@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { PanelData } from "../types";
 import { PanelBase } from "./PanelBase";
+import { AssembleIntro } from "./AssembleIntro";
 import { getAnimationProps } from "../animations";
 
 interface Props {
@@ -62,6 +63,10 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   }
 
   const hasEventTransform = eventShakeX !== 0 || eventShakeY !== 0 || eventScale !== 1;
+
+  if (panel.animation === "assemble") {
+    return <AssembleIntro panel={panel} />;
+  }
 
   return (
     <AbsoluteFill
