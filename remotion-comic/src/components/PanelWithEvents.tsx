@@ -3,6 +3,8 @@ import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
 import { PanelData } from "../types";
 import { PanelBase } from "./PanelBase";
 import { AssembleIntro } from "./AssembleIntro";
+import { ThreePartBuildUp } from "./ThreePartBuildUp";
+import { KineticSubtitles } from "./KineticSubtitles";
 import { getAnimationProps } from "../animations";
 
 interface Props {
@@ -68,18 +70,23 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
     return <AssembleIntro panel={panel} />;
   }
 
+  if (panel.animation === "three_part_build_up") {
+    return <ThreePartBuildUp panel={panel} />;
+  }
+
   return (
     <AbsoluteFill
       style={
         hasEventTransform
           ? {
-              transform: `scale(${eventScale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
-              transformOrigin: "center center",
-            }
+            transform: `scale(${eventScale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
+            transformOrigin: "center center",
+          }
           : undefined
       }
     >
       <PanelBase panel={panel} {...animProps} />
+      {panel.wordTimings && <KineticSubtitles panel={panel} />}
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}
