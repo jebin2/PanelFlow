@@ -46,6 +46,8 @@ class CategoryBase(ABC):
         youtube_title = rtd.get("youtube_title", self.get_yt_title())
         twitter_post = rtd.get("twitter_post", self.get_yt_description())
 
+        final_video_exists = os.path.exists(self.processor_obj.final_video_path)
+
         progress = self.processor_obj._get_progress()
         progress.update({
             "FINAL_VIDEO_PATH": os.path.relpath(
@@ -59,6 +61,6 @@ class CategoryBase(ABC):
             ) if os.path.exists(self.processor_obj.thumbnail_path) else None,
             "YOUTUBE_TITLE": youtube_title,
             "TWITTER_POST": twitter_post,
-            "PROCESSED": True
+            "PROCESSED": final_video_exists
         })
         self.processor_obj._save_progress(progress)
