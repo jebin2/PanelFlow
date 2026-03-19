@@ -56,8 +56,14 @@ def scale_keep_ratio(image_path, target_width, target_height, output_path=None, 
     print(f"✅ Saved resized image: {output_path} ({resized.size[0]}x{resized.size[1]})")
 
 if __name__ == "__main__":
-    path = "media/comic/Sonja Reborn #2 (2025)/Red Sonja Reborn 002-0000.jpg"
+    path = "test_images/X-Men United 001 (2026) - 0003.jpg"
     width = 1920
     height = 1080
-    output_path = "tempOutput/output.jpg"
-    scale_keep_ratio(path, width, height, output_path, blur_bg=True)
+    output_path = "temp/output.jpg"
+    scale_keep_ratio(
+        path,
+        width,
+        height,
+        output_path,
+        blur_bg=False
+    )

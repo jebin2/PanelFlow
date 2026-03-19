@@ -410,9 +410,9 @@ class PanelProcessor(PipelineBase):
             base_name = os.path.basename(files[page_idx])
             resized = os.path.join(self.shorts_media_dir, f"resized_{base_name}.jpg")
             if not utils.file_exists(resized):
-                portrait = (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0])
-                with Image.open(files[page_idx]) as img:
-                    img.resize(portrait, Image.LANCZOS).convert('RGB').save(resized)
+                resize_with_aspect.scale_keep_ratio(
+                    files[page_idx], config.IMAGE_SIZE[1], config.IMAGE_SIZE[0], resized, blur_bg=False
+                )
             match["img_path"] = resized
             changed = True
 
@@ -529,10 +529,13 @@ class PanelProcessor(PipelineBase):
         if utils.file_exists(output_path):
             return output_path
         with Image.open(img_path) as bg:
-            resized = (
-                self._resize_add_padding(bg) if i == 0
-                else bg.resize((config.IMAGE_SIZE[0], bg.height), Image.LANCZOS)
-            )
+            if i == 0:
+                resized = self._resize_add_padding(bg)
+            else:
+                scale = config.IMAGE_SIZE[0] / bg.width
+                new_h = int(bg.height * scale)
+                resized = bg.resize((config.IMAGE_SIZE[0], new_h), Image.LANCZOS)
+
             resized.convert('RGB').save(output_path)
         return output_path
 
