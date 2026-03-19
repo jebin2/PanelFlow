@@ -1,0 +1,23 @@
+{
+  "name": "remotion-comic",
+  "version": "1.0.0",
+  "description": "Remotion compositions for PanelFlow comic video rendering",
+  "main": "src/index.ts",
+  "scripts": {
+    "start": "remotion studio",
+    "build": "remotion render",
+    "render": "remotion render ComicVideo"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.290",
+    "@remotion/transitions": "4.0.290",
+    "remotion": "4.0.290"
+  },
+  "devDependencies": {
+    "@types/react": "^18.0.0",
+    "typescript": "^5.0.0"
+  },
+  "remotion": {
+    "entryPoint": "./src/index.ts"
+  }
+}

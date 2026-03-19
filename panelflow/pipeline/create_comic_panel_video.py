@@ -21,7 +21,7 @@ import re
 import json_repair
 from tqdm import tqdm
 import os
-from jebin_lib import HFTTSClient, utils
+from jebin_lib import HFTTSClient, HFSTTClient, utils
 from caption_generator.core import MultiTypeCaptionGenerator
 from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch, AIStudioUIChat
 from jebin_lib import text_splitter
@@ -71,6 +71,8 @@ class NarrationMapping:
 	audio: str
 	duration: float
 	image_path: str
+	scene_caption: str = ""
+	stt_json_path: str = ""
 
 
 class TextDetector:
@@ -255,7 +257,7 @@ class NarrationMapper:
 				existing_mappings = json.load(f)
 				# Check if audio files exist for all mappings
 				all_audio_exists = all(
-					utils.is_valid_audio(mapping.get("audio", "")) 
+					utils.is_valid_audio(mapping.get("audio", "")) and utils.is_valid_json(mapping.get("audio", "").replace(".wav", ".json")) 
 					for mapping in existing_mappings
 				)
 				if all_audio_exists:
@@ -317,6 +319,7 @@ class NarrationMapper:
 				# Prepare audio path but don't generate yet
 				file_name = utils.generate_random_string_from_input(narration)
 				final_audio_path = f'{self.config.page_specific_dir}/{idx+1:04d}_{file_name}.wav'
+				stt_json_path = f"{final_audio_path.replace('.wav', '.json')}"
 				
 				mapping = NarrationMapping(
 					narration_id=idx + 1,
@@ -327,12 +330,19 @@ class NarrationMapper:
 					similarity=round(similarity_score, 3),
 					audio=final_audio_path,
 					duration=0,  # Will be set after audio generation
-					image_path=image_path
+					image_path=image_path,
+					scene_caption=best_match.get("scene_caption", ""),
+					stt_json_path=stt_json_path
 				)
 
 				# Merge consecutive identical bubble targeting into a single narration
 				if mappings and mappings[-1].image_path == mapping.image_path:
-					mappings[-1].narration_text += " " + mapping.narration_text
+					merged_text = mappings[-1].narration_text + " " + mapping.narration_text
+					merged_file_name = utils.generate_random_string_from_input(merged_text)
+					merged_audio = f'{self.config.page_specific_dir}/{mappings[-1].narration_id:04d}_{merged_file_name}.wav'
+					mappings[-1].narration_text = merged_text
+					mappings[-1].audio = merged_audio
+					mappings[-1].stt_json_path = merged_audio.replace('.wav', '.json')
 				else:
 					mappings.append(mapping)
 			
@@ -347,11 +357,17 @@ class NarrationMapper:
 		output_path = f"{self.config.page_specific_dir}/map_narration_to_bubbles.json"
 		try:
 			hf_tts_client = HFTTSClient()
+			stt_client = HFSTTClient()
 			for mapping in mappings:
 				if not utils.is_valid_audio(mapping.audio):
 					# Generate TTS audio
 					hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
-				
+
+				# Run STT to get word-level timestamps (cached as <audio>.json)
+				stt_json_path = f"{mapping.audio.replace('.wav', '.json')}"
+				if not utils.is_valid_json(stt_json_path):
+					stt_client.transcribe(mapping.audio)
+
 				# Get audio duration and update mapping
 				_, duration, _, _ = common.get_media_metadata(mapping.audio)
 				mapping.duration = duration
@@ -899,7 +915,195 @@ class ComicVideoPipeline:
 			json.dump(match_scene, f, indent=4, ensure_ascii=False)
 
 		return caption_generator_map, match_scene
-	
+
+	def pick_panel_animations(self, mapping_path: str, page_size: tuple) -> list:
+		"""Use LLM to assign a per-panel animation type for the Remotion render."""
+		output_path = f"{self.config.page_specific_dir}/panel_animations.json"
+
+		with open(mapping_path, "r", encoding="utf-8") as f:
+			panels = json.load(f)
+
+		# Fast path: valid cache with same panel count
+		if utils.is_valid_json(output_path):
+			with open(output_path, "r", encoding="utf-8") as f:
+				cached = json.load(f)
+			if isinstance(cached, list): #and len(cached) == len(panels):
+				logger_config.info(f"panel_animations.json loaded ({len(cached)} panels), skipping LLM.")
+				return cached
+
+		page_w, page_h = page_size
+		llm_panels = []
+		for i, p in enumerate(panels):
+			entry = {
+				"panel_index": i,
+				"narration_text": p.get("narration_text", ""),
+				"scene_caption": p.get("scene_caption", ""),
+				"duration_seconds": p.get("duration", 0),
+				"bubble_bbox": p.get("bubble_bbox", []),
+			}
+			# Include word-level timestamps from STT if available
+			audio_path = p.get("audio", "")
+			stt_json_path = audio_path.replace(".wav", ".json") if audio_path else ""
+			if stt_json_path and utils.file_exists(stt_json_path):
+				try:
+					with open(stt_json_path, "r", encoding="utf-8") as f:
+						stt_data = json.load(f)
+					# Structure: segments.word = [{word, start, end, ...}, ...]
+					words = stt_data.get("segments", {}).get("word", [])
+					if words:
+						entry["words"] = [{"word": w["word"], "start": w["start"], "end": w["end"]} for w in words]
+				except Exception as e:
+					logger_config.warning(f"Failed to load STT for LLM input: {e}")
+			llm_panels.append(entry)
+
+		user_prompt = json.dumps({
+			"comic_name": self.config.comic_title,
+			"page_number": int(os.path.basename(self.config.page_specific_dir)),
+			"page_size": {"width": page_w, "height": page_h},
+			"panels": llm_panels,
+		}, indent=2, ensure_ascii=False)
+
+		with open(os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "panelflow", "prompt", "panel_animation_system_prompt.md"), "r") as f:
+			system_prompt = f.read()
+
+		logger_config.info("Stage 4.5: Picking per-panel animations...")
+		baseUIChat = AIStudioUIChat()
+		response = baseUIChat.quick_chat(
+			user_prompt=user_prompt,
+			system_prompt=system_prompt
+		)
+
+		if isinstance(response, str):
+			response = response.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
+
+		parsed = utils.parse_json(response, schema={
+			"type": dict,
+			"required": ["panels"],
+		})
+		if not parsed:
+			parsed = json_repair.loads(response)
+
+		animations = parsed.get("panels", [])
+		# Fallback: if LLM returns wrong count, fill with ken_burns
+		if len(animations) != len(panels):
+			logger_config.warning(f"Animation count mismatch ({len(animations)} vs {len(panels)}), padding with ken_burns.")
+			animations = [{"panel_index": i, "animation": "ken_burns", "reasoning": "fallback"} for i in range(len(panels))]
+
+		with open(output_path, "w", encoding="utf-8") as f:
+			json.dump(animations, f, indent=4, ensure_ascii=False)
+
+		logger_config.info(f"Panel animations saved: {[a.get('animation') for a in animations]}")
+		return animations
+
+	def generate_remotion_manifest(self, mapping_path: str, panel_animations: list) -> str:
+		"""Generate the remotion_manifest.json to be consumed by Remotion for video rendering."""
+		output_path = f"{self.config.page_specific_dir}/remotion_manifest.json"
+
+		with open(mapping_path, "r", encoding="utf-8") as f:
+			panels = json.load(f)
+
+		# Build animation + events + transition lookup by panel_index
+		anim_by_index = {a["panel_index"]: a.get("animation", "ken_burns") for a in panel_animations}
+		events_by_index = {a["panel_index"]: a.get("events", []) for a in panel_animations}
+		transition_by_index = {a["panel_index"]: a.get("transitionIn", "none") for a in panel_animations}
+
+		width, height = self.config.resolution
+		TRANSITION_DURATION = 18 / config.FPS
+		panel_data = []
+		for i, p in enumerate(panels):
+			audio_path = p.get("audio", "")
+			base_duration = p.get("duration", 0)
+
+			next_transition_in = transition_by_index.get(i + 1, "none") if (i + 1) < len(panels) else "none"
+			final_duration = base_duration
+			if next_transition_in != "none":
+				final_duration += TRANSITION_DURATION
+
+			entry = {
+				"imageSrc": "render_assets/" + os.path.relpath(p["image_path"], self.config.page_specific_dir) if p.get("image_path") else None,
+				"audioSrc": "render_assets/" + os.path.relpath(audio_path, self.config.page_specific_dir) if audio_path else None,
+				"durationInSeconds": final_duration,
+				"bubbleBbox": p.get("bubble_bbox", []),
+				"narrationText": p.get("narration_text", ""),
+				"sceneCaption": p.get("scene_caption", ""),
+				"animation": anim_by_index.get(i, "ken_burns"),
+				"transitionIn": transition_by_index.get(i, "none") if i > 0 else "none",
+				"events": [
+					e for e in events_by_index.get(i, [])
+					if e.get("startSeconds", 0) < p.get("duration", 0)
+				],
+			}
+			panel_data.append(entry)
+
+		manifest = {
+			"fps": config.FPS,
+			"width": width,
+			"height": height,
+			"comicTitle": self.config.comic_title,
+			"pageNumber": int(os.path.basename(self.config.page_specific_dir)),
+			"panels": panel_data,
+		}
+
+		with open(output_path, "w", encoding="utf-8") as f:
+			json.dump({"manifest": manifest}, f, indent=4, ensure_ascii=False)
+
+		logger_config.info(f"Remotion manifest saved: {output_path}")
+		return output_path
+
+	def _ensure_remotion_ready(self, remotion_dir: str):
+		"""Ensure npm dependencies are installed in the remotion-comic directory."""
+		import subprocess
+		node_modules = os.path.join(remotion_dir, "node_modules")
+		if not os.path.isdir(node_modules):
+			logger_config.info("Remotion node_modules not found — running npm install...")
+			result = subprocess.run(["npm", "install"], cwd=remotion_dir, capture_output=False)
+			if result.returncode != 0:
+				raise RuntimeError("npm install failed for remotion-comic")
+			logger_config.info("npm install complete.")
+		else:
+			logger_config.info("Remotion dependencies already installed.")
+
+	def render_with_remotion(self, manifest_path: str) -> str:
+		"""Invoke Remotion CLI to render the video using the manifest."""
+		import subprocess
+
+		remotion_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "remotion-comic")
+		output_path = self.config.output_video
+
+		self._ensure_remotion_ready(remotion_dir)
+
+		# Create a symlink inside remotion-comic/public/ pointing to the page assets dir.
+		# React components use staticFile("render_assets/...") to reference these files.
+		public_dir = os.path.join(remotion_dir, "public")
+		os.makedirs(public_dir, exist_ok=True)
+		render_link = os.path.join(public_dir, "render_assets")
+		if os.path.islink(render_link):
+			os.unlink(render_link)
+		os.symlink(os.path.abspath(self.config.page_specific_dir), render_link)
+		logger_config.info(f"Symlinked render_assets -> {self.config.page_specific_dir}")
+
+		cmd = [
+			"npx", "remotion", "render", "ComicVideo",
+			"--props", os.path.abspath(manifest_path),
+			"--output", os.path.abspath(output_path),
+			"--codec", "h264",
+			"--log", "verbose",
+		]
+
+		logger_config.info(f"Running Remotion: {' '.join(cmd)}")
+		try:
+			result = subprocess.run(cmd, cwd=remotion_dir, capture_output=False)
+		finally:
+			if os.path.islink(render_link):
+				os.unlink(render_link)
+				logger_config.info("Cleaned up render_assets symlink.")
+
+		if result.returncode != 0:
+			raise RuntimeError(f"Remotion render failed with exit code {result.returncode}")
+
+		logger_config.info(f"Remotion render complete: {output_path}")
+		return output_path
+
 	def run(self, narration_text: str) -> str:
 		"""Run the complete pipeline."""
 		logger_config.info("Starting Comic-to-Video Pipeline...")
@@ -933,9 +1137,15 @@ class ComicVideoPipeline:
 					mappings
 				)
 		
-		# Stage 5: Video generation
-		logger_config.info("Stage 5: Generating video...")
-		output_path = self.video_generator.generate_comic_video(mapping_path)
+		# Stage 4.5: Pick per-panel animations
+		panel_animations = self.pick_panel_animations(mapping_path, self.config.resolution)
+
+		# Stage 4.6: Generate Remotion manifest
+		manifest_path = self.generate_remotion_manifest(mapping_path, panel_animations)
+
+		# Stage 5: Render video via Remotion
+		logger_config.info("Stage 5: Rendering video via Remotion...")
+		output_path = self.render_with_remotion(manifest_path)
 		
 		logger_config.info(f"Comic video pipeline completed! Output: {output_path}")
 		return output_path
