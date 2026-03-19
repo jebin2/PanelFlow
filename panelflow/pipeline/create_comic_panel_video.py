@@ -355,33 +355,33 @@ class NarrationMapper:
 	def generate_audio_for_mappings(self, mappings: List):
 		"""Generate audio files for all narration mappings."""
 		output_path = f"{self.config.page_specific_dir}/map_narration_to_bubbles.json"
-		try:
-			hf_tts_client = HFTTSClient()
-			stt_client = HFSTTClient()
-			for mapping in mappings:
-				if not utils.is_valid_audio(mapping.audio):
-					# Generate TTS audio
-					hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
+		hf_tts_client = HFTTSClient()
+		stt_client = HFSTTClient()
+		for mapping in mappings:
+			if not utils.is_valid_audio(mapping.audio):
+				# Generate TTS audio
+				hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
 
-				# Run STT to get word-level timestamps (cached as <audio>.json)
-				stt_json_path = f"{mapping.audio.replace('.wav', '.json')}"
-				if not utils.is_valid_json(stt_json_path):
-					stt_client.transcribe(mapping.audio)
+			# Run STT to get word-level timestamps (cached as <audio>.json)
+			stt_json_path = f"{mapping.audio.replace('.wav', '.json')}"
+			if not utils.is_valid_json(stt_json_path):
+				stt_client.transcribe(mapping.audio)
 
-				# Get audio duration and update mapping
-				_, duration, _, _ = common.get_media_metadata(mapping.audio)
-				mapping.duration = duration
+			if not utils.is_valid_audio(mapping.audio) or not utils.is_valid_json(stt_json_path):
+				raise ValueError(f"Audio or STT JSON not found for mapping: {mapping}")
 
-			# Step 3: Save final mappings
-			mappings_data = [mapping.__dict__ for mapping in mappings]
-			with open(output_path, "w", encoding="utf-8") as f:
-				json.dump(mappings_data, f, indent=4, ensure_ascii=False)
-			
-			logger_config.info(f"Narration mapping saved: {output_path}")
+			# Get audio duration and update mapping
+			_, duration, _, _ = common.get_media_metadata(mapping.audio)
+			mapping.duration = duration
+
+		# Step 3: Save final mappings
+		mappings_data = [mapping.__dict__ for mapping in mappings]
+		with open(output_path, "w", encoding="utf-8") as f:
+			json.dump(mappings_data, f, indent=4, ensure_ascii=False)
 		
-			return str(output_path)
-		except:
-			raise Exception("Failed to generate audio for mappings")
+		logger_config.info(f"Narration mapping saved: {output_path}")
+	
+		return str(output_path)
 
 	def cleanup(self):
 		"""Clean up all models."""
@@ -944,16 +944,12 @@ class ComicVideoPipeline:
 			# Include word-level timestamps from STT if available
 			audio_path = p.get("audio", "")
 			stt_json_path = audio_path.replace(".wav", ".json") if audio_path else ""
-			if stt_json_path and utils.file_exists(stt_json_path):
-				try:
-					with open(stt_json_path, "r", encoding="utf-8") as f:
-						stt_data = json.load(f)
-					# Structure: segments.word = [{word, start, end, ...}, ...]
-					words = stt_data.get("segments", {}).get("word", [])
-					if words:
-						entry["words"] = [{"word": w["word"], "start": w["start"], "end": w["end"]} for w in words]
-				except Exception as e:
-					logger_config.warning(f"Failed to load STT for LLM input: {e}")
+			if utils.is_valid_json(stt_json_path):
+				with open(stt_json_path, "r", encoding="utf-8") as f:
+					stt_data = json.load(f)
+				# Structure: segments.word = [{word, start, end, ...}, ...]
+				words = stt_data.get("segments", {}).get("word", [])
+				entry["words"] = [{"word": w["word"], "start": w["start"], "end": w["end"]} for w in words]
 			llm_panels.append(entry)
 
 		user_prompt = json.dumps({
@@ -1021,6 +1017,8 @@ class ComicVideoPipeline:
 			entry = {
 				"imageSrc": "render_assets/" + os.path.relpath(p["image_path"], self.config.page_specific_dir) if p.get("image_path") else None,
 				"audioSrc": "render_assets/" + os.path.relpath(audio_path, self.config.page_specific_dir) if audio_path else None,
+				"originalWidth": Image.open(p["image_path"]).width if p.get("image_path") else 0,
+				"originalHeight": Image.open(p["image_path"]).height if p.get("image_path") else 0,
 				"durationInSeconds": final_duration,
 				"bubbleBbox": p.get("bubble_bbox", []),
 				"narrationText": p.get("narration_text", ""),
@@ -1166,12 +1164,50 @@ def generate_intro_video(image_path: str, audio_path: str, duration: float, cvp_
 		"panels": [
 			{
 				"imageSrc": f"render_assets/{os.path.basename(image_path)}",
+				"originalWidth": Image.open(image_path).width,
+				"originalHeight": Image.open(image_path).height,
 				"audioSrc": f"render_assets/{os.path.basename(audio_path)}",
 				"durationInSeconds": duration,
 				"bubbleBbox": content_bbox if content_bbox else [0, 0, width, height],
 				"narrationText": "",
 				"sceneCaption": "",
 				"animation": "assemble",
+				"transitionIn": "none",
+				"events": []
+			}
+		]
+	}
+
+	with open(output_path, "w", encoding="utf-8") as f:
+		json.dump({"manifest": manifest}, f, indent=4, ensure_ascii=False)
+
+	return pipeline.render_with_remotion(output_path)
+
+
+def generate_three_part_build_up(image_path: str, audio_path: str, duration: float, cvp_config: Config, content_bbox: list = None) -> str:
+	"""Generate the Remotion video with 'three_part_build_up' animation."""
+	pipeline = ComicVideoPipeline(cvp_config)
+	output_path = f"{cvp_config.page_specific_dir}/remotion_manifest.json"
+
+	width, height = cvp_config.resolution
+
+	manifest = {
+		"fps": config.FPS,
+		"width": width,
+		"height": height,
+		"comicTitle": cvp_config.comic_title,
+		"pageNumber": 1,
+		"panels": [
+			{
+				"imageSrc": f"render_assets/{os.path.basename(image_path)}",
+				"originalWidth": Image.open(image_path).width,
+				"originalHeight": Image.open(image_path).height,
+				"audioSrc": f"render_assets/{os.path.basename(audio_path)}",
+				"durationInSeconds": duration,
+				"bubbleBbox": content_bbox if content_bbox else [0, 0, width, height],
+				"narrationText": "",
+				"sceneCaption": "",
+				"animation": "three_part_build_up",
 				"transitionIn": "none",
 				"events": []
 			}
