@@ -52,3 +52,4 @@ cc_youtube_auto_pub/
 thread_id_*/
 temp_dir/
 panels_to_be_processed*/
+node_modules/
