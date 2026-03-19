@@ -5,14 +5,17 @@ import shlex
 import subprocess
 import sys
 import zipfile
+import random
+import shutil
 
 import json_repair
 from PIL import Image, ImageOps
+from moviepy import VideoFileClip
 
 from custom_logger import logger_config
 from panelflow import common
 from panelflow import config
-from jebin_lib import utils, HFTTSClient, normalize_loudness
+from jebin_lib import utils, HFTTSClient, HFSTTClient, normalize_loudness
 from panelflow.pipeline_base import PipelineBase
 from panelflow.pipeline import combineImageClip
 from panelflow.pipeline import combineVideo
@@ -22,9 +25,8 @@ from panelflow.pipeline import gemini_history_processor
 from panelflow.pipeline import resize_with_aspect
 from panelflow.pipeline import remove_sound_effect
 from panelflow.pipeline import addMusic
-from panelflow.pipeline.create_comic_panel_video import main as main_ComicVideoPipeline, Config as CVP_Config
+from panelflow.pipeline.create_comic_panel_video import main as main_ComicVideoPipeline, generate_intro_video, generate_three_part_build_up, Config as CVP_Config
 from jebin_lib import video_optimizer as ffmpeg_optimise
-from panelflow.pipeline.create_comic_panel_video import generate_intro_video, Config as CVP_Config
 
 class PanelProcessor(PipelineBase):
 
@@ -70,13 +72,7 @@ class PanelProcessor(PipelineBase):
             if i < len(review_responses_json):
                 continue
             model_index = i * 2 + 1
-            if model_index < len(review_history_pkl):
-                try:
-                    impact_value = json_repair.loads(review_history_pkl[model_index].parts[0].text).get(key)
-                except Exception as e:
-                    impact_value = f"Error: {e}"
-            else:
-                impact_value = "Missing from review_history"
+            impact_value = json_repair.loads(review_history_pkl[model_index].parts[0].text).get(key)
             review_responses_json.append({"key_moment": files[i], "impact": impact_value})
 
         try:
@@ -85,10 +81,7 @@ class PanelProcessor(PipelineBase):
                     user_prompt=f"{self.folder_name} :: page {i + 1} of {file_len}",
                     file_path=files[i],
                 )
-                try:
-                    impact_value = json_repair.loads(model_responses[0]).get(key)
-                except Exception as e:
-                    impact_value = f"Error: {e}"
+                impact_value = json_repair.loads(model_responses[0]).get(key)
                 review_responses_json.append({"key_moment": files[i], "impact": impact_value})
                 gemini_history_processor.save_history(
                     self.review_history_pkl_path, review_history_pkl + geminiWrapper.get_history()
@@ -189,8 +182,6 @@ class PanelProcessor(PipelineBase):
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            recap_history = gemini_history_processor.load_history(self.recap_history_pkl_path)
-            recap_history = gemini_history_processor.deduplicate_history(recap_history)
             history_text = gemini_history_processor.history_to_text(recap_history)
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
@@ -241,8 +232,6 @@ class PanelProcessor(PipelineBase):
             from browser_manager.browser_config import BrowserConfig
             from chat_bot_ui_handler import AIStudioUIChat
 
-            recap_history = gemini_history_processor.load_history(self.recap_history_pkl_path)
-            recap_history = gemini_history_processor.deduplicate_history(recap_history)
             history_text = gemini_history_processor.history_to_text(recap_history)
             cfg = BrowserConfig()
             cfg.additionl_docker_flag = ' '.join(utils.get_docker_volume_mounts(cfg, config.BASE_PATH))
@@ -340,7 +329,15 @@ class PanelProcessor(PipelineBase):
             if utils.file_exists(video_path):
                 continue
 
-            if i == 0:
+            image_path = moment["key_moment"]
+            split_dir = os.path.join(page_dir, f"split_{i+1:04d}")
+            if i != 0:
+                self._split_comic_page(image_path, page_dir, split_dir)
+                panel_count = len([f for f in utils.list_files(split_dir) if "_panel_" in os.path.basename(f)])
+            else:
+                panel_count = 1
+
+            if panel_count == 1:
                 file_name = utils.generate_random_string_from_input(impact)
                 audio_out = os.path.join(page_dir, f"{file_name}.wav")
                 if not utils.file_exists(audio_out):
@@ -350,12 +347,8 @@ class PanelProcessor(PipelineBase):
                 resize_with_aspect.scale_keep_ratio(
                     moment["key_moment"], config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=False
                 )
-                from PIL import Image
-                try:
-                    with Image.open(moment["key_moment"]) as img:
-                        orig_w, orig_h = img.size
-                except Exception:
-                    orig_w, orig_h = config.IMAGE_SIZE
+                with Image.open(moment["key_moment"]) as img:
+                    orig_w, orig_h = img.size
 
                 ratio = min(config.IMAGE_SIZE[0] / orig_w, config.IMAGE_SIZE[1] / orig_h)
                 final_w, final_h = int(orig_w * ratio), int(orig_h * ratio)
@@ -366,12 +359,14 @@ class PanelProcessor(PipelineBase):
                 cvp_config.comic_title = self.folder_name
                 cvp_config.output_video = video_path
                 cvp_config.page_specific_dir = page_dir
-                
-                generate_intro_video(resized, audio_out, duration, cvp_config, content_bbox)
+
+                if i == 0:
+                    generate_intro_video(resized, audio_out, duration, cvp_config, content_bbox)
+                else:
+                    cvp_config.split_output_dir = split_dir
+                    cvp_config.category_obj = self.category
+                    generate_three_part_build_up(resized, audio_out, duration, cvp_config, content_bbox)
             else:
-                image_path = moment["key_moment"]
-                split_dir = os.path.join(page_dir, f"split_{i+1:04d}")
-                self._split_comic_page(image_path, page_dir, split_dir)
                 common.delete_matching_videos(page_dir, f"{i+1:04d}_*.mp4")
                 cvp_config = CVP_Config()
                 cvp_config.comic_title = self.folder_name
@@ -409,68 +404,106 @@ class PanelProcessor(PipelineBase):
         recap_match = self.get_recap_match()
 
         hf_tts = HFTTSClient()
+        hf_stt = HFSTTClient()
         changed = False
 
-        for i, match in enumerate(recap_match):
-            page_idx = int(match["comic_page_number"]) - 1
+        panels = []
+
+        for i, rcp_match in enumerate(recap_match):
+            page_idx = int(rcp_match["comic_page_number"]) - 1
             if not (0 <= page_idx < len(files)) or not utils.file_exists(files[page_idx]):
                 continue
 
             audio_path = os.path.join(self.shorts_media_dir, f"audio_{i}.wav")
             if not utils.is_valid_audio(audio_path):
-                hf_tts.generate_audio_segment(match["recap_sentence"].strip(), audio_path)
+                hf_tts.generate_audio_segment(rcp_match["recap_sentence"].strip(), audio_path)
+
+            # Run STT to get word-level timestamps (cached as <audio>.json)
+            stt_json_path = f"{audio_path.replace('.wav', '.json')}"
+            if not utils.is_valid_json(stt_json_path):
+                hf_stt.transcribe(audio_path)
 
             _, duration, _, _ = common.get_media_metadata(audio_path)
-            match["duration"] = duration
+            rcp_match["duration"] = duration
 
-            base_name = os.path.basename(files[page_idx])
-            resized = os.path.join(self.shorts_media_dir, f"resized_{base_name}.jpg")
-            if not utils.file_exists(resized):
-                resize_with_aspect.scale_keep_ratio(
-                    files[page_idx], config.IMAGE_SIZE[1], config.IMAGE_SIZE[0], resized, blur_bg=False
-                )
-            match["img_path"] = resized
+            # Use extracted panels instead of full page for Shorts engagement
+            split_dir = os.path.join(self.sentence_media_dir, f"{page_idx+1:04d}", f"split_{page_idx+1:04d}")
+            panel_files = []
+            if utils.dir_exists(split_dir):
+                panel_files = sorted([f for f in utils.list_files(split_dir) if "_panel_" in os.path.basename(f) and f.endswith(".jpg")])
+
+            if panel_files:
+                selected_panel = random.choice(panel_files)
+            else:
+                selected_panel = files[page_idx]
+
+            dest_img = os.path.join(self.shorts_media_dir, f"panel_{i}.jpg")
+            shutil.copy2(selected_panel, dest_img)
+            
+            with Image.open(selected_panel) as img:
+                orig_w, orig_h = img.size
+            
+            # Extract precise STT word timings
+            word_timings = []
+            if utils.is_valid_json(stt_json_path):
+                with open(stt_json_path, "r", encoding="utf-8") as jf:
+                    tt_data = json.load(jf)
+                    segs = tt_data.get("segments", {}).get("word", [])
+                    for w in segs:
+                        word_timings.append({
+                            "word": w.get("word", ""),
+                            "start": w.get("start", 0.0),
+                            "end": w.get("end", 0.0)
+                        })
+
+            # Randomize aggressive animations for high retention
+            anim = random.choice(["zoom_in", "zoom_out", "pan_up", "pan_down"])
+
+            panels.append({
+                "imageSrc": f"render_assets/panel_{i}.jpg",
+                "originalWidth": orig_w,
+                "originalHeight": orig_h,
+                "audioSrc": f"render_assets/audio_{i}.wav",
+                "durationInSeconds": duration,
+                "bubbleBbox": [0, 0, 1080, 1920],
+                "narrationText": "",
+                "sceneCaption": "",
+                "animation": anim,
+                "transitionIn": "none",
+                "wordTimings": word_timings
+            })
             changed = True
 
         if changed:
             self.save_recap_match(recap_match)
 
-        recap_match = self.get_recap_match()
-        frame_params = []
-        start = 0.0
-        for match in recap_match:
-            img_path = match.get("img_path")
-            duration = match.get("duration")
-            if not img_path or not duration or not utils.file_exists(img_path):
-                continue
-            frame_params.append({
-                "img_path": img_path,
-                "clip_duration": duration,
-                "clip_start": start,
-                "zoom_out_zoom_in_to_full": True,
-                "IMAGE_SIZE": (config.IMAGE_SIZE[1], config.IMAGE_SIZE[0]),
-            })
-            start = round(start + duration, 2)
+        if not panels:
+            raise ValueError("No shorts panels generated")
 
-        if not frame_params:
-            raise ValueError("No shorts frame params")
+        # Compile native Vertical Remotion Manifest
+        manifest = {
+            "fps": config.FPS,
+            "width": 1080,
+            "height": 1920,
+            "comicTitle": self.folder_name,
+            "pageNumber": 1,
+            "panels": panels
+        }
 
-        audio_files = [
-            os.path.join(self.shorts_media_dir, f"audio_{i}.wav")
-            for i in range(len(recap_match))
-            if utils.is_valid_audio(os.path.join(self.shorts_media_dir, f"audio_{i}.wav"))
-        ]
-        common.combineAudio(audio_files, self.shorts_recap_audio_path, silence=0)
+        manifest_path = os.path.join(self.shorts_media_dir, "remotion_shorts_manifest.json")
+        with open(manifest_path, "w", encoding="utf-8") as f:
+            json.dump({"manifest": manifest}, f, indent=4, ensure_ascii=False)
 
-        clips = combineImageClip.start(frame_params, config.FPS)
-        combineVideo.start(
-            clips,
-            audioPath=self.shorts_recap_audio_path,
-            fps=config.FPS,
-            output_video_path=self.shorts_output_no_music_path,
-            need_transitions=False
-        )
-
+        # Trigger Remotion render
+        from panelflow.pipeline.create_comic_panel_video import ComicVideoPipeline, Config as CVP_Config
+        cvp_config = CVP_Config()
+        cvp_config.comic_title = self.folder_name
+        cvp_config.output_video = self.shorts_output_no_music_path
+        cvp_config.page_specific_dir = self.shorts_media_dir
+        
+        cvp = ComicVideoPipeline(cvp_config)
+        cvp.render_with_remotion(manifest_path)
+        exit(0)
         return self.shorts_output_no_music_path
 
     # ------------------------------------------------------------------ step 7+8
@@ -587,7 +620,8 @@ class PanelProcessor(PipelineBase):
             raise ValueError("comic-panel-extractor produced no panels.")
 
     def _add_bg_music(self, input_path, output_path, reuse_musicgen=False):
-        from moviepy import VideoFileClip
+        shutil.copy(input_path, output_path)
+        return
 
         abs_input_path = os.path.abspath(input_path)
         abs_output_path = os.path.abspath(output_path)
