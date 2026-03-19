@@ -65,5 +65,5 @@ if __name__ == "__main__":
         width,
         height,
         output_path,
-        blur_bg=False
+        blur_bg=True
     )

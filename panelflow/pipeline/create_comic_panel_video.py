@@ -568,8 +568,6 @@ class VideoGenerator:
 		if output_path is None:
 			output_path = self.config.output_video
 
-		img_clip = ImageClip(self.config.comic_image)
-
 		# Load narration mappings
 		with open(mapping_path, "r", encoding="utf-8") as f:
 			narration_mapping = json.load(f)
@@ -696,49 +694,28 @@ class VideoGenerator:
 			if i == 0:
 				previous_end_coords = coords
 
-			if image_path is not None:
-				logger_config.info(f'Found matching panel:: {image_path}')
-				temp_width, temp_height = ImageClip(image_path).size
-
-				zoom_coordinates = {
-					0: (0, 0, temp_width, temp_height)
-				}
-
-				clip = create_scale_up_clip_multiple(
-					main_image_path=image_path,
-					multiple_image_path=all_image_path,
-					duration=duration,
-					bg_size=self.config.resolution,
-					zoom_coords=zoom_coordinates,
-					temp_folder=self.config.page_specific_dir
-				)
-
-				previous_end_coords = coords
-			elif self.config.auto_scroll and i < len(deduped_mapping) - 1:
-				next_coords = deduped_mapping[i + 1]["bubble_bbox"]
-
-				clip, previous_end_coords = self.create_pan_zoom_clip(
-					img_clip, coords, next_coords, duration,
-					margin_ratio=self.config.margin_ratio,
-					zoom_factor=self.config.zoom_factor if self.config.zoom_enabled else 1.0
-				)
+			if image_path is None:
+				logger_config.info(f'No matching panel found for entry {i}')
+				image_path = self.config.comic_image
 			else:
-				_, img_h = img_clip.size
-				previous_end_coords = (0, previous_end_coords[1] if previous_end_coords[1] < img_h else 0, 1920, previous_end_coords[3] if previous_end_coords[3] <= img_h else img_h)
+				logger_config.info(f'Found matching panel:: {image_path}')
 
-				zoom_coordinates = {
-					0: previous_end_coords
-				}
-				clip = create_scale_up_clip_multiple(
-					main_image_path=self.config.comic_image,
-					duration=duration,
-					bg_size=self.config.resolution,
-					scale_point=img_h/self.config.resolution[1],
-					zoom_coords=zoom_coordinates,
-					temp_folder=self.config.page_specific_dir
-				)
+			temp_width, temp_height = ImageClip(image_path).size
 
-				previous_end_coords = coords
+			zoom_coordinates = {
+				0: (0, 0, temp_width, temp_height)
+			}
+
+			clip = create_scale_up_clip_multiple(
+				main_image_path=image_path,
+				multiple_image_path=all_image_path,
+				duration=duration,
+				bg_size=self.config.resolution,
+				zoom_coords=zoom_coordinates,
+				temp_folder=self.config.page_specific_dir
+			)
+
+			previous_end_coords = coords
 
 			# Attach merged audio
 			clip = clip.with_audio(audio_clip)

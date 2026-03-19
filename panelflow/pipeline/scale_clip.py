@@ -19,17 +19,22 @@ def create_blurred_background(img_clip, coords, duration, resolution):
 		Blurred background clip
 	"""
 	x1, y1, x2, y2 = coords
-
-	# Crop expanded region
 	cropped = img_clip.cropped(x1=x1, y1=y1, x2=x2, y2=y2)
 
-	# Blur using Pillow
 	def blur_frame(frame):
 		pil_img = Image.fromarray(frame)
 		pil_img = pil_img.filter(ImageFilter.GaussianBlur(radius=20))
 		return np.array(pil_img)
 
-	blurred = cropped.resized(resolution).image_transform(blur_frame)
+	w, h = cropped.size
+	target_w, target_h = resolution
+	scale = max(target_w / w, target_h / h)
+	
+	new_w, new_h = int(w * scale), int(h * scale)
+	
+	blurred = cropped.resized((new_w, new_h)).cropped(
+		x_center=new_w/2, y_center=new_h/2, width=target_w, height=target_h
+	).image_transform(blur_frame)
 	return blurred.with_duration(duration)
 
 def create_scale_up_clip_multiple(main_image_path, multiple_image_path=None, duration=2, bg_size=config.IMAGE_SIZE, scale_point=0.8, zoom_coords=None, bg_blur=True, temp_folder=None):
@@ -219,16 +224,9 @@ if __name__ == "__main__":
 
 	utils.write_videofile(
 		create_scale_up_clip_multiple(
-			'comic_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
+			'test_images/X-Men United 001 (2026) - 0003.jpg',
 			[
-				
-			'comic_Sonja Reborn #2 (2025)/split_0002/0003_panel_(1127, 1616, 1473, 3056).jpg',
-			'comic_Sonja Reborn #2 (2025)/split_0002/0015_panel_(2, 359, 675, 3022).jpg',
-			# 	'comic_Sonja Reborn #2 (2025)/split_0002/0002_panel_(1525, 1636, 1917, 3056).jpg',
-			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_2_(73, 1402, 508, 2989).jpg',
-			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_3_(539, 1402, 955, 2989).jpg',
-			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_4_(987, 1402, 1402, 2989).jpg',
-			# 	'comic_Bloodletter #1 (2025)/split_0015/panel_5_(1432, 1402, 1848, 2989).jpg'
+				'test_images/X-Men United 001 (2026) - 0003.jpg'
 			],
 			duration=5,
 			bg_size=config.IMAGE_SIZE,
@@ -239,5 +237,5 @@ if __name__ == "__main__":
 		        2: (0, 0, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1])
             }
 		),
-		"text_output.mp4"
+		"temp/text_output.mp4"
 	)

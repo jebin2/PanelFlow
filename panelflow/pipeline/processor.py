@@ -354,7 +354,7 @@ class PanelProcessor(PipelineBase):
                 }], config.FPS)
                 addMusic.process(clips[0], audio_out, output_path=video_path, extend_video=True, trim_video=True)
             else:
-                image_path = self._resize_frame(moment["key_moment"], i)
+                image_path = moment["key_moment"]
                 split_dir = os.path.join(page_dir, f"split_{i+1:04d}")
                 self._split_comic_page(image_path, page_dir, split_dir)
                 common.delete_matching_videos(page_dir, f"{i+1:04d}_*.mp4")
