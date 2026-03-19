@@ -24,7 +24,7 @@ from panelflow.pipeline import remove_sound_effect
 from panelflow.pipeline import addMusic
 from panelflow.pipeline.create_comic_panel_video import main as main_ComicVideoPipeline, Config as CVP_Config
 from jebin_lib import video_optimizer as ffmpeg_optimise
-
+from panelflow.pipeline.create_comic_panel_video import generate_intro_video, Config as CVP_Config
 
 class PanelProcessor(PipelineBase):
 
@@ -362,7 +362,6 @@ class PanelProcessor(PipelineBase):
                 box_x, box_y = (config.IMAGE_SIZE[0] - final_w) // 2, (config.IMAGE_SIZE[1] - final_h) // 2
                 content_bbox = [box_x, box_y, final_w, final_h]
 
-                from panelflow.pipeline.create_comic_panel_video import generate_intro_video, Config as CVP_Config
                 cvp_config = CVP_Config()
                 cvp_config.comic_title = self.folder_name
                 cvp_config.output_video = video_path
