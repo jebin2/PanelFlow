@@ -31,7 +31,8 @@ export type PanelAnimation =
   | "breathe"      // gentle oscillating zoom — calm meditative pause
   | "creep"        // extremely slow zoom 1.0→1.03 — dread, horror
   | "fade_in"      // fade from black
-  | "assemble";    // pieces fly in and snap together
+  | "assemble"     // pieces fly in and snap together
+  | "three_part_build_up"; // split panel into 3 parts and build up
 
 export type PanelTransition = "none" | "fade" | "slide" | "wipe" | "flip" | "toss";
 
@@ -39,6 +40,12 @@ export interface PanelEvent {
   type: "tremble" | "flash" | "shockwave" | "heartbeat" | "rattle";
   startSeconds: number;
   durationSeconds: number;
+}
+
+export interface WordTiming {
+  word: string;
+  start: number;
+  end: number;
 }
 
 export interface PanelData {
@@ -51,6 +58,12 @@ export interface PanelData {
   animation: PanelAnimation;
   transitionIn?: PanelTransition;
   events?: PanelEvent[];
+  wordTimings?: WordTiming[];
+  originalWidth?: number;
+  originalHeight?: number;
+  secondaryImageSrc?: string;
+  secondaryOriginalWidth?: number;
+  secondaryOriginalHeight?: number;
 }
 
 export interface ComicManifest {
