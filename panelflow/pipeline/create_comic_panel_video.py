@@ -26,6 +26,7 @@ from caption_generator.core import MultiTypeCaptionGenerator
 from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch, AIStudioUIChat
 from jebin_lib import text_splitter
 from panelflow.pipeline.gemini_config import pre_model_wrapper
+import difflib
 
 @dataclass
 class Config:
@@ -293,7 +294,6 @@ class NarrationMapper:
 				image_path = None
 				
 				# if similarity_score < 0.8:
-				import difflib
 				best_match = max(
 					caption_generator_map,
 					key=lambda obj: difflib.SequenceMatcher(None, utils.only_alpha(obj.get("recap_sentence", "")), utils.only_alpha(narration)).ratio()
@@ -496,7 +496,6 @@ class VideoGenerator:
 		return None
 
 	def add_remaining_panel(self, final_mapping):
-		import difflib
 		# Step 1: get all panel frame paths
 		all_frame_paths = [
 			os.path.abspath(file)
@@ -739,7 +738,6 @@ class ComicVideoPipeline:
 
 	def caption_generator(self, narration_text):
 		output_path = f"{self.config.page_specific_dir}/caption_generator.json"
-		all_captions = f"{self.config.page_specific_dir}/all_captions.json"
 
 		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
 
@@ -806,17 +804,20 @@ class ComicVideoPipeline:
 
 	def match_scene_caption_to_narration(self, caption_generator_map, narration_lines):
 		output_path = f"{self.config.page_specific_dir}/caption_generator.json"
-		match_scene = None
-		if utils.is_valid_json(output_path):
-			with open(output_path, "r") as f:
-				match_scene = json.load(f)
-			try:
-				all_recap = [sent["recap_sentence"] for sent in match_scene]
-				all_recap[len(narration_lines) - 1]
-			except:
-				logger_config.info("Match scene not valid, regenerating...")
-				match_scene = None
+		recap_caption_match_path = f"{self.config.page_specific_dir}/recap_caption_match.json"
 
+		# Fast path: if recap_caption_match.json already has N resolved entries, skip all LLM calls.
+		if utils.is_valid_json(recap_caption_match_path):
+			with open(recap_caption_match_path, "r", encoding="utf-8") as f:
+				narration_caption_map = json.load(f)
+			if len(narration_caption_map) >= len(narration_lines):
+				logger_config.info(f"recap_caption_match.json loaded ({len(narration_caption_map)} entries), skipping scene matching.")
+				return caption_generator_map, narration_caption_map
+			else:
+				logger_config.info("recap_caption_match.json has fewer entries than narration lines, regenerating...")
+				utils.remove_file(recap_caption_match_path)
+
+		match_scene = None
 		retry_times = 0
 		while match_scene is None and retry_times < 5:
 			retry_times += 1
@@ -887,21 +888,17 @@ class ComicVideoPipeline:
 			utils.remove_file(f"{self.config.page_specific_dir}/match_scene.txt")
 			raise ValueError("Failed to generate match scene")
 
-		if retry_times > 0:
-			# compare scene caption and recap sentence and update
-			for i, entry in enumerate(caption_generator_map):
-				import difflib
-				best_match = max(
-					match_scene,
-					key=lambda obj: difflib.SequenceMatcher(None, utils.only_alpha(obj.get("scene_caption", "")), utils.only_alpha(entry.get("scene_caption", ""))).ratio()
-				)
-				entry["recap_sentence"] = best_match["recap_sentence"]
+		for ms_entry in match_scene:
+			best_panel = max(
+				caption_generator_map,
+				key=lambda obj: difflib.SequenceMatcher(None, utils.only_alpha(obj.get("scene_caption", "")), utils.only_alpha(ms_entry.get("scene_caption", ""))).ratio()
+			)
+			ms_entry["frame_path"] = best_panel["frame_path"]
 
+		with open(recap_caption_match_path, "w", encoding="utf-8") as f:
+			json.dump(match_scene, f, indent=4, ensure_ascii=False)
 
-		with open(output_path, "w", encoding="utf-8") as f:
-			json.dump(caption_generator_map, f, indent=4, ensure_ascii=False)
-
-		return caption_generator_map
+		return caption_generator_map, match_scene
 	
 	def run(self, narration_text: str) -> str:
 		"""Run the complete pipeline."""
@@ -920,13 +917,13 @@ class ComicVideoPipeline:
 		narration_lines = self.process_narration_text(narration_text)
 
 		# stage 3.5: match scene caption to narration
-		caption_generator_map = self.match_scene_caption_to_narration(caption_generator_map, narration_lines)
+		caption_generator_map, narration_caption_map = self.match_scene_caption_to_narration(caption_generator_map, narration_lines)
 
 		# Stage 4: Narration mapping
 		logger_config.info("Stage 4: Mapping narration to bubbles...")
 		with NarrationMapper(self.config) as narration_mapper:
 			is_path, mappings = narration_mapper.create_narration_mappings(
-				bubbles_path, narration_lines, caption_generator_map
+				bubbles_path, narration_lines, narration_caption_map
 			)
 		if is_path:
 			mapping_path = mappings
