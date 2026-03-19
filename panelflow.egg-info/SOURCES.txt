@@ -33,5 +33,6 @@ panelflow/prompt/comic_review_system_prompt.md
 panelflow/prompt/comic_title_desc_system_prompt.md
 panelflow/prompt/create_music_system_prompt.md
 panelflow/prompt/json_validator_system_prompt.md
+panelflow/prompt/panel_animation_system_prompt.md
 panelflow/prompt/scene_matching_system_prompt_dup.md
 panelflow/prompt/sentence_split_system_prompt.md
