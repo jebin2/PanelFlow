@@ -272,8 +272,10 @@ class PanelProcessor(PipelineBase):
     # ------------------------------------------------------------------ step 5
 
     def sanitise_sentences(self):
-        review_responses_json = self.load_review_responses_json_path()
-        rtd = self.load_recap_title_desc()
+        # Natively triggers Step 3 (YouTube Title) -> Step 2 (Recap) -> Step 1 (Panels)
+        rtd = self.get_main_title()
+        review_responses_json, _ = self.get_page_review()
+
         if all(r.get("is_sanitise_done") for r in review_responses_json) and rtd.get("recap_text_sanitised"):
             return review_responses_json
 
@@ -578,7 +580,7 @@ class PanelProcessor(PipelineBase):
         abs_musicgen_path = os.path.abspath(self.musicgen_path)
 
         if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
-            recap_text = self.load_recap_title_desc().get("recap_text", "")
+            recap_text = self.get_all_page_recap().get("recap_text", "")
             subprocess.run(
                 [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, os.path.abspath(config.CREATE_MUSIC_SYSTEM_PROMPT)],
                 check=True,
