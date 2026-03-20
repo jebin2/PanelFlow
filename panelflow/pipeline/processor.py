@@ -342,6 +342,7 @@ class PanelProcessor(PipelineBase):
                 audio_out = os.path.join(page_dir, f"{file_name}.wav")
                 if not utils.file_exists(audio_out):
                     HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
+                    utils.trim_silence(audio_out)
                     utils.speed_up_audio(audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
                 resized = os.path.join(page_dir, os.path.basename(moment["key_moment"]))
@@ -419,6 +420,7 @@ class PanelProcessor(PipelineBase):
             audio_path = os.path.join(self.shorts_media_dir, f"audio_{i}.wav")
             if not utils.is_valid_audio(audio_path):
                 hf_tts.generate_audio_segment(rcp_match["recap_sentence"].strip(), audio_path)
+                utils.trim_silence(audio_path)
                 utils.speed_up_audio(audio_path)
 
             # Run STT to get word-level timestamps (cached as <audio>.json)
