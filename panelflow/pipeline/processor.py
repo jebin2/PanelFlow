@@ -342,6 +342,7 @@ class PanelProcessor(PipelineBase):
                 audio_out = os.path.join(page_dir, f"{file_name}.wav")
                 if not utils.file_exists(audio_out):
                     HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
+                    utils.speed_up_audio(audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
                 resized = os.path.join(page_dir, os.path.basename(moment["key_moment"]))
                 resize_with_aspect.scale_keep_ratio(
