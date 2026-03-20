@@ -53,3 +53,4 @@ thread_id_*/
 temp_dir/
 panels_to_be_processed*/
 node_modules/
+remotion-comic/public/render_assets
