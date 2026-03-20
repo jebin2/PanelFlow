@@ -92,6 +92,11 @@ def main():
     remote_only = '--remoteonly' in sys.argv
     one_pass = '--onepass' in sys.argv
 
+    # remove directory start with thread_id_*
+    for entry in os.scandir(config.BASE_PATH):
+        if entry.name.startswith(('thread_id_', 'temp', 'chat_bot_ui_handler_logs')) and entry.is_dir():
+            utils.remove_directory(entry.path)
+
     while True:
         creator = None
         try:
