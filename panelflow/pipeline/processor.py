@@ -418,6 +418,7 @@ class PanelProcessor(PipelineBase):
             audio_path = os.path.join(self.shorts_media_dir, f"audio_{i}.wav")
             if not utils.is_valid_audio(audio_path):
                 hf_tts.generate_audio_segment(rcp_match["recap_sentence"].strip(), audio_path)
+                utils.speed_up_audio(audio_path)
 
             # Run STT to get word-level timestamps (cached as <audio>.json)
             stt_json_path = f"{audio_path.replace('.wav', '.json')}"
