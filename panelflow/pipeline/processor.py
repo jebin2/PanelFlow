@@ -408,6 +408,7 @@ class PanelProcessor(PipelineBase):
         changed = False
 
         panels = []
+        TRANSITION_DURATION = 18 / config.FPS
 
         for i, rcp_match in enumerate(recap_match):
             page_idx = int(rcp_match["comic_page_number"]) - 1
@@ -456,20 +457,18 @@ class PanelProcessor(PipelineBase):
                             "end": w.get("end", 0.0)
                         })
 
-            # Randomize aggressive animations for high retention
-            anim = random.choice(["zoom_in", "zoom_out", "pan_up", "pan_down"])
-
             panels.append({
                 "imageSrc": f"render_assets/{utils.to_rel(dest_img, config.BASE_PATH)}",
                 "originalWidth": orig_w,
                 "originalHeight": orig_h,
                 "audioSrc": f"render_assets/{utils.to_rel(audio_path, config.BASE_PATH)}",
-                "durationInSeconds": duration,
+                "durationInSeconds": duration + TRANSITION_DURATION,
                 "bubbleBbox": [0, 0, 1080, 1920],
                 "narrationText": "",
                 "sceneCaption": "",
-                "animation": anim,
-                "transitionIn": "none",
+                "animation": "ken_burns",   # placeholder; overwritten below
+                "transitionIn": "none",     # placeholder; overwritten below
+                "events": [],
                 "wordTimings": word_timings
             })
             changed = True
@@ -479,6 +478,26 @@ class PanelProcessor(PipelineBase):
 
         if not panels:
             raise ValueError("No shorts panels generated")
+
+        # ── Smart animation / transition / event assignment ──────────────────
+        _HOOK_ANIMS  = ["punch_in", "burst", "slam_left", "slam_right"]
+        _MID_ANIMS   = ["snap", "ken_burns", "breathe", "three_part_build_up",
+                        "pan_up", "pan_down", "zoom_in", "tilt_in", "slide_bottom"]
+        _TRANSITIONS = ["fade", "toss"]
+        n = len(panels)
+        for idx, panel in enumerate(panels):
+            if idx == 0:
+                panel["animation"]   = random.choice(_HOOK_ANIMS)
+                panel["transitionIn"] = "none"
+            elif idx == n - 1:
+                panel["animation"]   = "zoom_out"
+                panel["transitionIn"] = _TRANSITIONS[idx % len(_TRANSITIONS)]
+            else:
+                panel["animation"]   = random.choice(_MID_ANIMS)
+                panel["transitionIn"] = _TRANSITIONS[idx % len(_TRANSITIONS)]
+                # shockwave pulse at 40 % of panel duration for engagement
+                mid = round(panel["durationInSeconds"] * 0.40, 2)
+                panel["events"] = [{"type": "shockwave", "startSeconds": mid, "durationSeconds": 0.67}]
 
         # Compile native Vertical Remotion Manifest
         manifest = {

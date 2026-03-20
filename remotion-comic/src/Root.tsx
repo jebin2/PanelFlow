@@ -2,6 +2,7 @@ import React from "react";
 import { AbsoluteFill, Composition } from "remotion";
 import { ComicManifest } from "./types";
 import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
+import { ProgressBar } from "./components/ProgressBar";
 
 const defaultManifest: ComicManifest = {
   fps: 24,
@@ -23,9 +24,11 @@ const defaultManifest: ComicManifest = {
 };
 
 const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => {
+  const isPortrait = manifest.height > manifest.width;
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
       <PanelSequences panels={manifest.panels} fps={manifest.fps} />
+      {isPortrait && <ProgressBar />}
     </AbsoluteFill>
   );
 };

@@ -1,61 +1,58 @@
 import React from "react";
-import { AbsoluteFill, Img, interpolate, spring, staticFile, useCurrentFrame, useVideoConfig, Audio, Easing } from "remotion";
+import {
+  AbsoluteFill,
+  Img,
+  interpolate,
+  spring,
+  staticFile,
+  useCurrentFrame,
+  useVideoConfig,
+  Audio,
+} from "remotion";
 import { PanelData } from "../types";
 
 export const ThreePartBuildUp: React.FC<{ panel: PanelData }> = ({ panel }) => {
   const frame = useCurrentFrame();
   const { fps, durationInFrames, height: screenHeight, width: screenWidth } = useVideoConfig();
 
-  const imgAspect = (panel.originalWidth && panel.originalHeight) 
-    ? panel.originalWidth / panel.originalHeight 
-    : 0.6; // fallback for typical portrait comic
+  const imgAspect =
+    panel.originalWidth && panel.originalHeight
+      ? panel.originalWidth / panel.originalHeight
+      : 0.6;
 
-  // With objectFit: "contain", the image is rendered with height = screenHeight.
-  // To scale so that the image width fits the screen width:
-  const fitWidthScale = screenWidth / (screenHeight * imgAspect);
-
-  // Target scales for each phase:
-  // Phase 1 (1 part): fill the screen as much as possible (up to 3x height)
-  const scale1 = Math.min(fitWidthScale, 3.0);
-  // Phase 2 (2 parts): fill the screen as much as possible (up to 1.5x height)
-  const scale2 = Math.min(fitWidthScale, 1.5);
-  // Phase 3 (3 parts): standard Ken Burns start
-  const scale3 = 1.05;
+  // Fit image to 96% of screen width, but also cap so the full 3-section stack
+  // never exceeds 2.7× screen height (keeps all sections visible on landscape too)
+  const maxByWidth = screenWidth * 0.96;
+  const maxByHeight = screenHeight * 2.7 * imgAspect; // sectionH ≤ 0.9 × screenHeight
+  const imgRenderWidth = Math.min(maxByWidth, maxByHeight);
+  const imgRenderHeight = imgRenderWidth / imgAspect;
+  const sectionH = imgRenderHeight / 3;
+  const groupLeft = (screenWidth - imgRenderWidth) / 2; // = screenWidth * 0.02
 
   const phaseFrames = Math.floor(durationInFrames / 3);
-  const transitionFrames = Math.min(30, Math.floor(phaseFrames / 2));
+  const transitionFrames = Math.min(24, Math.floor(phaseFrames / 2));
 
-  // Ken Burns: subtle zoom throughout
-  const zoom = interpolate(
-    frame,
-    [0, durationInFrames],
-    [1.0, 1.1],
-    { extrapolateRight: "clamp" }
-  );
-
-  // Dynamic base scale: zooms out as more segments are added
-  const baseScale = interpolate(
+  // Smoothly track how many sections are visible (1 → 2 → 3)
+  // used to keep the cumulative stack vertically centred on screen
+  const numVisible = interpolate(
     frame,
     [
-      phaseFrames - transitionFrames / 2, 
-      phaseFrames + transitionFrames / 2, 
-      2 * phaseFrames - transitionFrames / 2, 
-      2 * phaseFrames + transitionFrames / 2
+      phaseFrames - transitionFrames / 2,
+      phaseFrames + transitionFrames / 2,
+      2 * phaseFrames - transitionFrames / 2,
+      2 * phaseFrames + transitionFrames / 2,
     ],
-    [scale1, scale2, scale2, scale3],
-    { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.33, 1, 0.68, 1) }
+    [1, 2, 2, 3],
+    { extrapolateLeft: "clamp", extrapolateRight: "clamp" }
   );
 
-  const finalZoom = zoom * baseScale;
+  // Top of the whole stack so visible content stays centred
+  const groupTop = screenHeight / 2 - (numVisible * sectionH) / 2;
 
-  // Gentle drift
-  const driftY = interpolate(frame, [0, durationInFrames], [-25, 25]);
-
-  const renderPart = (index: number) => {
+  const renderSection = (index: number) => {
     const startFrame = index * phaseFrames;
-    const isAppearing = frame >= startFrame && frame < startFrame + transitionFrames;
-    
-    // Individual slide-in progress
+
+    // Spring slide-in from below
     const slideProgress = spring({
       frame: frame - startFrame,
       fps,
@@ -63,59 +60,46 @@ export const ThreePartBuildUp: React.FC<{ panel: PanelData }> = ({ panel }) => {
       durationInFrames: transitionFrames,
     });
 
-    // Vertical "push up" to keep visible parts centered
-    // Phase 1 (0 to 1/3): Top 1/3 is centered. Offset = 33%
-    // Phase 2 (1/3 to 2/3): Top 2/3 are centered. Offset = 16.5%
-    // Phase 3 (2/3 to end): All 100% is centered. Offset = 0%
-    const pushUpOffset = interpolate(
-      frame,
-      [
-        phaseFrames - transitionFrames / 2, 
-        phaseFrames + transitionFrames / 2, 
-        2 * phaseFrames - transitionFrames / 2, 
-        2 * phaseFrames + transitionFrames / 2
-      ],
-      [33.33, 16.66, 16.66, 0],
-      { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.33, 1, 0.68, 1) }
-    );
+    const slideY =
+      frame < startFrame
+        ? screenHeight
+        : interpolate(slideProgress, [0, 1], [screenHeight, 0]);
 
-    // Current part Y position (relative to its slot)
-    // When appearing, it slides from below the screen.
-    const baseY = frame < startFrame ? screenHeight : interpolate(slideProgress, [0, 1], [screenHeight, 0]);
-
-    const clipTop = (index * 33.33) + "%";
-    const clipBottom = (100 - (index + 1) * 33.33) + "%";
+    // Absolute position of this section on screen
+    const sectionTop = groupTop + index * sectionH;
 
     return (
-      <AbsoluteFill
+      <div
         key={index}
         style={{
-          transform: `translateY(${pushUpOffset}%)`,
+          position: "absolute",
+          left: groupLeft,
+          top: sectionTop,
+          width: imgRenderWidth,
+          height: sectionH,
+          overflow: "hidden",
+          transform: `translateY(${slideY}px)`,
           opacity: frame < startFrame ? 0 : 1,
         }}
       >
-        <AbsoluteFill
+        {/* Full image shifted up so the correct 1/3 row is visible */}
+        <Img
+          src={staticFile(panel.imageSrc)}
           style={{
-            transform: `translateY(${baseY}px)`,
-            clipPath: `inset(${clipTop} 0% ${clipBottom} 0%)`,
+            position: "absolute",
+            top: -(index * sectionH),
+            left: 0,
+            width: imgRenderWidth,
+            height: imgRenderHeight,
           }}
-        >
-          <Img
-            src={staticFile(panel.imageSrc)}
-            style={{
-              width: "100%",
-              height: "100%",
-              objectFit: "contain",
-            }}
-          />
-        </AbsoluteFill>
-      </AbsoluteFill>
+        />
+      </div>
     );
   };
 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000", overflow: "hidden" }}>
-      {/* Blurred background fill — hides black bars */}
+      {/* Blurred background fill */}
       {panel.imageSrc && (
         <Img
           src={staticFile(panel.imageSrc)}
@@ -129,11 +113,11 @@ export const ThreePartBuildUp: React.FC<{ panel: PanelData }> = ({ panel }) => {
           }}
         />
       )}
-      <AbsoluteFill style={{ transform: `scale(${finalZoom}) translateY(${driftY}px)` }}>
-        {renderPart(0)}
-        {renderPart(1)}
-        {renderPart(2)}
-      </AbsoluteFill>
+
+      {renderSection(0)}
+      {renderSection(1)}
+      {renderSection(2)}
+
       {panel.audioSrc && <Audio src={staticFile(panel.audioSrc)} />}
     </AbsoluteFill>
   );
