@@ -842,6 +842,7 @@ class ComicVideoPipeline:
 
 		match_scene = None
 		retry_times = 0
+		chat_source = [AIStudioUIChat, GeminiUIChat]
 		while match_scene is None and retry_times < 5:
 			retry_times += 1
 			# first check for reponses in a file
@@ -856,7 +857,7 @@ class ComicVideoPipeline:
 					system_prompt = f.read()
 
 				logger_config.info("Scene Matching")
-				baseUIChat = AIStudioUIChat()
+				baseUIChat = chat_source[retry_times % len(chat_source)]()
 				match_scene = baseUIChat.quick_chat(
 					user_prompt=user_prompt,
 					system_prompt=system_prompt
@@ -970,24 +971,36 @@ class ComicVideoPipeline:
 			system_prompt = f.read()
 
 		logger_config.info("Stage 4.5: Picking per-panel animations...")
-		baseUIChat = AIStudioUIChat()
-		response = baseUIChat.quick_chat(
-			user_prompt=user_prompt,
-			system_prompt=system_prompt
-		)
 
-		if isinstance(response, str):
-			response = response.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
+		retry_times = 0
+		chat_source = [AIStudioUIChat, GeminiUIChat]
+		parsed = None
+		while parsed is None and retry_times < 5:
+			try:
+				retry_times += 1
+				baseUIChat = chat_source[retry_times % len(chat_source)]()
+				response = baseUIChat.quick_chat(
+					user_prompt=user_prompt,
+					system_prompt=system_prompt
+				)
 
-		parsed = utils.parse_json(response, schema={
-			"type": dict,
-			"required": ["panels"],
-		})
-		if not parsed:
-			parsed = json_repair.loads(response)
+				if isinstance(response, str):
+					response = response.encode('utf-8', errors='surrogatepass').decode('utf-8', errors='replace')
 
-		animations = parsed.get("panels", [])
-		# Fallback: if LLM returns wrong count, fill with ken_burns
+				parsed = utils.parse_json(response, schema={
+					"type": dict,
+					"required": ["panels"],
+				})
+				if not parsed:
+					parsed = json_repair.loads(response)
+			except Exception as e:
+				logger_config.error(f"Failed to parse response: {e}")
+				parsed = None
+
+		if parsed is None:
+			raise ValueError("Failed to get panel animations after retries")
+		animations = parsed.get("panels")
+
 		if len(animations) != len(panels):
 			raise ValueError("Animation count mismatch")
 
