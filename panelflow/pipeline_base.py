@@ -5,14 +5,8 @@ import pickle
 from custom_logger import logger_config
 from jebin_lib import utils
 from .categories.base import CategoryBase
-from . import config  # needed for BASE_PATH in _to_rel
+from . import config
 from panelflow.pipeline import gemini_history_processor
-
-def _to_rel(path):
-    """Convert an absolute path to relative (relative to BASE_PATH) for JSON storage."""
-    if path and os.path.isabs(path):
-        return os.path.relpath(path, config.BASE_PATH)
-    return path
 
 
 class PipelineBase(ABC):
@@ -90,7 +84,7 @@ class PipelineBase(ABC):
     def save_review_responses(self, data):
         with open(self.review_responses_json_path, 'w') as f:
             json.dump([
-                {**entry, "key_moment": _to_rel(entry["key_moment"])} if "key_moment" in entry else entry
+                {**entry, "key_moment": utils.to_rel(entry["key_moment"], config.BASE_PATH)} if "key_moment" in entry else entry
                 for entry in data
             ], f, indent=4, ensure_ascii=False)
 
@@ -132,7 +126,7 @@ class PipelineBase(ABC):
     def save_recap_match(self, data):
         with open(self.recap_match_path, 'w') as f:
             json.dump([
-                {**entry, "img_path": _to_rel(entry["img_path"])} if "img_path" in entry else entry
+                {**entry, "img_path": utils.to_rel(entry["img_path"], config.BASE_PATH)} if "img_path" in entry else entry
                 for entry in data
             ], f, indent=4, ensure_ascii=False)
 

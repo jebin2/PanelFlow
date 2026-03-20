@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import json
 import os
 from .. import config
+from jebin_lib import utils
 
 
 class CategoryBase(ABC):
@@ -50,13 +51,13 @@ class CategoryBase(ABC):
 
         progress = self.processor_obj._get_progress()
         progress.update({
-            "FINAL_VIDEO_PATH": os.path.relpath(
+            "FINAL_VIDEO_PATH": utils.to_rel(
                 self.processor_obj.final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
-            "SHORTS_VIDEO_PATH": os.path.relpath(
+            "SHORTS_VIDEO_PATH": utils.to_rel(
                 self.processor_obj.shorts_final_video_path, config.PANELS_TO_BE_PROCESSED
             ),
-            "THUMBNAIL_PATH": os.path.relpath(
+            "THUMBNAIL_PATH": utils.to_rel(
                 self.processor_obj.thumbnail_path, config.PANELS_TO_BE_PROCESSED
             ) if os.path.exists(self.processor_obj.thumbnail_path) else None,
             "YOUTUBE_TITLE": youtube_title,

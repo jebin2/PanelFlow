@@ -14,6 +14,8 @@ PANELS_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'panels_to_be_processed')
 os.makedirs(PANELS_TO_BE_PROCESSED, exist_ok=True)
 
 COMIC="comic"
+COMIC_DIR=f"{PANELS_TO_BE_PROCESSED}/{COMIC}"
+
 CATEGORY=[COMIC]
 
 HF_BUCKET_ID = os.getenv("HF_BUCKET_ID")

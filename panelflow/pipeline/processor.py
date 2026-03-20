@@ -379,7 +379,7 @@ class PanelProcessor(PipelineBase):
                 main_ComicVideoPipeline(impact, cvp_config)
 
             if self.sync_callback:
-                self.sync_callback(sub=os.path.relpath(page_dir, self.folder))
+                self.sync_callback(sub=utils.to_rel(page_dir, self.folder))
 
         clips = self._get_ordered_sentence_clips()
         if not clips:
@@ -460,10 +460,10 @@ class PanelProcessor(PipelineBase):
             anim = random.choice(["zoom_in", "zoom_out", "pan_up", "pan_down"])
 
             panels.append({
-                "imageSrc": f"render_assets/panel_{i}.jpg",
+                "imageSrc": f"render_assets/{utils.to_rel(dest_img, config.BASE_PATH)}",
                 "originalWidth": orig_w,
                 "originalHeight": orig_h,
-                "audioSrc": f"render_assets/audio_{i}.wav",
+                "audioSrc": f"render_assets/{utils.to_rel(audio_path, config.BASE_PATH)}",
                 "durationInSeconds": duration,
                 "bubbleBbox": [0, 0, 1080, 1920],
                 "narrationText": "",
@@ -594,8 +594,8 @@ class PanelProcessor(PipelineBase):
             return
         utils.remove_directory(split_folder)
         utils.create_directory(split_folder)
-        config_data = {"input_path": os.path.abspath(image_path), "output_folder": os.path.abspath(split_folder)}
-        config_path = os.path.abspath(os.path.join(output_dir, 'split_comic_config.json'))
+        config_data = {"input_path": utils.to_abs(image_path, config.BASE_PATH), "output_folder": utils.to_abs(split_folder, config.BASE_PATH)}
+        config_path = utils.to_abs(os.path.join(output_dir, 'split_comic_config.json'), config.BASE_PATH)
         with open(config_path, 'w') as f:
             json.dump(config_data, f, indent=4)
 
@@ -623,14 +623,14 @@ class PanelProcessor(PipelineBase):
         shutil.copy(input_path, output_path)
         return
 
-        abs_input_path = os.path.abspath(input_path)
-        abs_output_path = os.path.abspath(output_path)
-        abs_musicgen_path = os.path.abspath(self.musicgen_path)
+        abs_input_path = utils.to_abs(input_path, config.BASE_PATH)
+        abs_output_path = utils.to_abs(output_path, config.BASE_PATH)
+        abs_musicgen_path = utils.to_abs(self.musicgen_path, config.BASE_PATH)
 
         if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
             recap_text = self.get_all_page_recap().get("recap_text", "")
             subprocess.run(
-                [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, os.path.abspath(config.CREATE_MUSIC_SYSTEM_PROMPT)],
+                [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, utils.to_abs(config.CREATE_MUSIC_SYSTEM_PROMPT, config.BASE_PATH)],
                 check=True,
                 cwd=config.BASE_PATH,
                 env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}

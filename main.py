@@ -51,7 +51,7 @@ class ContentCreator:
                 continue
             for entry in sorted(os.scandir(cat_path), key=lambda e: e.name):
                 if entry.is_dir():
-                    comic_folders.append((os.path.relpath(entry.path, config.BASE_PATH), category))
+                    comic_folders.append((utils.to_rel(entry.path, config.BASE_PATH), category))
                 elif entry.name.lower().endswith('.cbz'):
                     folder_name = os.path.splitext(entry.name)[0]
                     folder_path = os.path.join(cat_path, folder_name)
@@ -59,14 +59,14 @@ class ContentCreator:
                     dest = os.path.join(folder_path, entry.name)
                     if not os.path.exists(dest):
                         os.rename(entry.path, dest)
-                    comic_folders.append((os.path.relpath(folder_path, config.BASE_PATH), category))
+                    comic_folders.append((utils.to_rel(folder_path, config.BASE_PATH), category))
 
         for idx, (folder, category) in enumerate(comic_folders):
             try:
                 Pipeline = PanelProcessor
                 logger_config.info(f"{Pipeline.__name__} {idx+1}/{len(comic_folders)}: {folder}")
 
-                remote_path = os.path.relpath(folder, config.PANELS_TO_BE_PROCESSED)
+                remote_path = utils.to_rel(folder, config.PANELS_TO_BE_PROCESSED)
                 kwargs = dict(
                     folder=folder,
                     category=category,

@@ -23,7 +23,7 @@ from tqdm import tqdm
 import os
 from jebin_lib import HFTTSClient, HFSTTClient, utils
 from caption_generator.core import MultiTypeCaptionGenerator
-from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch, AIStudioUIChat
+from chat_bot_ui_handler import GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch, AIStudioUIChat, GeminiUIChat
 from jebin_lib import text_splitter
 from panelflow.pipeline.gemini_config import pre_model_wrapper
 import difflib
@@ -375,7 +375,14 @@ class NarrationMapper:
 			mapping.duration = duration
 
 		# Step 3: Save final mappings
-		mappings_data = [mapping.__dict__ for mapping in mappings]
+		mappings_data = []
+		for mapping in mappings:
+			d = mapping.__dict__.copy()
+			d["audio"] = utils.to_rel(d["audio"], config.BASE_PATH)
+			d["image_path"] = utils.to_rel(d["image_path"], config.BASE_PATH)
+			d["stt_json_path"] = utils.to_rel(d["stt_json_path"], config.BASE_PATH)
+			mappings_data.append(d)
+
 		with open(output_path, "w", encoding="utf-8") as f:
 			json.dump(mappings_data, f, indent=4, ensure_ascii=False)
 		
@@ -514,7 +521,7 @@ class VideoGenerator:
 	def add_remaining_panel(self, final_mapping):
 		# Step 1: get all panel frame paths
 		all_frame_paths = [
-			os.path.abspath(file)
+			utils.to_abs(file, config.BASE_PATH)
 			for file in utils.list_files(self.config.split_output_dir)
 			if "_panel_" in os.path.basename(file)
 		]
@@ -755,7 +762,7 @@ class ComicVideoPipeline:
 	def caption_generator(self, narration_text):
 		output_path = f"{self.config.page_specific_dir}/caption_generator.json"
 
-		captionGen = MultiTypeCaptionGenerator(cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
+		captionGen = MultiTypeCaptionGenerator(frame_base_path=config.BASE_PATH, cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
 
 		if utils.file_exists(output_path) and utils.is_valid_json(output_path):
 			with open(output_path, "r", encoding="utf-8") as f:
@@ -763,7 +770,7 @@ class ComicVideoPipeline:
 		else:
 			frame_paths = [
 				{
-					"frame_path": [os.path.abspath(file)]
+					"frame_path": [file]
 				}
 				for file in utils.list_files(self.config.split_output_dir)
 				if "_panel_" in os.path.basename(file)
@@ -1015,8 +1022,8 @@ class ComicVideoPipeline:
 				final_duration += TRANSITION_DURATION
 
 			entry = {
-				"imageSrc": "render_assets/" + os.path.relpath(p["image_path"], self.config.page_specific_dir) if p.get("image_path") else None,
-				"audioSrc": "render_assets/" + os.path.relpath(audio_path, self.config.page_specific_dir) if audio_path else None,
+				"imageSrc": "render_assets/" + utils.to_rel(p["image_path"], config.BASE_PATH) if p.get("image_path") else None,
+				"audioSrc": "render_assets/" + utils.to_rel(audio_path, config.BASE_PATH) if audio_path else None,
 				"originalWidth": Image.open(p["image_path"]).width if p.get("image_path") else 0,
 				"originalHeight": Image.open(p["image_path"]).height if p.get("image_path") else 0,
 				"durationInSeconds": final_duration,
@@ -1076,13 +1083,13 @@ class ComicVideoPipeline:
 		render_link = os.path.join(public_dir, "render_assets")
 		if os.path.islink(render_link):
 			os.unlink(render_link)
-		os.symlink(os.path.abspath(self.config.page_specific_dir), render_link)
-		logger_config.info(f"Symlinked render_assets -> {self.config.page_specific_dir}")
+		os.symlink(utils.to_abs(config.BASE_PATH, config.BASE_PATH), render_link)
+		logger_config.info(f"Symlinked render_assets -> {utils.to_abs(config.BASE_PATH, config.BASE_PATH)} to {render_link}")
 
 		cmd = [
 			"npx", "remotion", "render", "ComicVideo",
-			"--props", os.path.abspath(manifest_path),
-			"--output", os.path.abspath(output_path),
+			"--props", utils.to_abs(manifest_path, config.BASE_PATH),
+			"--output", utils.to_abs(output_path, config.BASE_PATH),
 			"--codec", "h264",
 			"--log", "verbose",
 		]
@@ -1154,7 +1161,7 @@ def generate_intro_video(image_path: str, audio_path: str, duration: float, cvp_
 	output_path = f"{cvp_config.page_specific_dir}/remotion_manifest.json"
 
 	width, height = cvp_config.resolution
-	
+
 	manifest = {
 		"fps": config.FPS,
 		"width": width,
@@ -1163,10 +1170,10 @@ def generate_intro_video(image_path: str, audio_path: str, duration: float, cvp_
 		"pageNumber": 1,
 		"panels": [
 			{
-				"imageSrc": f"render_assets/{os.path.basename(image_path)}",
+				"imageSrc": f"render_assets/{utils.to_rel(image_path, config.BASE_PATH)}",
 				"originalWidth": Image.open(image_path).width,
 				"originalHeight": Image.open(image_path).height,
-				"audioSrc": f"render_assets/{os.path.basename(audio_path)}",
+				"audioSrc": f"render_assets/{utils.to_rel(audio_path, config.BASE_PATH)}",
 				"durationInSeconds": duration,
 				"bubbleBbox": content_bbox if content_bbox else [0, 0, width, height],
 				"narrationText": "",
@@ -1199,10 +1206,10 @@ def generate_three_part_build_up(image_path: str, audio_path: str, duration: flo
 		"pageNumber": 1,
 		"panels": [
 			{
-				"imageSrc": f"render_assets/{os.path.basename(image_path)}",
+				"imageSrc": f"render_assets/{utils.to_rel(image_path, config.BASE_PATH)}",
 				"originalWidth": Image.open(image_path).width,
 				"originalHeight": Image.open(image_path).height,
-				"audioSrc": f"render_assets/{os.path.basename(audio_path)}",
+				"audioSrc": f"render_assets/{utils.to_rel(audio_path, config.BASE_PATH)}",
 				"durationInSeconds": duration,
 				"bubbleBbox": content_bbox if content_bbox else [0, 0, width, height],
 				"narrationText": "",
