@@ -1232,7 +1232,8 @@ def generate_three_part_build_up(image_path: str, audio_path: str, duration: flo
 				"sceneCaption": "",
 				"animation": "three_part_build_up",
 				"transitionIn": "none",
-				"events": []
+				"events": [],
+				"buildUpParts": duration/2.5
 			}
 		]
 	}

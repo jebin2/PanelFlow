@@ -61,6 +61,7 @@ export interface PanelData {
   wordTimings?: WordTiming[];
   originalWidth?: number;
   originalHeight?: number;
+  buildUpParts?: number;        // for three_part_build_up: how many strips (default 3)
   secondaryImageSrc?: string;
   secondaryOriginalWidth?: number;
   secondaryOriginalHeight?: number;
