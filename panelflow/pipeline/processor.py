@@ -650,17 +650,22 @@ class PanelProcessor(PipelineBase):
 
         abs_input_path = utils.to_abs(input_path, config.BASE_PATH)
         abs_output_path = utils.to_abs(output_path, config.BASE_PATH)
-        abs_musicgen_path = utils.to_abs(self.musicgen_path, config.BASE_PATH)
 
-        if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
-            recap_text = self.get_all_page_recap().get("recap_text", "")
-            subprocess.run(
-                [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, utils.to_abs(config.CREATE_MUSIC_SYSTEM_PROMPT, config.BASE_PATH)],
-                check=True,
-                cwd=config.BASE_PATH,
-                env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
-            )
-            utils.manage_gpu(action="clear_cache")
+        # Use fixed bg music track if available, otherwise fall back to musicgen
+        if config.BG_MUSIC_PATH and utils.file_exists(config.BG_MUSIC_PATH):
+            abs_musicgen_path = config.BG_MUSIC_PATH
+            logger_config.info(f"Using fixed bg music: {abs_musicgen_path}")
+        else:
+            abs_musicgen_path = utils.to_abs(self.musicgen_path, config.BASE_PATH)
+            if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
+                recap_text = self.get_all_page_recap().get("recap_text", "")
+                subprocess.run(
+                    [sys.executable, "-m", "music_creator.core", recap_text, abs_musicgen_path, utils.to_abs(config.CREATE_MUSIC_SYSTEM_PROMPT, config.BASE_PATH)],
+                    check=True,
+                    cwd=config.BASE_PATH,
+                    env={**os.environ, 'PYTHONUNBUFFERED': '1', 'CUDA_LAUNCH_BLOCKING': '1', 'USE_CPU_IF_POSSIBLE': 'true'}
+                )
+                utils.manage_gpu(action="clear_cache")
 
         video = VideoFileClip(abs_input_path)
         extracted_audio_path = abs_output_path + "_extracted.wav"

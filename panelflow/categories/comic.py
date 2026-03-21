@@ -113,7 +113,7 @@ OUTPUT FORMAT:
         return ''
 
     def get_finish_phrase(self):
-        return "If you want to see what happens next, the next chapter is already up. Go watch it."
+        return "If you want to see what happens next, Subscribe to our channel."
 
     # ------------------------------------------------------------------ helpers
 

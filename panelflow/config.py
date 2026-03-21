@@ -36,6 +36,8 @@ with open(BASE_PATH + "/panelflow/prompt/comic_dialogue_matcher_prompt.md", "r")
 with open(BASE_PATH + "/panelflow/prompt/comic_title_desc_system_prompt.md", "r") as f:
     COMIC_TITLE_DESC_SYSTEM_PROMPT = f.read()
 
+BG_MUSIC_PATH = BASE_PATH + "/bg_music/848419_8470157-lq.mp3"
+
 MODEL_NAME="gemini-3-flash-preview"
 MODEL_NAME_LITE="gemini-flash-lite-latest"
 
