@@ -120,7 +120,14 @@ class PipelineBase(ABC):
         data = []
         if os.path.exists(self.recap_match_path):
             with open(self.recap_match_path, 'r') as f:
-                data = json.load(f)
+                raw = f.read()
+            try:
+                data = json.loads(raw)
+            except json.JSONDecodeError:
+                logger_config.warning(f"recap_match JSON malformed, attempting repair: {self.recap_match_path}")
+                data = utils.extract_json(raw)
+                if isinstance(data, list):
+                    self.save_recap_match(data)
         return data
 
     def save_recap_match(self, data):

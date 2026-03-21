@@ -529,7 +529,6 @@ class PanelProcessor(PipelineBase):
         
         cvp = ComicVideoPipeline(cvp_config)
         cvp.render_with_remotion(manifest_path)
-        exit(0)
         return self.shorts_output_no_music_path
 
     # ------------------------------------------------------------------ step 7+8
