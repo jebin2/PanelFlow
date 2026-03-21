@@ -41,11 +41,11 @@ const toss = (): TransitionPresentation<Record<string, never>> => ({
 
 export function getPresentation(transition: PanelTransition): TransitionPresentation<Record<string, never>> {
   switch (transition) {
-    case "fade":  return fade() as TransitionPresentation<Record<string, never>>;
-    case "slide": return slide() as TransitionPresentation<Record<string, never>>;
-    case "wipe":  return wipe() as TransitionPresentation<Record<string, never>>;
-    case "flip":  return flip() as TransitionPresentation<Record<string, never>>;
+    case "fade":  return fade()  as unknown as TransitionPresentation<Record<string, never>>;
+    case "slide": return slide() as unknown as TransitionPresentation<Record<string, never>>;
+    case "wipe":  return wipe()  as unknown as TransitionPresentation<Record<string, never>>;
+    case "flip":  return flip()  as unknown as TransitionPresentation<Record<string, never>>;
     case "toss":  return toss();
-    default:      return fade() as TransitionPresentation<Record<string, never>>;
+    default:      return fade()  as unknown as TransitionPresentation<Record<string, never>>;
   }
 }
