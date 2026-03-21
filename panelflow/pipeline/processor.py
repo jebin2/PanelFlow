@@ -340,8 +340,10 @@ class PanelProcessor(PipelineBase):
             if panel_count == 1:
                 file_name = utils.generate_random_string_from_input(impact)
                 audio_out = os.path.join(page_dir, f"{file_name}.wav")
+
                 if not utils.file_exists(audio_out):
                     HFTTSClient().generate_audio_segment(impact.strip(), audio_out)
+                    utils.copy(audio_out, f"{audio_out.replace('.wav', '_original.wav')}")
                     utils.trim_silence(audio_out)
                     utils.speed_up_audio(audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
@@ -420,6 +422,7 @@ class PanelProcessor(PipelineBase):
             audio_path = os.path.join(self.shorts_media_dir, f"audio_{i}.wav")
             if not utils.is_valid_audio(audio_path):
                 hf_tts.generate_audio_segment(rcp_match["recap_sentence"].strip(), audio_path)
+                utils.copy(audio_path, f"{audio_path.replace('.wav', '_original.wav')}")
                 utils.trim_silence(audio_path)
                 utils.speed_up_audio(audio_path)
 
@@ -491,7 +494,7 @@ class PanelProcessor(PipelineBase):
         n = len(panels)
         for idx, panel in enumerate(panels):
             if idx == 0:
-                panel["animation"]   = random.choice(_HOOK_ANIMS)
+                panel["animation"]   = "burst"
                 panel["transitionIn"] = "none"
             elif idx == n - 1:
                 panel["animation"]   = "zoom_out"

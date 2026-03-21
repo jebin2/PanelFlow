@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { AbsoluteFill, Img, interpolate, random, spring, staticFile, useCurrentFrame, useVideoConfig, Audio } from "remotion";
+import { AbsoluteFill, Audio, Img, Sequence, interpolate, random, spring, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { PanelData } from "../types";
 
 export const AssembleIntro: React.FC<{ panel: PanelData }> = ({ panel }) => {
@@ -146,6 +146,19 @@ export const AssembleIntro: React.FC<{ panel: PanelData }> = ({ panel }) => {
       </AbsoluteFill>
 
       {panel.audioSrc && <Audio src={staticFile(panel.audioSrc)} />}
+
+      {/* Pieces flying in — soft whoosh as they travel */}
+      <Audio src={staticFile("sfx/sfx_whoosh.mp3")} volume={0.28} />
+
+      {/* Snap moment — deep boom when all pieces lock together */}
+      <Sequence from={assembleDuration} durationInFrames={60} layout="none">
+        <Audio src={staticFile("sfx/sfx_impact.mp3")} volume={0.55} />
+      </Sequence>
+
+      {/* Energy weld glow — electrical flash sound synced to cyan glow */}
+      <Sequence from={Math.max(0, assembleDuration - 3)} durationInFrames={30} layout="none">
+        <Audio src={staticFile("sfx/sfx_flash.mp3")} volume={0.30} />
+      </Sequence>
     </AbsoluteFill>
   );
 };

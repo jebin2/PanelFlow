@@ -31,6 +31,8 @@ export const PanelBase: React.FC<Props> = ({
   rattleEffect = false,
   shockwaveEffect = false,
   breatheEffect = false,
+  sfx,
+  sfxVolume = 0.35,
 }) => {
   const frame = useCurrentFrame();
   const { durationInFrames, width, height } = useVideoConfig();
@@ -171,6 +173,7 @@ export const PanelBase: React.FC<Props> = ({
       ) : null}
 
       {panel.audioSrc && <Audio src={staticFile(panel.audioSrc)} />}
+      {sfx && <Audio src={staticFile(`sfx/${sfx}`)} volume={sfxVolume} />}
     </AbsoluteFill>
   );
 };

@@ -1,13 +1,14 @@
 import React from "react";
 import {
   AbsoluteFill,
+  Audio,
   Img,
+  Sequence,
   interpolate,
   spring,
   staticFile,
   useCurrentFrame,
   useVideoConfig,
-  Audio,
 } from "remotion";
 import { PanelData } from "../types";
 
@@ -119,6 +120,17 @@ export const ThreePartBuildUp: React.FC<{ panel: PanelData }> = ({ panel }) => {
       {renderSection(2)}
 
       {panel.audioSrc && <Audio src={staticFile(panel.audioSrc)} />}
+
+      {/* Section SFX — escalating sounds as each strip slides up */}
+      <Sequence from={0}           durationInFrames={transitionFrames} layout="none">
+        <Audio src={staticFile("sfx/sfx_whoosh.mp3")}       volume={0.28} />
+      </Sequence>
+      <Sequence from={phaseFrames} durationInFrames={transitionFrames} layout="none">
+        <Audio src={staticFile("sfx/sfx_paper_slide.mp3")}  volume={0.40} />
+      </Sequence>
+      <Sequence from={phaseFrames * 2} durationInFrames={transitionFrames} layout="none">
+        <Audio src={staticFile("sfx/sfx_sandbag.mp3")}      volume={0.42} />
+      </Sequence>
     </AbsoluteFill>
   );
 };

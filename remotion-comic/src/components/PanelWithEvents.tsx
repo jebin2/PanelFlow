@@ -1,6 +1,6 @@
 import React from "react";
-import { AbsoluteFill, interpolate, useCurrentFrame } from "remotion";
-import { PanelData } from "../types";
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { PanelData, PanelEvent } from "../types";
 import { PanelBase } from "./PanelBase";
 import { AssembleIntro } from "./AssembleIntro";
 import { ThreePartBuildUp } from "./ThreePartBuildUp";
@@ -11,6 +11,14 @@ interface Props {
   panel: PanelData;
   fps: number;
 }
+
+const EVENT_SFX: Partial<Record<PanelEvent["type"], { file: string; volume: number }>> = {
+  tremble:   { file: "sfx_rumble.mp3",    volume: 0.20 },
+  flash:     { file: "sfx_flash.mp3",     volume: 0.32 },
+  // shockwave is assigned to every mid-panel as a visual pulse — no SFX to avoid repetition
+  heartbeat: { file: "sfx_heartbeat.mp3", volume: 0.25 },
+  rattle:    { file: "sfx_rumble.mp3",    volume: 0.20 },
+};
 
 export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   const frame = useCurrentFrame();
@@ -92,6 +100,17 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}
         />
       )}
+      {events.map((event, i) => {
+        const sfxInfo = EVENT_SFX[event.type];
+        if (!sfxInfo) return null;
+        const startFrame = Math.round(event.startSeconds * fps);
+        const durFrames = Math.max(1, Math.round(event.durationSeconds * fps));
+        return (
+          <Sequence key={i} from={startFrame} durationInFrames={durFrames} layout="none">
+            <Audio src={staticFile(`sfx/${sfxInfo.file}`)} volume={sfxInfo.volume} />
+          </Sequence>
+        );
+      })}
     </AbsoluteFill>
   );
 };

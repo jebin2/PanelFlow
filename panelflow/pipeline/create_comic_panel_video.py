@@ -361,6 +361,8 @@ class NarrationMapper:
 			if not utils.is_valid_audio(mapping.audio):
 				# Generate TTS audio
 				hf_tts_client.generate_audio_segment(mapping.narration_text, mapping.audio)
+				utils.copy(mapping.audio, f"{mapping.audio.replace('.wav', '_original.wav')}")
+				utils.trim_silence(mapping.audio)
 				utils.speed_up_audio(mapping.audio)
 
 			# Run STT to get word-level timestamps (cached as <audio>.json)
