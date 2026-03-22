@@ -3,7 +3,7 @@ import { AbsoluteFill, Audio, Sequence, staticFile } from "remotion";
 import { TransitionSeries, springTiming } from "@remotion/transitions";
 import { PanelData, PanelTransition } from "../types";
 import { PanelWithEvents } from "./PanelWithEvents";
-import { getPresentation, TRANSITION_FRAMES } from "../transitions";
+import { getPresentation, TRANSITION_FRAMES } from "remotion-animation-kit";
 
 const TRANSITION_SFX: Partial<Record<PanelTransition, { file: string; volume: number }>> = {
   toss:  { file: "sfx_punchcrack.mp3", volume: 0.45 },

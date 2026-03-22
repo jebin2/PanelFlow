@@ -11,7 +11,8 @@
   "dependencies": {
     "@remotion/cli": "4.0.290",
     "@remotion/transitions": "4.0.290",
-    "remotion": "4.0.290"
+    "remotion": "4.0.290",
+    "remotion-animation-kit": "github:jebin2/remotion-animation-kit"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",

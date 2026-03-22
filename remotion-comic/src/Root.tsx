@@ -2,7 +2,7 @@ import React from "react";
 import { AbsoluteFill, Composition } from "remotion";
 import { ComicManifest } from "./types";
 import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
-import { ProgressBar } from "./components/ProgressBar";
+import { ProgressBar } from "remotion-animation-kit";
 
 const defaultManifest: ComicManifest = {
   fps: 24,

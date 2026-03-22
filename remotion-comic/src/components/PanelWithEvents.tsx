@@ -3,9 +3,9 @@ import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame
 import { PanelData, PanelEvent } from "../types";
 import { PanelBase } from "./PanelBase";
 import { AssembleIntro } from "./AssembleIntro";
-import { ThreePartBuildUp } from "./ThreePartBuildUp";
-import { KineticSubtitles } from "./KineticSubtitles";
-import { getAnimationProps } from "../animations";
+import { ThreePartBuildUp } from "remotion-animation-kit";
+import { KineticSubtitles } from "remotion-animation-kit";
+import { getAnimationProps } from "remotion-animation-kit";
 
 interface Props {
   panel: PanelData;
@@ -79,7 +79,7 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   }
 
   if (panel.animation === "three_part_build_up") {
-    return <ThreePartBuildUp panel={panel} />;
+    return <ThreePartBuildUp data={panel} />;
   }
 
   return (
@@ -94,7 +94,7 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
       }
     >
       <PanelBase panel={panel} {...animProps} />
-      {panel.wordTimings && <KineticSubtitles panel={panel} />}
+      {panel.wordTimings && <KineticSubtitles wordTimings={panel.wordTimings} />}
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}
