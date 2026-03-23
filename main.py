@@ -66,7 +66,7 @@ class ContentCreator:
                 Pipeline = PanelProcessor
                 logger_config.info(f"{Pipeline.__name__} {idx+1}/{len(comic_folders)}: {folder}")
 
-                remote_path = utils.to_rel(folder, config.CONTENT_TO_BE_PROCESSED)
+                remote_path = utils.to_rel(utils.to_abs(folder, config.BASE_PATH), config.CONTENT_TO_BE_PROCESSED)
                 kwargs = dict(
                     folder=folder,
                     category=category,
