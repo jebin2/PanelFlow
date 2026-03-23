@@ -1,8 +1,10 @@
 import React from "react";
-import { AbsoluteFill, Composition } from "remotion";
+import { AbsoluteFill, Composition, Sequence } from "remotion";
 import { ComicManifest } from "./types";
 import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
-import { ProgressBar } from "remotion-animation-kit";
+import { ProgressBar, TitleCard } from "remotion-animation-kit";
+
+const TITLE_CARD_FRAMES = 60;
 
 const defaultManifest: ComicManifest = {
   fps: 24,
@@ -27,7 +29,15 @@ const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => 
   const isPortrait = manifest.height > manifest.width;
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      <PanelSequences panels={manifest.panels} fps={manifest.fps} />
+      <Sequence from={0} durationInFrames={TITLE_CARD_FRAMES} layout="none">
+        <TitleCard
+          title={manifest.comicTitle}
+          media={manifest.panels.map((p) => ({ imageSrc: p.imageSrc }))}
+        />
+      </Sequence>
+      <Sequence from={TITLE_CARD_FRAMES} layout="none">
+        <PanelSequences panels={manifest.panels} fps={manifest.fps} />
+      </Sequence>
       {isPortrait && <ProgressBar />}
     </AbsoluteFill>
   );
@@ -42,14 +52,14 @@ export const RemotionRoot: React.FC = () => {
       fps={defaultManifest.fps}
       width={defaultManifest.width}
       height={defaultManifest.height}
-      durationInFrames={getTotalFrames(defaultManifest.panels, defaultManifest.fps)}
+      durationInFrames={TITLE_CARD_FRAMES + getTotalFrames(defaultManifest.panels, defaultManifest.fps)}
       calculateMetadata={({ props }) => {
         const { manifest } = props;
         return {
           fps: manifest.fps,
           width: manifest.width,
           height: manifest.height,
-          durationInFrames: getTotalFrames(manifest.panels, manifest.fps),
+          durationInFrames: TITLE_CARD_FRAMES + getTotalFrames(manifest.panels, manifest.fps),
         };
       }}
     />
