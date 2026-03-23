@@ -10,11 +10,11 @@ TEMP_PATH = os.path.join(BASE_PATH, 'temp')
 os.makedirs(TEMP_PATH, exist_ok=True)
 os.environ["TEMP_OUTPUT"] = TEMP_PATH
 
-PANELS_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'panels_to_be_processed')
-os.makedirs(PANELS_TO_BE_PROCESSED, exist_ok=True)
+CONTENT_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'content_to_be_processed')
+os.makedirs(CONTENT_TO_BE_PROCESSED, exist_ok=True)
 
 COMIC="comic"
-COMIC_DIR=f"{PANELS_TO_BE_PROCESSED}/{COMIC}"
+COMIC_DIR=f"{CONTENT_TO_BE_PROCESSED}/{COMIC}"
 
 CATEGORY=[COMIC]
 

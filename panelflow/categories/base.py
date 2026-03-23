@@ -52,13 +52,13 @@ class CategoryBase(ABC):
         progress = self.processor_obj._get_progress()
         progress.update({
             "FINAL_VIDEO_PATH": utils.to_rel(
-                self.processor_obj.final_video_path, config.PANELS_TO_BE_PROCESSED
+                self.processor_obj.final_video_path, config.CONTENT_TO_BE_PROCESSED
             ),
             "SHORTS_VIDEO_PATH": utils.to_rel(
-                self.processor_obj.shorts_final_video_path, config.PANELS_TO_BE_PROCESSED
+                self.processor_obj.shorts_final_video_path, config.CONTENT_TO_BE_PROCESSED
             ),
             "THUMBNAIL_PATH": utils.to_rel(
-                self.processor_obj.thumbnail_path, config.PANELS_TO_BE_PROCESSED
+                self.processor_obj.thumbnail_path, config.CONTENT_TO_BE_PROCESSED
             ) if os.path.exists(self.processor_obj.thumbnail_path) else None,
             "YOUTUBE_TITLE": youtube_title,
             "TWITTER_POST": twitter_post,

@@ -23,7 +23,7 @@ class ContentCreator:
     def setup(self):
         if self.hf_client:
             for category in config.CATEGORY:
-                local_cat_path = os.path.join(config.PANELS_TO_BE_PROCESSED, category)
+                local_cat_path = os.path.join(config.CONTENT_TO_BE_PROCESSED, category)
                 if self.local_only:
                     self.hf_client.upload_folder(local_cat_path, category, delete=True)
                 elif self.remote_only:
@@ -40,13 +40,13 @@ class ContentCreator:
 
 
     def run(self):
-        if not os.path.isdir(config.PANELS_TO_BE_PROCESSED):
-            logger_config.warning(f"Input folder not found: {config.PANELS_TO_BE_PROCESSED}")
+        if not os.path.isdir(config.CONTENT_TO_BE_PROCESSED):
+            logger_config.warning(f"Input folder not found: {config.CONTENT_TO_BE_PROCESSED}")
             return
 
         comic_folders = []
         for category in config.CATEGORY:
-            cat_path = os.path.join(config.PANELS_TO_BE_PROCESSED, category)
+            cat_path = os.path.join(config.CONTENT_TO_BE_PROCESSED, category)
             if not os.path.isdir(cat_path):
                 continue
             for entry in sorted(os.scandir(cat_path), key=lambda e: e.name):
@@ -66,7 +66,7 @@ class ContentCreator:
                 Pipeline = PanelProcessor
                 logger_config.info(f"{Pipeline.__name__} {idx+1}/{len(comic_folders)}: {folder}")
 
-                remote_path = utils.to_rel(folder, config.PANELS_TO_BE_PROCESSED)
+                remote_path = utils.to_rel(folder, config.CONTENT_TO_BE_PROCESSED)
                 kwargs = dict(
                     folder=folder,
                     category=category,

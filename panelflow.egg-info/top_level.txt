@@ -1,7 +1,6 @@
 chat_bot_ui_handler_logs
 panelflow
-panels_to_be_processed
-panels_to_be_processed (Copy 1)
+content_to_be_processed
 remotion-comic
 temp
 temp_aistudio_ui_handler
