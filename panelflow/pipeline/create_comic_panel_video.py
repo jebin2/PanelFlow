@@ -765,7 +765,7 @@ class ComicVideoPipeline:
 	def caption_generator(self, narration_text):
 		output_path = f"{self.config.page_specific_dir}/caption_generator.json"
 
-		captionGen = MultiTypeCaptionGenerator(frame_base_path=config.BASE_PATH, cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, QwenUIChat, BingUIChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
+		captionGen = MultiTypeCaptionGenerator(frame_base_path=config.BASE_PATH, cache_path=self.config.page_specific_dir, sources=[GoogleAISearchChat, BraveAISearch, DuckDuckGoAISearch], FYI=self.config.category_obj.get_fyi(self.config.comic_title))
 
 		if utils.file_exists(output_path) and utils.is_valid_json(output_path):
 			with open(output_path, "r", encoding="utf-8") as f:
