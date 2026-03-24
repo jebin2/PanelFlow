@@ -2,9 +2,9 @@ import React from "react";
 import { AbsoluteFill, Composition, Sequence } from "remotion";
 import { ComicManifest } from "./types";
 import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
-import { ProgressBar, TitleCard } from "remotion-animation-kit";
+import { ProgressBar, TitleCard, getTitleCardDuration } from "remotion-animation-kit";
 
-const TITLE_CARD_FRAMES = 60;
+const TITLE_CARD_FRAMES = getTitleCardDuration(24);
 
 const defaultManifest: ComicManifest = {
   fps: 24,
