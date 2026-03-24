@@ -54,3 +54,5 @@ temp_dir/
 content_to_be_processed*/
 node_modules/
 remotion-comic/public/render_assets
+remotion-comic/public/sfx
+remotion-comic/public/fonts
