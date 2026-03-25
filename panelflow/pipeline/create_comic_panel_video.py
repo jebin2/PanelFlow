@@ -32,7 +32,6 @@ import difflib
 class Config:
 	"""Configuration settings for the comic-to-video pipeline."""
 	comic_title: str = ""
-	main_file_name: str = ""
 	comic_image: str = ""
 	distance_threshold: int = 70
 	vertical_threshold: int = 30
@@ -784,7 +783,7 @@ class ComicVideoPipeline:
 		)
 
 		if len([extract_scene for extract_scene in captions if extract_scene.get("scene_caption") is None or str(extract_scene.get("scene_caption", "")).strip() == ""]) > 0:
-			raise Exception(f"Failed to generate captions for {self.config.main_file_name}")
+			raise Exception(f"Failed to generate captions")
 		else:
 			with open(output_path, "w", encoding="utf-8") as f:
 				json.dump(captions, f, indent=4, ensure_ascii=False)

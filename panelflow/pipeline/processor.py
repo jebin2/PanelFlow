@@ -33,7 +33,7 @@ class PanelProcessor(PipelineBase):
     # ------------------------------------------------------------------ step 0
 
     def _get_panel_files(self):
-        files = sorted(utils.list_files(self.panels_dir))
+        files = sorted(set(utils.list_files(self.panels_dir)))
         files = [f for f in files if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
         if not files and os.path.exists(self.cbz_path):
             logger_config.info("Extracting CBZ")
@@ -44,7 +44,7 @@ class PanelProcessor(PipelineBase):
                         dest = os.path.join(self.panels_dir, os.path.basename(member))
                         with z.open(member) as src, open(dest, 'wb') as dst:
                             dst.write(src.read())
-            files = sorted(utils.list_files(self.panels_dir))
+            files = sorted(set(utils.list_files(self.panels_dir)))
             files = [f for f in files if f.lower().endswith(('.jpg', '.jpeg', '.png', '.webp'))]
         return files
 
@@ -53,7 +53,6 @@ class PanelProcessor(PipelineBase):
     def get_page_review(self):
         files = self._get_panel_files()
         file_len = len(files)
-
         review_responses_json = self.load_review_responses_json_path()
         review_history_pkl = self.load_review_history_pkl()
 
@@ -313,8 +312,9 @@ class PanelProcessor(PipelineBase):
         review_responses = self.sanitise_sentences()
 
         for i, moment in enumerate(review_responses):
-            if not utils.file_exists(moment["key_moment"]):
-                raise ValueError(f"page {i+1}: key_moment not found: {moment['key_moment']}")
+            image_path = f'{config.CONTENT_TO_BE_PROCESSED}/{moment["key_moment"]}'
+            if not utils.file_exists(image_path):
+                raise ValueError(f"page {i+1}: key_moment not found: {moment}")
             logger_config.info(f"create_sentence_clips page {i+1}/{len(review_responses)}", overwrite=True)
             impact = f'{self.category.get_welcome_phrase()} {moment["impact"]}' if i == 0 else moment["impact"]
             if i + 1 == len(review_responses):
@@ -329,7 +329,6 @@ class PanelProcessor(PipelineBase):
             if utils.file_exists(video_path):
                 continue
 
-            image_path = moment["key_moment"]
             split_dir = os.path.join(page_dir, f"split_{i+1:04d}")
             if i != 0:
                 self._split_comic_page(image_path, page_dir, split_dir)
@@ -347,11 +346,11 @@ class PanelProcessor(PipelineBase):
                     utils.trim_silence(audio_out)
                     utils.speed_up_audio(audio_out)
                 _, duration, _, _ = common.get_media_metadata(audio_out)
-                resized = os.path.join(page_dir, os.path.basename(moment["key_moment"]))
+                resized = os.path.join(page_dir, os.path.basename(image_path))
                 resize_with_aspect.scale_keep_ratio(
-                    moment["key_moment"], config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=False
+                    image_path, config.IMAGE_SIZE[0], config.IMAGE_SIZE[1], resized, blur_bg=False
                 )
-                with Image.open(moment["key_moment"]) as img:
+                with Image.open(image_path) as img:
                     orig_w, orig_h = img.size
 
                 ratio = min(config.IMAGE_SIZE[0] / orig_w, config.IMAGE_SIZE[1] / orig_h)
@@ -374,7 +373,6 @@ class PanelProcessor(PipelineBase):
                 common.delete_matching_videos(page_dir, f"{i+1:04d}_*.mp4")
                 cvp_config = CVP_Config()
                 cvp_config.comic_title = self.folder_name
-                cvp_config.main_file_name = moment["key_moment"]
                 cvp_config.comic_image = image_path
                 cvp_config.output_video = video_path
                 cvp_config.page_specific_dir = page_dir

@@ -32,7 +32,7 @@ def deduplicate_history(history):
             text = user_entry.parts[0].text
             if text in seen:
                 continue
-            if len(model_entry.parts) == 0:
+            if not model_entry.parts or len(model_entry.parts) == 0:
                 break
             seen.add(text)
             user_entry.parts = [user_entry.parts[0]]  # keep only first part

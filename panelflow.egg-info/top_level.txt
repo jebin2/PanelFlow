@@ -1,7 +1,4 @@
-chat_bot_ui_handler_logs
+bg_music
 panelflow
-content_to_be_processed
 remotion-comic
-temp
-temp_aistudio_ui_handler
 test_images
