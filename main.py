@@ -57,6 +57,8 @@ def main():
         if entry.name.startswith(('thread_id_', 'temp', 'chat_bot_ui_handler_logs')) and entry.is_dir():
             utils.remove_directory(entry.path)
 
+    os.makedirs(config.TEMP_PATH, exist_ok=True)
+
     while True:
         creator = None
         try:
