@@ -463,10 +463,10 @@ class PanelProcessor(PipelineBase):
                         })
 
             panels.append({
-                "imageSrc": f"render_assets/{utils.to_rel(dest_img, config.BASE_PATH)}",
+                "imageSrc": f"render_assets/{utils.to_rel(dest_img, config.CONTENT_TO_BE_PROCESSED)}",
                 "originalWidth": orig_w,
                 "originalHeight": orig_h,
-                "audioSrc": f"render_assets/{utils.to_rel(audio_path, config.BASE_PATH)}",
+                "audioSrc": f"render_assets/{utils.to_rel(audio_path, config.CONTENT_TO_BE_PROCESSED)}",
                 "durationInSeconds": duration + TRANSITION_DURATION,
                 "bubbleBbox": [0, 0, 1080, 1920],
                 "narrationText": "",
@@ -615,8 +615,8 @@ class PanelProcessor(PipelineBase):
             return
         utils.remove_directory(split_folder)
         utils.create_directory(split_folder)
-        config_data = {"input_path": utils.to_abs(image_path, config.BASE_PATH), "output_folder": utils.to_abs(split_folder, config.BASE_PATH)}
-        config_path = utils.to_abs(os.path.join(output_dir, 'split_comic_config.json'), config.BASE_PATH)
+        config_data = {"input_path": utils.to_abs(image_path, config.CONTENT_TO_BE_PROCESSED), "output_folder": utils.to_abs(split_folder, config.CONTENT_TO_BE_PROCESSED)}
+        config_path = utils.to_abs(os.path.join(output_dir, 'split_comic_config.json'), config.CONTENT_TO_BE_PROCESSED)
         with open(config_path, 'w') as f:
             json.dump(config_data, f, indent=4)
 
@@ -644,15 +644,15 @@ class PanelProcessor(PipelineBase):
         shutil.copy(input_path, output_path)
         return
 
-        abs_input_path = utils.to_abs(input_path, config.BASE_PATH)
-        abs_output_path = utils.to_abs(output_path, config.BASE_PATH)
+        abs_input_path = utils.to_abs(input_path, config.CONTENT_TO_BE_PROCESSED)
+        abs_output_path = utils.to_abs(output_path, config.CONTENT_TO_BE_PROCESSED)
 
         # Use fixed bg music track if available, otherwise fall back to musicgen
         if config.BG_MUSIC_PATH and utils.file_exists(config.BG_MUSIC_PATH):
             abs_musicgen_path = config.BG_MUSIC_PATH
             logger_config.info(f"Using fixed bg music: {abs_musicgen_path}")
         else:
-            abs_musicgen_path = utils.to_abs(self.musicgen_path, config.BASE_PATH)
+            abs_musicgen_path = utils.to_abs(self.musicgen_path, config.CONTENT_TO_BE_PROCESSED)
             if not reuse_musicgen and not utils.file_exists(self.musicgen_path):
                 recap_text = self.get_all_page_recap().get("recap_text", "")
                 subprocess.run(

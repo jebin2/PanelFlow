@@ -10,6 +10,8 @@ find /tmp -maxdepth 1 -name "neko_port_state.*" -mmin +720 -exec sudo rm -f {} +
 
 # Kill any existing instance
 pkill -f "panelflow_env/.*python main.py $*$" 2>/dev/null || true
+sleep 1
+find /tmp -maxdepth 1 -name "panelflow_*.lock" -exec rm -f {} +
 
 # CPU affinity setup: reserves 2 cores, uses remaining cores
 RESERVED=2

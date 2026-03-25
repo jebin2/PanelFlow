@@ -1,12 +1,19 @@
 from abc import ABC, abstractmethod
+import hashlib
 import json
 import os
 import pickle
+import tempfile
 from custom_logger import logger_config
 from jebin_lib import utils
 from .categories.base import CategoryBase
 from . import config
 from panelflow.pipeline import gemini_history_processor
+
+
+def _lock_path_for(folder: str) -> str:
+    key = hashlib.md5(os.path.abspath(folder).encode()).hexdigest()
+    return os.path.join(tempfile.gettempdir(), f"panelflow_{key}.lock")
 
 
 class PipelineBase(ABC):
@@ -16,6 +23,7 @@ class PipelineBase(ABC):
         self.set_all_paths()
 
     def set_all_paths(self):
+        self.folder = utils.to_abs(self.folder, config.CONTENT_TO_BE_PROCESSED)
         self.folder_name = os.path.basename(self.folder)
 
         # ── AI state: three clean JSON files ──────────────────────────────
@@ -82,7 +90,7 @@ class PipelineBase(ABC):
     def save_review_responses(self, data):
         with open(self.review_responses_json_path, 'w') as f:
             json.dump([
-                {**entry, "key_moment": utils.to_rel(entry["key_moment"], config.BASE_PATH)} if "key_moment" in entry else entry
+                {**entry, "key_moment": utils.to_rel(entry["key_moment"], config.CONTENT_TO_BE_PROCESSED)} if "key_moment" in entry else entry
                 for entry in data
             ], f, indent=4, ensure_ascii=False)
 
@@ -131,7 +139,7 @@ class PipelineBase(ABC):
     def save_recap_match(self, data):
         with open(self.recap_match_path, 'w') as f:
             json.dump([
-                {**entry, "img_path": utils.to_rel(entry["img_path"], config.BASE_PATH)} if "img_path" in entry else entry
+                {**entry, "img_path": utils.to_rel(entry["img_path"], config.CONTENT_TO_BE_PROCESSED)} if "img_path" in entry else entry
                 for entry in data
             ], f, indent=4, ensure_ascii=False)
 
@@ -156,6 +164,38 @@ class PipelineBase(ABC):
     def is_processed(self):
         progress_json = self._get_progress()
         return progress_json.get("PROCESSED", False)
+
+    def _acquire_lock(self) -> bool:
+        lock_path = _lock_path_for(self.folder)
+        try:
+            with open(lock_path, 'x') as f:
+                f.write(str(os.getpid()))
+            return True
+        except FileExistsError:
+            try:
+                with open(lock_path) as f:
+                    pid = int(f.read().strip())
+                os.kill(pid, 0)
+                return False
+            except (ProcessLookupError, ValueError, OSError):
+                os.remove(lock_path)
+                return self._acquire_lock()
+
+    def _release_lock(self):
+        lock_path = _lock_path_for(self.folder)
+        try:
+            os.remove(lock_path)
+        except FileNotFoundError:
+            pass
+
+    def run(self):
+        if not self._acquire_lock():
+            logger_config.warning(f"Folder locked by another process, skipping: {self.folder}")
+            return
+        try:
+            self.process()
+        finally:
+            self._release_lock()
 
     @abstractmethod
     def process(self):

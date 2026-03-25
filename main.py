@@ -5,6 +5,7 @@ import gc
 import sys
 import os
 import traceback
+from custom_logger import logger_config
 
 from panelflow import config
 from panelflow.pipeline.processor import PanelProcessor
@@ -27,7 +28,7 @@ class ContentCreator:
                 continue
             for entry in sorted(os.scandir(cat_path), key=lambda e: e.name):
                 if entry.is_dir():
-                    comic_folders.append((utils.to_rel(entry.path, config.BASE_PATH), category))
+                    comic_folders.append((utils.to_rel(entry.path, config.CONTENT_TO_BE_PROCESSED), category))
                 elif entry.name.lower().endswith('.cbz'):
                     folder_name = os.path.splitext(entry.name)[0]
                     folder_path = os.path.join(cat_path, folder_name)
@@ -35,14 +36,15 @@ class ContentCreator:
                     dest = os.path.join(folder_path, entry.name)
                     if not os.path.exists(dest):
                         os.rename(entry.path, dest)
-                    comic_folders.append((utils.to_rel(folder_path, config.BASE_PATH), category))
+                    comic_folders.append((utils.to_rel(folder_path, config.CONTENT_TO_BE_PROCESSED), category))
 
         for idx, (folder, category) in enumerate(comic_folders):
+            instance = None
             try:
                 logger_config.info(f"PanelProcessor {idx+1}/{len(comic_folders)}: {folder}")
                 instance = PanelProcessor(folder=folder, category=category)
                 if instance.allowed_create():
-                    instance.process()
+                    instance.run()
             except Exception as e:
                 logger_config.error(f"Failed: {folder}: {e}\n{traceback.format_exc()}")
             finally:
