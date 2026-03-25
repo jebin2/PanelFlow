@@ -1,43 +1,19 @@
-from jebin_lib import load_env, utils
+from jebin_lib import load_env, utils, ensure_hf_mounted
 load_env()
 
 import gc
 import sys
 import os
-import shutil
 import traceback
 
-from jebin_lib import HFBucketClient
-from custom_logger import logger_config
 from panelflow import config
 from panelflow.pipeline.processor import PanelProcessor
 
+
 class ContentCreator:
 
-    def __init__(self, local_only=True, remote_only=False):
-        self.hf_client = HFBucketClient(bucket_id=config.HF_BUCKET_ID) if config.HF_BUCKET_ID else None
-        self.local_only = local_only
-        self.remote_only = remote_only
-        self.setup()
-
-    def setup(self):
-        if self.hf_client:
-            for category in config.CATEGORY:
-                local_cat_path = os.path.join(config.CONTENT_TO_BE_PROCESSED, category)
-                if self.local_only:
-                    self.hf_client.upload_folder(local_cat_path, category, delete=True)
-                elif self.remote_only:
-                    if os.path.isdir(local_cat_path):
-                        shutil.rmtree(local_cat_path)
-                    self.hf_client.download_folder(category, local_cat_path)
-                else:
-                    self.hf_client.download_folder(category, local_cat_path)
-                    self.hf_client.upload_folder(local_cat_path, category)
-
-    def sync(self, local_path, remote_path):
-        if self.hf_client:
-            self.hf_client.upload_folder(local_path, remote_path)
-
+    def __init__(self):
+        ensure_hf_mounted(config.HF_BUCKET_ID, config.HF_TOKEN, config.HF_MOUNT_PATH)
 
     def run(self):
         if not os.path.isdir(config.CONTENT_TO_BE_PROCESSED):
@@ -63,23 +39,10 @@ class ContentCreator:
 
         for idx, (folder, category) in enumerate(comic_folders):
             try:
-                Pipeline = PanelProcessor
-                logger_config.info(f"{Pipeline.__name__} {idx+1}/{len(comic_folders)}: {folder}")
-
-                remote_path = utils.to_rel(utils.to_abs(folder, config.BASE_PATH), config.CONTENT_TO_BE_PROCESSED)
-                kwargs = dict(
-                    folder=folder,
-                    category=category,
-                    sync_callback=lambda lp=folder, rp=remote_path, sub=None: self.sync(
-                        os.path.join(lp, sub) if sub else lp,
-                        os.path.join(rp, sub) if sub else rp
-                    )
-                )
-
-                instance = Pipeline(**kwargs)
+                logger_config.info(f"PanelProcessor {idx+1}/{len(comic_folders)}: {folder}")
+                instance = PanelProcessor(folder=folder, category=category)
                 if instance.allowed_create():
                     instance.process()
-
             except Exception as e:
                 logger_config.error(f"Failed: {folder}: {e}\n{traceback.format_exc()}")
             finally:
@@ -88,11 +51,8 @@ class ContentCreator:
 def main():
     os.chdir(config.BASE_PATH)
 
-    local_only = '--localonly' in sys.argv
-    remote_only = '--remoteonly' in sys.argv
     one_pass = '--onepass' in sys.argv
 
-    # remove directory start with thread_id_*
     for entry in os.scandir(config.BASE_PATH):
         if entry.name.startswith(('thread_id_', 'temp', 'chat_bot_ui_handler_logs')) and entry.is_dir():
             utils.remove_directory(entry.path)
@@ -100,10 +60,7 @@ def main():
     while True:
         creator = None
         try:
-            creator = ContentCreator(
-                local_only=local_only,
-                remote_only=remote_only
-            )
+            creator = ContentCreator()
             creator.run()
         except Exception as e:
             logger_config.error(f"Failed to process: {e}")

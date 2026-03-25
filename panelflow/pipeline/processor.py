@@ -382,8 +382,6 @@ class PanelProcessor(PipelineBase):
                 cvp_config.category_obj = self.category
                 main_ComicVideoPipeline(impact, cvp_config)
 
-            if self.sync_callback:
-                self.sync_callback(sub=os.path.relpath(page_dir, self.folder))
 
         clips = self._get_ordered_sentence_clips()
         if not clips:
@@ -582,8 +580,6 @@ class PanelProcessor(PipelineBase):
         self.create_shorts_final_video()
         self._create_thumbnail()
         self.category.create_progress_file()
-        if self.sync_callback:
-            self.sync_callback()
 
     # ------------------------------------------------------------------ private helpers
 

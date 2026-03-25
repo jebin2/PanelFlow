@@ -10,11 +10,9 @@ from panelflow.pipeline import gemini_history_processor
 
 
 class PipelineBase(ABC):
-    def __init__(self, folder, category, sync_callback=None):
+    def __init__(self, folder, category):
         self.folder = folder
         self.category = CategoryBase.get_category(category, self)
-        self.sync_callback = sync_callback
-        self._wrap_methods()
         self.set_all_paths()
 
     def set_all_paths(self):
@@ -158,27 +156,6 @@ class PipelineBase(ABC):
     def is_processed(self):
         progress_json = self._get_progress()
         return progress_json.get("PROCESSED", False)
-
-    def _wrap_methods(self):
-        if not self.sync_callback:
-            return
-        for attr_name in dir(self.__class__):
-            if attr_name.startswith('_') or attr_name in [
-                "is_processed", "set_all_paths", "allowed_create", "process"
-            ]:
-                continue
-            attr = getattr(self, attr_name)
-            if callable(attr):
-                setattr(self, attr_name, self._create_sync_wrapper(attr))
-
-    def _create_sync_wrapper(self, func):
-        def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            if self.sync_callback:
-                logger_config.info(f"Sync callback for {func.__name__}")
-                self.sync_callback()
-            return result
-        return wrapper
 
     @abstractmethod
     def process(self):
