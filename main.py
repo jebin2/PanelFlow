@@ -1,4 +1,4 @@
-from jebin_lib import load_env, utils, ensure_hf_mounted, sync_to_hf
+from jebin_lib import load_env, utils, ensure_hf_mounted, sync_to_hf, sync_from_hf
 load_env()
 
 import gc
@@ -53,6 +53,10 @@ class ContentCreator:
 
 def main():
     os.chdir(config.BASE_PATH)
+
+    if '--syncfromhf' in sys.argv:
+        sync_from_hf(config.CONTENT_TO_BE_PROCESSED, config.HF_BUCKET_ID, config.HF_TOKEN)
+        return
 
     one_pass = '--onepass' in sys.argv
 
