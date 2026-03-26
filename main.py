@@ -1,4 +1,4 @@
-from jebin_lib import load_env, utils, ensure_hf_mounted
+from jebin_lib import load_env, utils, ensure_hf_mounted, sync_to_hf
 load_env()
 
 import gc
@@ -44,6 +44,7 @@ class ContentCreator:
                 logger_config.info(f"PanelProcessor {idx+1}/{len(comic_folders)}: {folder}")
                 instance = PanelProcessor(folder=folder, category=category)
                 if instance.allowed_create():
+                    sync_to_hf(config.CONTENT_TO_BE_PROCESSED, config.HF_MOUNT_PATH, subpath=folder)
                     instance.run()
             except Exception as e:
                 logger_config.error(f"Failed: {folder}: {e}\n{traceback.format_exc()}")

@@ -14,9 +14,8 @@ HF_BUCKET_ID = os.getenv("HF_BUCKET_ID")
 HF_TOKEN = os.getenv("HF_TOKEN")
 HF_MOUNT_PATH = os.getenv("HF_MOUNT_PATH")
 
-CONTENT_TO_BE_PROCESSED = HF_MOUNT_PATH if HF_MOUNT_PATH else os.path.join(BASE_PATH, 'content_to_be_processed')
-if not HF_MOUNT_PATH:
-    os.makedirs(CONTENT_TO_BE_PROCESSED, exist_ok=True)
+CONTENT_TO_BE_PROCESSED = os.path.join(BASE_PATH, 'content_to_be_processed')
+os.makedirs(CONTENT_TO_BE_PROCESSED, exist_ok=True)
 
 COMIC="comic"
 COMIC_DIR=f"{CONTENT_TO_BE_PROCESSED}/{COMIC}"
