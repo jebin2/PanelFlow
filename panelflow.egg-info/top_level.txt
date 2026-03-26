@@ -1,4 +1,10 @@
 bg_music
+chat_bot_ui_handler_logs
 panelflow
 remotion-comic
+temp
+temp_gemini_ui_chat
 test_images
+thread_id_139362034767552_duck_duck_go_ai_search
+thread_id_139363356763840_brave_ai_search
+thread_id_139363365156544_search_google_ai_mode
