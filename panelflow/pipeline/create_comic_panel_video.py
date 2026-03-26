@@ -772,7 +772,7 @@ class ComicVideoPipeline:
 		else:
 			frame_paths = [
 				{
-					"frame_path": [file]
+					"frame_path": [utils.to_rel(file, config.CONTENT_TO_BE_PROCESSED)]
 				}
 				for file in utils.list_files(self.config.split_output_dir)
 				if "_panel_" in os.path.basename(file)
