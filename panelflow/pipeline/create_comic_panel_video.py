@@ -1039,8 +1039,8 @@ class ComicVideoPipeline:
 			entry = {
 				"imageSrc": "render_assets/" + utils.to_rel(p["image_path"], config.CONTENT_TO_BE_PROCESSED) if p.get("image_path") else None,
 				"audioSrc": "render_assets/" + utils.to_rel(audio_path, config.CONTENT_TO_BE_PROCESSED) if audio_path else None,
-				"originalWidth": Image.open(p["image_path"]).width if p.get("image_path") else 0,
-				"originalHeight": Image.open(p["image_path"]).height if p.get("image_path") else 0,
+				"originalWidth": Image.open(utils.to_abs(p["image_path"], config.CONTENT_TO_BE_PROCESSED)).width if p.get("image_path") else 0,
+				"originalHeight": Image.open(utils.to_abs(p["image_path"], config.CONTENT_TO_BE_PROCESSED)).height if p.get("image_path") else 0,
 				"durationInSeconds": final_duration,
 				"bubbleBbox": p.get("bubble_bbox", []),
 				"narrationText": p.get("narration_text", ""),

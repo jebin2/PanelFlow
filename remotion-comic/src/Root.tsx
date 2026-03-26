@@ -27,15 +27,19 @@ const defaultManifest: ComicManifest = {
 
 const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => {
   const isPortrait = manifest.height > manifest.width;
+  const showTitle = isPortrait;
+  const titleOffset = showTitle ? TITLE_CARD_FRAMES : 0;
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
-      <Sequence from={0} durationInFrames={TITLE_CARD_FRAMES} layout="none">
-        <TitleCard
-          title={manifest.comicTitle}
-          media={manifest.panels.map((p) => ({ imageSrc: p.imageSrc }))}
-        />
-      </Sequence>
-      <Sequence from={TITLE_CARD_FRAMES} layout="none">
+      {showTitle && (
+        <Sequence from={0} durationInFrames={TITLE_CARD_FRAMES} layout="none">
+          <TitleCard
+            title={manifest.comicTitle}
+            media={manifest.panels.map((p) => ({ imageSrc: p.imageSrc }))}
+          />
+        </Sequence>
+      )}
+      <Sequence from={titleOffset} layout="none">
         <PanelSequences panels={manifest.panels} fps={manifest.fps} />
       </Sequence>
       {isPortrait && <ProgressBar />}
@@ -55,11 +59,13 @@ export const RemotionRoot: React.FC = () => {
       durationInFrames={TITLE_CARD_FRAMES + getTotalFrames(defaultManifest.panels, defaultManifest.fps)}
       calculateMetadata={({ props }) => {
         const { manifest } = props;
+        const isPortrait = manifest.height > manifest.width;
+        const titleFrames = isPortrait ? TITLE_CARD_FRAMES : 0;
         return {
           fps: manifest.fps,
           width: manifest.width,
           height: manifest.height,
-          durationInFrames: TITLE_CARD_FRAMES + getTotalFrames(manifest.panels, manifest.fps),
+          durationInFrames: titleFrames + getTotalFrames(manifest.panels, manifest.fps),
         };
       }}
     />
