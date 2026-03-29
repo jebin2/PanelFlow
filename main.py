@@ -4,6 +4,7 @@ load_env()
 import gc
 import sys
 import os
+import time
 import traceback
 from custom_logger import logger_config
 
@@ -27,6 +28,11 @@ class ContentCreator:
                 if entry.is_dir():
                     comic_folders.append((utils.to_rel(entry.path, config.CONTENT_TO_BE_PROCESSED), category))
                 elif entry.name.lower().endswith('.cbz'):
+                    size1 = os.path.getsize(entry.path)
+                    time.sleep(5)
+                    if os.path.getsize(entry.path) != size1:
+                        logger_config.info(f"File still being copied, skipping: {entry.path}")
+                        continue
                     folder_name = os.path.splitext(entry.name)[0]
                     folder_path = os.path.join(cat_path, folder_name)
                     utils.create_directory(folder_path)
