@@ -1,4 +1,4 @@
-from jebin_lib import load_env, utils, ensure_hf_mounted, sync_to_hf, sync_from_hf
+from jebin_lib import load_env, utils
 load_env()
 
 import gc
@@ -12,9 +12,6 @@ from panelflow.pipeline.processor import PanelProcessor
 
 
 class ContentCreator:
-
-    def __init__(self):
-        ensure_hf_mounted(config.HF_BUCKET_ID, config.HF_TOKEN, config.HF_MOUNT_PATH)
 
     def run(self):
         if not os.path.isdir(config.CONTENT_TO_BE_PROCESSED):
@@ -44,7 +41,6 @@ class ContentCreator:
                 logger_config.info(f"PanelProcessor {idx+1}/{len(comic_folders)}: {folder}")
                 instance = PanelProcessor(folder=folder, category=category)
                 if instance.allowed_create():
-                    sync_to_hf(config.CONTENT_TO_BE_PROCESSED, config.HF_MOUNT_PATH, subpath=folder)
                     instance.run()
             except Exception as e:
                 logger_config.error(f"Failed: {folder}: {e}\n{traceback.format_exc()}")
@@ -53,10 +49,6 @@ class ContentCreator:
 
 def main():
     os.chdir(config.BASE_PATH)
-
-    if '--syncfromhf' in sys.argv:
-        sync_from_hf(config.CONTENT_TO_BE_PROCESSED, config.HF_BUCKET_ID, config.HF_TOKEN)
-        return
 
     one_pass = '--onepass' in sys.argv
 
