@@ -51,11 +51,11 @@ class CategoryBase(ABC):
     def _get_used_publish_dates(self):
         """Return set of dates (YYYY-MM-DD UTC) already scheduled in this category."""
         used = set()
-        category_folder = os.path.dirname(self.processor_obj.file_parent_dir_path)
+        category_folder = os.path.dirname(self.processor_obj.folder)
         if not os.path.isdir(category_folder):
             return used
         for entry in os.scandir(category_folder):
-            if not entry.is_dir() or entry.path == self.processor_obj.file_parent_dir_path:
+            if not entry.is_dir() or entry.path == self.processor_obj.folder:
                 continue
             progress_file = os.path.join(entry.path, "progress.json")
             if not utils.file_exists(progress_file):
