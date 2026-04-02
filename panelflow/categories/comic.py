@@ -26,7 +26,7 @@ class Comic(CategoryBase):
         return f'This is an Comic panel from the comic called {file_base_name_without_ext}'
 
     def get_cred_token_file_name(self):
-        return ("ytcredentials.json", "yttoken.json")
+        return ("ytcrcredentials.json", "ytcrtoken.json")
 
     def get_yt_description(self):
         return (
