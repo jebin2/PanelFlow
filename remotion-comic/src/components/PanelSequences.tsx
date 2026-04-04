@@ -32,10 +32,20 @@ function resolveTransition(panel: PanelData, isFirst: boolean): PanelTransition 
   return t;
 }
 
+/** Returns the effective transition for panel[i], accounting for duration constraints. */
+function effectiveTransition(panels: PanelData[], i: number, fps: number): PanelTransition {
+  const raw = resolveTransition(panels[i], i === 0);
+  if (raw === "none") return "none";
+  const frames = Math.ceil(panels[i].durationInSeconds * fps);
+  const prevFrames = Math.ceil(panels[i - 1].durationInSeconds * fps);
+  if (frames < TRANSITION_FRAMES || prevFrames < TRANSITION_FRAMES) return "none";
+  return raw;
+}
+
 export function getTotalFrames(panels: PanelData[], fps: number): number {
   return panels.reduce((sum, p, i) => {
     const frames = Math.ceil(p.durationInSeconds * fps);
-    const hasTransition = i > 0 && p.transitionIn && p.transitionIn !== "none";
+    const hasTransition = effectiveTransition(panels, i, fps) !== "none";
     return sum + frames - (hasTransition ? TRANSITION_FRAMES : 0);
   }, 0);
 }
@@ -54,7 +64,7 @@ export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
   panels.forEach((panel, i) => {
     panelStartFrames.push(cursor);
     const frames = Math.ceil(panel.durationInSeconds * fps);
-    const hasTransition = i > 0 && resolveTransition(panel, false) !== "none";
+    const hasTransition = effectiveTransition(panels, i, fps) !== "none";
     cursor += frames - (hasTransition ? TRANSITION_FRAMES : 0);
   });
 
@@ -63,7 +73,7 @@ export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
       <TransitionSeries>
         {panels.map((panel, i) => {
           const durationInFrames = Math.ceil(panel.durationInSeconds * fps);
-          const transition = resolveTransition(panel, i === 0);
+          const transition = effectiveTransition(panels, i, fps);
 
           return (
             <React.Fragment key={i}>
@@ -85,7 +95,7 @@ export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
           to avoid audio quirks inside TransitionSeries.Sequence */}
       {panels.map((panel, i) => {
         if (i === 0) return null;
-        const transition = resolveTransition(panel, false);
+        const transition = effectiveTransition(panels, i, fps);
         const sfxInfo = TRANSITION_SFX[transition];
         if (!sfxInfo) return null;
         const startFrame = panelStartFrames[i];
