@@ -1055,9 +1055,12 @@ class ComicVideoPipeline:
 			base_duration = p.get("duration", 0)
 
 			next_transition_in = transition_by_index.get(i + 1, "none") if (i + 1) < len(panels) else "none"
+			current_transition_in = transition_by_index.get(i, "none") if i > 0 else "none"
 			final_duration = base_duration
 			if next_transition_in != "none":
 				final_duration += TRANSITION_DURATION
+			if current_transition_in != "none":
+				final_duration = max(final_duration, TRANSITION_DURATION)
 
 			entry = {
 				"imageSrc": "render_assets/" + utils.to_rel(p["image_path"], config.CONTENT_TO_BE_PROCESSED) if p.get("image_path") else None,
