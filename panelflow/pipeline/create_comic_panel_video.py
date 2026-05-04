@@ -232,9 +232,32 @@ class NarrationMapper:
 	def load_similarity_model(self):
 		"""Load only the sentence transformer model."""
 		if self.model is None:
-			from sentence_transformers import SentenceTransformer
+			import torch
+			import torch.nn.functional as F
+			from transformers import AutoTokenizer, AutoModel
 			logger_config.info("Loading SentenceTransformer model...")
-			self.model = SentenceTransformer(self.config.similarity_model, device=utils.get_device())
+			device = utils.get_device()
+			tokenizer = AutoTokenizer.from_pretrained(self.config.similarity_model)
+			_model = AutoModel.from_pretrained(self.config.similarity_model).to(device)
+
+			class _Encoder:
+				def __init__(self, tok, mdl, dev):
+					self.tokenizer = tok
+					self.model = mdl
+					self.device = dev
+
+				def encode(self, texts, convert_to_tensor=False):
+					if isinstance(texts, str):
+						texts = [texts]
+					encoded = self.tokenizer(texts, padding=True, truncation=True, return_tensors='pt').to(self.device)
+					with torch.no_grad():
+						output = self.model(**encoded)
+					mask = encoded['attention_mask'].unsqueeze(-1).expand(output.last_hidden_state.size()).float()
+					embeddings = torch.sum(output.last_hidden_state * mask, 1) / torch.clamp(mask.sum(1), min=1e-9)
+					embeddings = F.normalize(embeddings, p=2, dim=1)
+					return embeddings if convert_to_tensor else embeddings.cpu().numpy()
+
+			self.model = _Encoder(tokenizer, _model, device)
 
 	def cleanup_similarity_model(self):
 		"""Clean up similarity model to free CUDA memory."""
@@ -276,9 +299,9 @@ class NarrationMapper:
 				bubble_embeddings = self.model.encode(bubble_texts, convert_to_tensor=True)
 				narration_embeddings = self.model.encode(narration_lines, convert_to_tensor=True)
 				
-				# Calculate similarity
-				from sentence_transformers import util
-				cosine_scores = util.cos_sim(narration_embeddings, bubble_embeddings)
+				# Calculate similarity (embeddings are L2-normalized, so mm == cosine sim)
+				import torch
+				cosine_scores = torch.mm(narration_embeddings, bubble_embeddings.T)
 			
 			mappings = []
 			for idx, narration in tqdm(enumerate(narration_lines), total=len(narration_lines), desc="Processing narration"):
