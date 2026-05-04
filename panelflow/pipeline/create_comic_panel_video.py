@@ -42,7 +42,7 @@ class Config:
 	zoom_factor: float = 1.1
 	output_video: str = f"{config.TEMP_PATH}/comic_focus.mp4"
 	min_text_length: int = 2
-	similarity_model: str = 'all-mpnet-base-v2'
+	similarity_model: str = 'sentence-transformers/all-mpnet-base-v2'
 	split_output_dir: str = '',
 	pattern = re.compile(r"\d+_panel_\((\d+), (\d+), (\d+), (\d+)\)\.jpg")
 	page_specific_dir: str = '', # should be parent for all
