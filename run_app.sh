@@ -1,22 +1,46 @@
 #!/bin/bash
 
-find /tmp -maxdepth 1 -name "browser_manager_*" -type d -mmin +720 -exec sudo rm -rf {} +
-find /tmp -maxdepth 1 -name "org.chromium.Chromium*" -type d -mmin +720 -exec sudo rm -rf {} +
-find /tmp -maxdepth 1 -name "hffs-*" -mmin +720 -exec sudo rm -rf {} +
-find /tmp -maxdepth 1 -name "perf-*.map" -mmin +720 -exec sudo rm -f {} +
-find /tmp -maxdepth 1 -name "pip-unpack-*" -mmin +720 -exec sudo rm -rf {} +
-find /tmp -maxdepth 1 -name "playwright-artifacts-*" -mmin +720 -exec sudo rm -rf {} +
-find /tmp -maxdepth 1 -name "neko_port_state.*" -mmin +720 -exec sudo rm -f {} +
+set -uo pipefail
+
+cleanup() {
+    local pattern="$1"
+    local type="$2"
+    local remove_cmd="$3"
+
+    echo "Cleaning: $pattern"
+
+    if [ -n "$type" ]; then
+        find /tmp -maxdepth 1 -name "$pattern" -type "$type" -mmin +720 -exec $remove_cmd {} + \
+            || echo "Failed to clean: $pattern"
+    else
+        find /tmp -maxdepth 1 -name "$pattern" -mmin +720 -exec $remove_cmd {} + \
+            || echo "Failed to clean: $pattern"
+    fi
+}
+
+cleanup "browser_manager_*" "d" "rm -rf"
+cleanup "org.chromium.Chromium*" "d" "rm -rf"
+cleanup "hffs-*" "" "rm -rf"
+cleanup "perf-*.map" "" "rm -f"
+cleanup "pip-unpack-*" "" "rm -rf"
+cleanup "playwright-artifacts-*" "" "rm -rf"
+cleanup "neko_port_state.*" "" "rm -f"
+
+echo "Cleanup completed."
 
 # Kill any existing instance
-pkill -f "panelflow_env/.*python main.py $*$" 2>/dev/null || true
+pkill -f "panelflow_env/.*python main.py" 2>/dev/null || true
 sleep 1
-find /tmp -maxdepth 1 -name "panelflow_*.lock" -exec rm -f {} +
 
-# CPU affinity setup: reserves 2 cores, uses remaining cores
+# Remove stale lock files
+find /tmp -maxdepth 1 -name "panelflow_*.lock" -exec rm -f {} + \
+    || echo "Failed to remove lock files"
+
+# CPU affinity setup: reserve 2 cores, use remaining
 RESERVED=2
 TOTAL=$(nproc)
 THREADS=$((TOTAL - RESERVED))
+
 CORE_LIST=""
 for ((i=RESERVED; i<TOTAL; i++)); do
     CORE_LIST="${CORE_LIST:+$CORE_LIST,}$i"
@@ -30,4 +54,5 @@ export OPENBLAS_NUM_THREADS=$THREADS
 
 # Run with CPU affinity and nice priority
 PYTHON="${PYENV_ROOT:-$HOME/.pyenv}/versions/PanelFlow_env/bin/python"
+
 exec taskset -c "$CORE_LIST" nice -n 15 "$PYTHON" main.py "$@"
