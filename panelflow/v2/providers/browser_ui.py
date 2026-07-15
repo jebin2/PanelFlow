@@ -7,23 +7,22 @@ exactly what we put in the prompt, never leftovers from earlier pages.
 
 Handlers, selected with PANELFLOW_VISION_PROVIDER:
 
+  google_ai  Google Search AI Mode. The default. It has no system-instructions
+             field, so BaseUIChat prepends the whole system prompt into a search
+             textarea (~4.3k chars for 1.3) — if answers start coming back
+             truncated or as prose, that is the first thing to suspect.
   aistudio   AI Studio on gemini-3.1-pro-preview. Fills the real System
-             Instructions box and its prompt input takes long input. Default.
-  google_ai  Google Search AI Mode. It does accept an image, but it has no
-             system-instructions field, so BaseUIChat prepends the entire system
-             prompt into a search textarea (~4.3k chars for 1.3), and its
-             answers are prose-shaped rather than JSON. Expect truncation and
-             parse failures; measure before trusting it.
+             Instructions box and takes long prompts comfortably.
 """
 import os
 
 from custom_logger import logger_config
 
 HANDLERS = {
-    "aistudio": "AIStudioUIChat",
     "google_ai": "GoogleAISearchChat",
+    "aistudio": "AIStudioUIChat",
 }
-HANDLER = os.environ.get("PANELFLOW_VISION_PROVIDER", "aistudio")
+HANDLER = os.environ.get("PANELFLOW_VISION_PROVIDER", "google_ai")
 
 _CHAT = None
 

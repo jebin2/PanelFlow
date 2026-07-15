@@ -120,3 +120,10 @@ def test_unknown_handler_is_rejected(fake_browser, monkeypatch):
     monkeypatch.setattr(browser_ui, "HANDLER", "not_a_handler")
     with pytest.raises(ValueError, match="Unknown vision handler"):
         browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
+
+
+def test_default_handler_is_google_ai():
+    assert browser_ui.HANDLER in browser_ui.HANDLERS
+    import os
+    if "PANELFLOW_VISION_PROVIDER" not in os.environ:
+        assert browser_ui.HANDLER == "google_ai"

@@ -4,12 +4,12 @@ Text work goes to TTT (our own box, free); vision work needs a model that can
 see, which TTT (Qwen3.5:4b via Ollama) cannot.
 
   PANELFLOW_TEXT_PROVIDER    ttt (default) | gemini
-  PANELFLOW_VISION_PROVIDER  aistudio (default) | google_ai | gemini
+  PANELFLOW_VISION_PROVIDER  google_ai (default) | aistudio | gemini
 """
 import os
 
 TEXT_PROVIDER = os.environ.get("PANELFLOW_TEXT_PROVIDER", "ttt")
-VISION_PROVIDER = os.environ.get("PANELFLOW_VISION_PROVIDER", "aistudio")
+VISION_PROVIDER = os.environ.get("PANELFLOW_VISION_PROVIDER", "google_ai")
 
 
 def text():
