@@ -26,6 +26,7 @@ class Assets:
         self.book_path = os.path.join(self.assets_dir, "book.json")
         self.characters_path = os.path.join(self.assets_dir, "characters.json")
         self.cbz_path = os.path.join(self.folder, f"{self.name}.cbz")
+        self.direction_dir = os.path.join(self.folder, "direction")
 
     def page_dir(self, index):
         return os.path.join(self.pages_dir, f"{index:04d}")
@@ -58,6 +59,21 @@ class Assets:
 
     def save_page(self, index, data):
         jsonio.write(self.page_json_path(index), data)
+
+    # ------------------------------------------------------------------ stage 2
+
+    def direction_path(self, target):
+        return os.path.join(self.direction_dir, f"{target}.json")
+
+    def load_direction(self, target):
+        return jsonio.read(self.direction_path(target), {})
+
+    def save_direction(self, target, data):
+        jsonio.write(self.direction_path(target), data)
+
+    def stage1_complete(self):
+        """The gate Stage 2 checks: 1.6 passed, so the assets are consistent."""
+        return bool(self.load_book().get("analysis", {}).get("completed_at"))
 
     def page_indices(self):
         """Discovered from disk — page dirs are the source of truth, book.json's
