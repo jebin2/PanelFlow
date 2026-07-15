@@ -14,6 +14,7 @@ import shlex
 import shutil
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
 
 from custom_logger import logger_config
 
@@ -81,23 +82,33 @@ def _split_page(assets, index, page, reading_direction):
     shutil.rmtree(panels_dir, ignore_errors=True)
     os.makedirs(panels_dir, exist_ok=True)
 
-    crashed = 0
-    try:
-        raw_dir = _run_extractor(assets.page_image(index))
-        bboxes = _parse_bboxes(raw_dir)
-    except Exception as e:
-        logger_config.warning(f"1.2 extractor failed on page {index}, using whole page: {e}")
-        raw_dir, bboxes, crashed = None, [], 1
+    # OCR only needs the page image, same as the extractor, and neither uses the
+    # other's answer — they meet below, where each panel claims the boxes inside
+    # it. So start OCR first and let it wait on the network while the extractor
+    # has the CPU: its ~18s hides inside the extractor's ~30s instead of being
+    # added to it.
+    with ThreadPoolExecutor(max_workers=1) as pool:
+        pending_ocr = pool.submit(_ocr_lines, assets, index)
 
-    if bboxes:
-        panels = _place_panels(raw_dir, bboxes, panels_dir, reading_direction)
-    else:
-        # Normal for covers and splashes: the extractor drops panels covering
-        # ~the whole page, so it legitimately returns nothing for them.
-        logger_config.info(f"1.2 page {index}: no panels found, using the whole page")
-        panels = [_whole_page_panel(assets, index, page, panels_dir)]
+        crashed = 0
+        try:
+            raw_dir = _run_extractor(assets.page_image(index))
+            bboxes = _parse_bboxes(raw_dir)
+        except Exception as e:
+            logger_config.warning(f"1.2 extractor failed on page {index}, using whole page: {e}")
+            raw_dir, bboxes, crashed = None, [], 1
 
-    ocr_lines = _ocr_lines(assets, index)
+        if bboxes:
+            panels = _place_panels(raw_dir, bboxes, panels_dir, reading_direction)
+        else:
+            # Normal for covers and splashes: the extractor drops panels covering
+            # ~the whole page, so it legitimately returns nothing for them.
+            logger_config.info(f"1.2 page {index}: no panels found, using the whole page")
+            panels = [_whole_page_panel(assets, index, page, panels_dir)]
+
+        # _ocr_lines swallows its own failures, so this cannot raise.
+        ocr_lines = pending_ocr.result()
+
     regions = ocr.group([line["box"] for line in ocr_lines])
     for panel in panels:
         panel["text_regions"] = [r for r in regions if _inside(r, panel["bbox"])]
