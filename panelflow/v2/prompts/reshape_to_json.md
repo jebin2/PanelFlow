@@ -35,7 +35,6 @@ what is there and map it across.
       "intensity": 1,
       "skippable": false,
       "focal_point": [0.5, 0.5],
-      "text_regions": [[0, 0, 0, 0]],
       "characters": [{"ref": "", "confidence": "", "evidence": ""}],
       "dialogue": [{"speaker": "", "text": "", "kind": ""}]
     }
@@ -45,8 +44,6 @@ what is there and map it across.
 
 - `PANEL n` becomes an entry in `panels` with `"id": n`.
 - `focal_point: 0.62, 0.41` becomes `[0.62, 0.41]`.
-- `text_regions: 1050, 200, 1400, 340` becomes `[[1050, 200, 1400, 340]]`; several
-  regions become several inner lists.
 - `content_warnings: blood, gore` becomes `["blood", "gore"]`.
 - Numbers are numbers, `true`/`false` are booleans, never strings.
 

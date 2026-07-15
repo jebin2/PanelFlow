@@ -1,10 +1,13 @@
 """Sub-stage 1.2 — Split.
 
 Runs comic-panel-extractor on every page, orders panels by reading direction,
-records bboxes (+ text_regions when the extractor produced them) in page.json.
-Deterministic/ML, no LLM.
+and records panel bboxes + speech-bubble text_regions in page.json.
+
+All geometry, no meaning: the panel boxes come from the extractor and the text
+boxes from OCR, so 1.3 is never asked for a pixel coordinate — asked for one it
+invents it (a real run returned a text region 200px below the bottom of the
+page).
 """
-import json
 import os
 import re
 import shlex
@@ -17,6 +20,7 @@ from custom_logger import logger_config
 from panelflow import config
 from .. import jsonio
 from ..paths import EXTRACTED, SPLIT, status_at_least
+from ..providers import ocr
 from .ordering import sort_panels
 
 REPO_URL = "https://github.com/jebin2/comic-panel-extractor.git"
@@ -93,9 +97,9 @@ def _split_page(assets, index, page, reading_direction):
         logger_config.info(f"1.2 page {index}: no panels found, using the whole page")
         panels = [_whole_page_panel(assets, index, page, panels_dir)]
 
-    text_regions = _load_text_regions(raw_dir)
+    regions = _text_regions(assets, index)
     for panel in panels:
-        panel["text_regions"] = [r for r in text_regions if _inside(r, panel["bbox"])]
+        panel["text_regions"] = [r for r in regions if _inside(r, panel["bbox"])]
 
     if raw_dir:
         shutil.rmtree(raw_dir, ignore_errors=True)
@@ -165,18 +169,16 @@ def _whole_page_panel(assets, index, page, panels_dir):
     return {"id": 1, "image": f"panels/{filename}", "bbox": [0, 0, page["width"], page["height"]]}
 
 
-def _load_text_regions(raw_dir):
-    """Speech-bubble bboxes, when the extractor's text detector ran (it is
-    disabled upstream today; 1.3's vision model fills these in otherwise)."""
-    if not raw_dir:
-        return []
-    path = next((os.path.join(raw_dir, n) for n in os.listdir(raw_dir)
-                 if "text" in n.lower() and n.endswith(".json")), None)
-    if not path:
-        return []
+def _text_regions(assets, index):
+    """Speech-bubble/caption boxes from OCR, once per page.
+
+    Not fatal when it fails: without them the director has no lettering to avoid
+    cropping through, which makes for worse video, not wrong data.
+    """
     try:
-        return [entry["bbox"] for entry in json.load(open(path, encoding="utf-8")) if "bbox" in entry]
-    except (json.JSONDecodeError, KeyError, TypeError):
+        return ocr.text_regions(assets.page_image(index))
+    except Exception as e:
+        logger_config.warning(f"1.2 OCR failed on page {index}, no text regions: {e}")
         return []
 
 

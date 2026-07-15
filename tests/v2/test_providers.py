@@ -247,7 +247,10 @@ def test_analyze_asks_for_label_value_and_reshaper_owns_the_json_shape():
     assert "label: value" in analyze
     assert "PANEL 1" in analyze and "NEW_CHARACTERS" in analyze
 
+    # 1.2's OCR owns text regions; 1.3 is never asked for a pixel coordinate
+    assert "text_regions" not in analyze
+
     reshape = prompts.load("reshape_to_json")
-    for field in ("scene_summary", "new_characters", "panels", "focal_point", "text_regions"):
+    for field in ("scene_summary", "new_characters", "panels", "focal_point"):
         assert field in reshape, f"reshaper must define {field}"
     assert "transcriber" in reshape

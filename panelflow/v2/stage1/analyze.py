@@ -87,8 +87,7 @@ def _merge_panels(panels, analysed, known_ids, page):
         panel["focal_point"] = _focal_point(found.get("focal_point"))
         panel["dialogue"] = found.get("dialogue", [])
         panel["characters"] = [c for c in found.get("characters", []) if c.get("ref") in known_ids]
-        if not panel.get("text_regions"):
-            panel["text_regions"] = _clip_regions(found.get("text_regions", []), panel["bbox"], page)
+        # text_regions stay exactly as 1.2's OCR measured them.
         merged.append(panel)
     return merged
 
@@ -107,20 +106,6 @@ def _focal_point(point):
         return [max(0.0, min(1.0, float(point[0]))), max(0.0, min(1.0, float(point[1])))]
     except (TypeError, ValueError):
         return [0.5, 0.5]
-
-
-def _clip_regions(regions, bbox, page):
-    """Keep only well-formed page-space boxes that sit inside this panel."""
-    kept = []
-    for region in regions:
-        if not (isinstance(region, list) and len(region) == 4):
-            continue
-        x1, y1, x2, y2 = (int(v) for v in region)
-        if not (0 <= x1 < x2 <= page["width"] and 0 <= y1 < y2 <= page["height"]):
-            continue
-        if bbox[0] <= (x1 + x2) / 2 <= bbox[2] and bbox[1] <= (y1 + y2) / 2 <= bbox[3]:
-            kept.append([x1, y1, x2, y2])
-    return kept
 
 
 def _user_prompt(assets, index, page, characters):

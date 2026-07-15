@@ -46,12 +46,17 @@ sys.modules["google"].genai = sys.modules["google.genai"]
 
 
 @pytest.fixture(autouse=True)
-def no_live_llm(monkeypatch):
-    """No test may reach the real TTT service. Tests that exercise a reshape
-    stub ttt.generate themselves; their patch is applied after this one."""
-    def blocked(*args, **kwargs):
+def no_live_services(monkeypatch):
+    """No test may reach the real TTT or OCR services. Tests that need them stub
+    them themselves; their patch is applied after this one."""
+    def blocked_ttt(*args, **kwargs):
         raise RuntimeError("TTT was called but not stubbed in this test")
-    monkeypatch.setattr("panelflow.v2.providers.ttt.generate", blocked)
+
+    def blocked_ocr(*args, **kwargs):
+        raise RuntimeError("OCR was called but not stubbed in this test")
+
+    monkeypatch.setattr("panelflow.v2.providers.ttt.generate", blocked_ttt)
+    monkeypatch.setattr("panelflow.v2.providers.ocr.text_regions", blocked_ocr)
 
 
 @pytest.fixture
@@ -82,6 +87,9 @@ def fake_extractor(monkeypatch, tmp_path):
         from panelflow.v2.stage1 import split
         counter = {"n": 0}
         monkeypatch.setattr(split, "_ensure_installed", lambda: None)
+        # 1.2 gets text regions from the OCR service, not the extractor.
+        monkeypatch.setattr("panelflow.v2.providers.ocr.text_regions",
+                            lambda image_path: [list(r) for r in (text_regions or [])])
 
         def fake_run(image_path):
             counter["n"] += 1
@@ -90,10 +98,6 @@ def fake_extractor(monkeypatch, tmp_path):
             for i, bbox in enumerate(bboxes, start=1):
                 Image.new("RGB", (50, 50)).save(raw / f"panel_{i}_{tuple(bbox)}.jpg")
             Image.new("RGB", (50, 50)).save(raw / "panels_visualization.jpg")
-            if text_regions:
-                import json
-                (raw / "text_coords.json").write_text(json.dumps(
-                    [{"id": i, "bbox": list(r)} for i, r in enumerate(text_regions)]))
             return str(raw)
 
         monkeypatch.setattr(split, "_run_extractor", fake_run)

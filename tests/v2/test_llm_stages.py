@@ -120,14 +120,17 @@ def test_analyze_keeps_split_geometry_as_truth(ready, stub_llm):
     assert [p["id"] for p in page["panels"]] == [1, 2]
 
 
-def test_analyze_keeps_only_text_regions_that_sit_inside_their_panel(ready, stub_llm):
-    """Panel 1 is the left panel [10,10,400,400] once sorted into reading order."""
-    stub_llm(page=_with_panel_edit(0, text_regions=[
-        [50, 20, 300, 120],       # inside panel 1 — keep
-        [520, 20, 700, 120],      # on the page, but inside panel 2 — drop
-        [0, 0, 99999, 5],         # off the page entirely — drop
-    ]))
+def test_analyze_cannot_touch_text_regions(ready, stub_llm):
+    """OCR measured them in 1.2. A vision model asked for pixel coordinates
+    invents them — a real run returned a region below the page bottom — so 1.3
+    is not asked, and anything it volunteers is ignored."""
+    page = ready.load_page(1)
+    page["panels"][0]["text_regions"] = [[50, 20, 300, 120]]
+    ready.save_page(1, page)
+
+    stub_llm(page=_with_panel_edit(0, text_regions=[[0, 0, 99999, 99999]]))
     analyze.run(ready)
+
     assert ready.load_page(1)["panels"][0]["text_regions"] == [[50, 20, 300, 120]]
 
 

@@ -21,13 +21,10 @@ Per panel report:
 - `skippable` — true when the panel carries no unique story information (a
   repeated beat, an atmospheric filler shot). This is an objective observation
   about redundancy, not a recommendation.
-- `focal_point` — where the subject is *within that panel*, as [x, y] each 0..1
-  (0,0 = panel's top-left, 1,1 = its bottom-right). Point at the face, the
-  impact point, or the revealed object. This aims the camera later.
-- `text_regions` — bounding boxes of every speech bubble and caption box, in
-  **page pixel coordinates** (same space as the panel bboxes given to you).
-  These stop later stages from cropping through lettering. Omit if the panel has
-  no text.
+- `focal_point` — roughly where the subject sits *within that panel*, as [x, y]
+  each 0..1 (0,0 = panel's top-left, 1,1 = its bottom-right). Point at the face,
+  the impact point, or the revealed object. A rough relative position is what is
+  wanted — do not try to measure. This aims the camera later.
 - `dialogue` — every piece of text in the panel, in reading order, with `kind`:
   speech (bubble), thought (cloud), caption (narration box), sfx (onomatopoeia
   drawn into the art: BOOM, SNIKT). Transcribe text exactly. Set `speaker` only
@@ -106,7 +103,6 @@ description: Wide shot of the deck, rain starting, two figures apart.
 intensity: 2
 skippable: false
 focal_point: 0.62, 0.41
-text_regions: 1050, 200, 1400, 340
 characters:
 - ref: wolverine | confidence: high | evidence: claws, yellow suit
 dialogue:
@@ -119,7 +115,6 @@ description: Creed snarls, rain running off his mane.
 intensity: 3
 skippable: true
 focal_point: 0.40, 0.35
-text_regions: 
 characters:
 - ref: sabretooth | confidence: medium | evidence: mane, fangs, partial view
 dialogue:
@@ -134,8 +129,6 @@ Rules for the values:
 - `intensity`: a whole number 1-5
 - `skippable`, `reading_order_suspect`: true | false
 - `focal_point`: two numbers 0-1, `x, y`, relative to that panel
-- `text_regions`: `x1, y1, x2, y2` in **page** pixels; one region per line,
-  each on its own `text_regions:` line if there are several
 - `content_warnings`: comma-separated, or empty
 - Write one `PANEL n` section for **every** panel id you were given, using those
   exact ids, in that order. A cover or splash still gets `PANEL 1`.
