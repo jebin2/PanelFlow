@@ -50,6 +50,54 @@ def test_extract_without_cbz_raises(tmp_path):
         extract.run(Assets(str(tmp_path)))
 
 
+def _noisy_jpeg(path, quality, size=(200, 200)):
+    """Incompressible noise, so file size tracks quality instead of content."""
+    from PIL import Image
+    Image.frombytes("RGB", size, os.urandom(size[0] * size[1] * 3)).save(
+        path, "JPEG", quality=quality)
+    return path.read_bytes()
+
+
+def test_a_page_under_the_threshold_is_never_touched(tmp_path):
+    """A small page is small because it is already well compressed. Re-encoding
+    it would cost pixels and, measurably, often bytes too."""
+    page = tmp_path / "page.jpg"
+    before = _noisy_jpeg(page, quality=95)
+    assert len(before) < extract.MAX_PAGE_BYTES
+
+    extract._shrink(str(page), 1)
+
+    assert page.read_bytes() == before      # byte-for-byte, not merely similar
+
+
+def test_an_oversized_page_is_recompressed_but_keeps_its_dimensions(tmp_path, monkeypatch):
+    """Bytes are negotiable; pixels are not — panels are cropped out of this
+    image and zoomed into a 1920-wide frame."""
+    from PIL import Image
+    monkeypatch.setattr(extract, "MAX_PAGE_BYTES", 1024)
+    page = tmp_path / "page.jpg"
+    before = _noisy_jpeg(page, quality=95)
+
+    extract._shrink(str(page), 1)
+
+    assert len(page.read_bytes()) < len(before)
+    with Image.open(page) as img:
+        assert img.size == (200, 200)
+
+
+def test_a_page_that_recompresses_larger_is_left_alone(tmp_path, monkeypatch):
+    """The real case this guards: an 800x1280 digital release re-encoded *bigger*
+    than its source while still discarding pixels. Worst of both worlds, and
+    invisible without this check."""
+    monkeypatch.setattr(extract, "MAX_PAGE_BYTES", 1024)
+    page = tmp_path / "page.jpg"
+    before = _noisy_jpeg(page, quality=50)      # already below our own quality
+
+    extract._shrink(str(page), 1)
+
+    assert page.read_bytes() == before
+
+
 # ---------------------------------------------------------------- 1.2 split
 
 def test_split_orders_panels_and_records_bboxes(comic_folder, fake_extractor):
