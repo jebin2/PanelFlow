@@ -85,7 +85,7 @@ def test_bumping_prompt_version_reruns_analysis_and_everything_after(
     fake_llm_stages.clear()
     panels_before = Assets(folder).load_page(1)["panels"]
 
-    monkeypatch.setattr(analyze, "PROMPT_VERSION", "v2")
+    monkeypatch.setattr(analyze, "PROMPT_VERSION", analyze.PROMPT_VERSION + "-bumped")
     runner.run(folder)
 
     assert fake_llm_stages == ["analyze", "reconcile", "synthesize"]

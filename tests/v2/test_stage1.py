@@ -3,7 +3,7 @@ import os
 import pytest
 
 from panelflow.v2.paths import Assets
-from panelflow.v2.stage1 import extract, split, validate
+from panelflow.v2.stage1 import analyze, extract, split, validate
 
 
 # ---------------------------------------------------------------- 1.1 extract
@@ -151,13 +151,27 @@ def test_bbox_regex_matches_both_real_extractor_formats_and_ignores_debris(tmp_p
     assert set(found) == {(56, 74, 759, 1200), (10, 20, 30, 40)}
 
 
+# ---------------------------------------------------------------- 1.3 analyze
+
+def test_a_page_analyzed_under_an_older_prompt_is_not_current():
+    """The whole point of prompt_version: rewrite the prompt, bump the constant,
+    and pages described by the old one get re-analyzed rather than skipped."""
+    page = {"status": "analyzed", "analysis": {"prompt_version": "ancient"}}
+    assert not analyze._is_current(page)
+
+
+def test_a_page_analyzed_under_the_current_prompt_is_current():
+    page = {"status": "analyzed", "analysis": {"prompt_version": analyze.PROMPT_VERSION}}
+    assert analyze._is_current(page)
+
+
 # ---------------------------------------------------------------- 1.6 validate
 
 def _valid_book(assets):
     for index in assets.page_indices():
         page = assets.load_page(index)
         page["status"] = "analyzed"
-        page["analysis"] = {"prompt_version": "v1", "scene_summary": "x"}
+        page["analysis"] = {"prompt_version": analyze.PROMPT_VERSION, "scene_summary": "x"}
         for panel in page["panels"]:
             panel["characters"] = [{"ref": "wolverine", "confidence": "high", "evidence": "claws"}]
             panel["focal_point"] = [0.5, 0.5]

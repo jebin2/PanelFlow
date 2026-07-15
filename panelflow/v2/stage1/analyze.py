@@ -11,7 +11,10 @@ from .. import llm, prompts
 from ..paths import ANALYZED, SPLIT, invalidate_downstream, status_at_least
 from . import roster, schemas
 
-PROMPT_VERSION = "v1"
+# Bump whenever analyze_page.md changes in a way that would alter its output.
+# Pages carry the version they were analyzed under, so a bump re-analyzes them
+# instead of leaving a book half-described by the old prompt.
+PROMPT_VERSION = "v2"
 CONTEXT_PAGES = 3
 
 
