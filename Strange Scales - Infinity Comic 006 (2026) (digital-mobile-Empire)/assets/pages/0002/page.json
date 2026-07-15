@@ -1,0 +1,50 @@
+{
+    "schema_version": 1,
+    "page_index": 2,
+    "image": "page.jpg",
+    "width": 800,
+    "height": 1280,
+    "page_type": "story",
+    "is_spread": false,
+    "status": "split",
+    "extraction": {
+        "tool": "comic-panel-extractor",
+        "panel_count": 3
+    },
+    "analysis": {},
+    "panels": [
+        {
+            "id": 1,
+            "image": "panels/panel_01.jpg",
+            "bbox": [
+                35,
+                4,
+                741,
+                357
+            ],
+            "text_regions": []
+        },
+        {
+            "id": 2,
+            "image": "panels/panel_02.jpg",
+            "bbox": [
+                0,
+                357,
+                800,
+                828
+            ],
+            "text_regions": []
+        },
+        {
+            "id": 3,
+            "image": "panels/panel_03.jpg",
+            "bbox": [
+                37,
+                828,
+                723,
+                1206
+            ],
+            "text_regions": []
+        }
+    ]
+}

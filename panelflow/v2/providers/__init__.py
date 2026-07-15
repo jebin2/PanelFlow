@@ -2,6 +2,9 @@
 
 Text work goes to TTT (our own box, free); vision work needs a model that can
 see, which TTT (Qwen3.5:4b via Ollama) cannot.
+
+  PANELFLOW_TEXT_PROVIDER    ttt (default) | gemini
+  PANELFLOW_VISION_PROVIDER  aistudio (default) | google_ai | gemini
 """
 import os
 
@@ -21,5 +24,5 @@ def vision():
     if VISION_PROVIDER == "gemini":
         from . import gemini
         return gemini
-    from . import aistudio
-    return aistudio
+    from . import browser_ui
+    return browser_ui

@@ -1,14 +1,14 @@
-"""AI Studio provider session handling, with the browser stack stubbed.
+"""Browser-UI vision provider, with the browser stack stubbed.
 
 Verifies the contract we rely on from chat_bot_ui_handler (a pip/git dep):
-AIStudioUIChat(config).chat_fresh(user_prompt=, system_prompt=, file_path=).
+<Handler>(config).chat_fresh(user_prompt=, system_prompt=, file_path=).
 """
 import sys
 import types
 
 import pytest
 
-from panelflow.v2.providers import aistudio
+from panelflow.v2.providers import browser_ui
 
 
 @pytest.fixture
@@ -34,6 +34,7 @@ def fake_browser(monkeypatch):
 
     handler = types.ModuleType("chat_bot_ui_handler")
     handler.AIStudioUIChat = FakeChat
+    handler.GoogleAISearchChat = FakeChat
     sys.modules["chat_bot_ui_handler"] = handler
 
     browser_manager = types.ModuleType("browser_manager")
@@ -47,13 +48,13 @@ def fake_browser(monkeypatch):
     jebin_lib.utils = types.SimpleNamespace(get_docker_volume_mounts=lambda cfg, path: [])
     sys.modules.setdefault("jebin_lib", jebin_lib)
 
-    monkeypatch.setattr(aistudio, "_CHAT", None)
+    monkeypatch.setattr(browser_ui, "_CHAT", None)
     yield {"built": built, "calls": calls, "state": state}
-    aistudio._CHAT = None
+    browser_ui._CHAT = None
 
 
 def test_generate_passes_page_and_prompts_through(fake_browser):
-    out = aistudio.generate("sys prompt", "user prompt", image_path="/tmp/page.jpg")
+    out = browser_ui.generate("sys prompt", "user prompt", image_path="/tmp/page.jpg")
 
     assert out == '{"ok": true}'
     assert fake_browser["calls"] == [{
@@ -64,7 +65,7 @@ def test_generate_passes_page_and_prompts_through(fake_browser):
 def test_browser_session_is_reused_across_pages(fake_browser):
     """quick_chat would start and stop a container for every page; we keep one."""
     for _ in range(3):
-        aistudio.generate("sys", "user", image_path="/tmp/p.jpg")
+        browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
 
     assert len(fake_browser["built"]) == 1
     assert len(fake_browser["calls"]) == 3
@@ -76,12 +77,12 @@ def test_empty_response_drops_the_session(fake_browser):
     fake_browser["state"]["response"] = None
 
     with pytest.raises(RuntimeError, match="returned nothing"):
-        aistudio.generate("sys", "user", image_path="/tmp/p.jpg")
+        browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
     assert fake_browser["state"]["cleaned"] == 1
-    assert aistudio._CHAT is None
+    assert browser_ui._CHAT is None
 
     fake_browser["state"]["response"] = '{"ok": true}'
-    assert aistudio.generate("sys", "user", image_path="/tmp/p.jpg") == '{"ok": true}'
+    assert browser_ui.generate("sys", "user", image_path="/tmp/p.jpg") == '{"ok": true}'
     assert len(fake_browser["built"]) == 2      # a fresh session was built
 
 
@@ -89,21 +90,33 @@ def test_a_raising_browser_also_drops_the_session(fake_browser):
     fake_browser["state"]["raises"] = True
 
     with pytest.raises(RuntimeError, match="exploded"):
-        aistudio.generate("sys", "user", image_path="/tmp/p.jpg")
-    assert aistudio._CHAT is None
+        browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
+    assert browser_ui._CHAT is None
 
 
 def test_close_is_safe_when_cleanup_fails(fake_browser):
-    aistudio.generate("sys", "user", image_path="/tmp/p.jpg")
+    browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
 
     def boom():
         raise RuntimeError("docker gone")
-    aistudio._CHAT.cleanup = boom
+    browser_ui._CHAT.cleanup = boom
 
-    aistudio.close()          # must not raise
-    assert aistudio._CHAT is None
+    browser_ui.close()          # must not raise
+    assert browser_ui._CHAT is None
 
 
 def test_close_is_a_noop_without_a_session(fake_browser):
-    aistudio.close()
-    assert aistudio._CHAT is None
+    browser_ui.close()
+    assert browser_ui._CHAT is None
+
+
+def test_handler_is_selected_by_env(fake_browser, monkeypatch):
+    """PANELFLOW_VISION_PROVIDER picks which chatbot UI drives the page."""
+    monkeypatch.setattr(browser_ui, "HANDLER", "google_ai")
+    assert browser_ui.generate("sys", "user", image_path="/tmp/p.jpg") == '{"ok": true}'
+
+
+def test_unknown_handler_is_rejected(fake_browser, monkeypatch):
+    monkeypatch.setattr(browser_ui, "HANDLER", "not_a_handler")
+    with pytest.raises(ValueError, match="Unknown vision handler"):
+        browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")

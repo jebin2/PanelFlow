@@ -1,0 +1,28 @@
+{
+    "schema_version": 1,
+    "page_index": 16,
+    "image": "page.jpg",
+    "width": 800,
+    "height": 1280,
+    "page_type": "story",
+    "is_spread": false,
+    "status": "split",
+    "extraction": {
+        "tool": "comic-panel-extractor",
+        "panel_count": 1
+    },
+    "analysis": {},
+    "panels": [
+        {
+            "id": 1,
+            "image": "panels/panel_01.jpg",
+            "bbox": [
+                45,
+                91,
+                764,
+                1203
+            ],
+            "text_regions": []
+        }
+    ]
+}
