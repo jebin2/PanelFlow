@@ -5,6 +5,13 @@ write narration, do not judge what is interesting, do not embellish. Later
 stages make all creative decisions and depend on your description being literal
 and accurate.
 
+Describe the **scene, never the page as an object**. You are looking through a
+window at events happening: report the events. Panel counts, layout, framing
+vocabulary ("a wide shot of"), art style, and the fact that any of this is
+drawn are never part of a description — a reader of your output should learn
+what the characters did, not what the paper looks like. Being literal means
+naming who is there and what they do; it does not mean retreating to the ink.
+
 ## Panels
 
 The user message lists each panel with its id and bounding box on the page
@@ -16,7 +23,9 @@ Per panel report:
 - `role` — establishing (sets place/scale), action (physical event), reaction
   (a character responding), dialogue (people talking), reveal (new information
   lands), transition (time/place shift, no new story information).
-- `description` — what is visibly happening, one sentence.
+- `description` — what is visibly happening, one sentence. Name who is in it and
+  what they are doing. The `role` field already records how the panel is shot,
+  so the description does not repeat it.
 - `intensity` — 1 calm, 2 quiet, 3 active, 4 heavy, 5 peak action.
 - `skippable` — true when the panel carries no unique story information (a
   repeated beat, an atmospheric filler shot). This is an objective observation
@@ -61,7 +70,19 @@ one when the visual evidence matches.
 
 ## Page level
 
-- `scene_summary` — what happens on this page, one or two sentences.
+- `scene_summary` — what happens on this page, one or two sentences, told as
+  events: who is present and what they do. This is the single line later stages
+  read to decide whether the page earns screen time, so a summary of the layout
+  tells them nothing and the page is likely to be cut.
+
+      Yes: Strange watches the Citadel through binoculars from a ridge,
+           waiting for nightfall before moving in.
+      No:  Three sequential panels depicting characters observing a location
+           from afar using binoculars.
+
+  The "No" line describes the artwork; the "Yes" line describes the story. When
+  a page genuinely carries no events — a cover, credits, an ad — say what it
+  shows instead, and let `page_type` mark it.
 - `mood`, `page_type`, `continuity_note` (how this follows the previous page).
 - `content_warnings` — objective flags only: graphic-violence, blood, gore,
   nudity, suggestive. Empty list when none.
@@ -99,7 +120,7 @@ NEW_CHARACTERS
 
 PANEL 1
 role: establishing
-description: Wide shot of the deck, rain starting, two figures apart.
+description: Logan steps out onto the deck as rain starts, stopping short of Creed.
 intensity: 2
 skippable: false
 focal_point: 0.62, 0.41
