@@ -1,5 +1,7 @@
 """Sub-stages 1.3–1.5 with a stubbed LLM: what we keep, clamp, and refuse from
 a model response. These are the anti-hallucination and anti-corruption gates."""
+import copy
+
 import pytest
 
 from panelflow.v2 import llm
@@ -33,10 +35,12 @@ def stub_llm(monkeypatch):
     seen = {}
 
     def install(page=None, reconcile_result=None, story=None):
-        def fake(system_prompt, user_prompt, schema, image_path=None, model=None):
+        def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None):
             if "analyse one comic page" in system_prompt:
                 seen["page_prompt"] = user_prompt
-                return page if page is not None else PAGE_RESPONSE
+                return copy.deepcopy(page if page is not None else PAGE_RESPONSE)
+            if "match a comic page's dialogue" in system_prompt:
+                return {"matches": []}
             if "clean up a comic" in system_prompt:
                 seen["reconcile_prompt"] = user_prompt
                 return reconcile_result or {"merges": [], "updates": []}
@@ -239,3 +243,98 @@ def test_story_so_far_does_not_claim_page_two_is_the_first_page(ready, stub_llm)
     page["analysis"] = {"scene_summary": "Anton reviews the wards."}
     ready.save_page(1, page)
     assert "page 1: Anton reviews the wards." in _story_so_far(ready, 2)
+
+
+# ---------------------------------------------------------------- dialogue location
+
+OCR_LINES = [
+    {"text": "OH, AFANAF", "box": [146, 609, 326, 636]},
+    {"text": "IS STILL THERE", "box": [142, 640, 330, 667]},
+    {"text": "NIGHT....", "box": [186, 732, 288, 763]},
+]
+
+SPOKEN_PAGE = {
+    **PAGE_RESPONSE,
+    "panels": [
+        {**PAGE_RESPONSE["panels"][0],
+         "dialogue": [{"speaker": "Anton", "kind": "speech",
+                       "text": "OH, AFANAF IS STILL THERE... NIGHT..."}]},
+        PAGE_RESPONSE["panels"][1],
+    ],
+}
+
+
+def _stub_both(monkeypatch, matches=None, match_raises=False):
+    """Page analysis and the dialogue match come through the same ask_json."""
+    seen = {}
+
+    def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None):
+        if "match a comic page's dialogue" in system_prompt:
+            if match_raises:
+                raise RuntimeError("TTT down")
+            seen["match_prompt"] = user_prompt
+            return {"matches": matches if matches is not None else []}
+        # A fresh copy each call: the stage writes into what it is handed, and a
+        # real provider never returns the same object twice.
+        return copy.deepcopy(SPOKEN_PAGE)
+
+    monkeypatch.setattr(analyze.llm, "ask_json", fake)
+    return seen
+
+
+def _with_ocr(assets, lines=OCR_LINES):
+    for index in assets.page_indices():
+        page = assets.load_page(index)
+        page["ocr_lines"] = [dict(l) for l in lines]
+        assets.save_page(index, page)
+
+
+def test_dialogue_is_given_the_box_of_its_bubble(ready, monkeypatch):
+    """OCR knows where the words are but mangles them; the vision model reads
+    them but cannot measure. Only a text match joins the two."""
+    _with_ocr(ready)
+    seen = _stub_both(monkeypatch, matches=[{"dialogue_index": 0, "lines": [0, 1, 2]}])
+
+    analyze.run(ready)
+
+    entry = ready.load_page(1)["panels"][0]["dialogue"][0]
+    assert entry["region"] == [142, 609, 330, 763]      # union of the three lines
+    assert "OH, AFANAF" in seen["match_prompt"]         # OCR text reaches the matcher
+    assert "IS STILL THERE" in seen["match_prompt"]
+
+
+def test_an_unmatched_line_leaves_dialogue_unplaced(ready, monkeypatch):
+    """Never force a match: the model may have read a line OCR missed."""
+    _with_ocr(ready)
+    _stub_both(monkeypatch, matches=[{"dialogue_index": 0, "lines": []}])
+
+    analyze.run(ready)
+    assert "region" not in ready.load_page(1)["panels"][0]["dialogue"][0]
+
+
+def test_out_of_range_line_numbers_are_ignored(ready, monkeypatch):
+    _with_ocr(ready)
+    _stub_both(monkeypatch, matches=[{"dialogue_index": 0, "lines": [0, 99]}])
+
+    analyze.run(ready)
+    assert ready.load_page(1)["panels"][0]["dialogue"][0]["region"] == [146, 609, 326, 636]
+
+
+def test_dialogue_without_ocr_lines_is_left_alone(ready, monkeypatch):
+    """OCR failing costs the link, not the analysis."""
+    _stub_both(monkeypatch)
+    analyze.run(ready)
+
+    page = ready.load_page(1)
+    assert page["status"] == "analyzed"
+    assert "region" not in page["panels"][0]["dialogue"][0]
+
+
+def test_a_failed_match_does_not_fail_the_page(ready, monkeypatch):
+    _with_ocr(ready)
+    _stub_both(monkeypatch, match_raises=True)
+
+    analyze.run(ready)
+    page = ready.load_page(1)
+    assert page["status"] == "analyzed"
+    assert "region" not in page["panels"][0]["dialogue"][0]

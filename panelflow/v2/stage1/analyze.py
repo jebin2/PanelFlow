@@ -70,8 +70,52 @@ def _analyze_page(assets, index, page, system_prompt, model):
         "unassigned_dialogue": result.get("unassigned_dialogue", []),
     }
     page["panels"] = _merge_panels(page["panels"], result.get("panels", []), known, page)
+    _locate_dialogue(page, model)
     page["status"] = ANALYZED
     assets.save_page(index, page)
+
+
+def _locate_dialogue(page, model):
+    """Give every line of dialogue the box of the bubble it is written in.
+
+    OCR knows where the lettering is but mangles it; the vision model reads it
+    correctly but cannot measure. Only a text match joins the two — and the
+    vision model's split into bubbles drives the grouping, which a rule about
+    pixel gaps cannot do: two speakers trading one-liners sit as close together
+    as two lines of one bubble.
+    """
+    lines = page.get("ocr_lines") or []
+    dialogue = [d for panel in page["panels"] for d in panel.get("dialogue", [])]
+    if not lines or not dialogue:
+        return
+
+    try:
+        result = llm.ask_json(
+            system_prompt=prompts.load("match_dialogue"),
+            user_prompt=_match_prompt(dialogue, lines),
+            model=model,
+        )
+    except Exception as e:
+        logger_config.warning(f"1.3 page {page['page_index']}: dialogue not located: {e}")
+        return
+
+    for match in result.get("matches", []):
+        entry = _nth(dialogue, match.get("dialogue_index"))
+        boxes = [lines[i]["box"] for i in match.get("lines", [])
+                 if isinstance(i, int) and 0 <= i < len(lines)]
+        if entry is not None and boxes:
+            entry["region"] = [min(b[0] for b in boxes), min(b[1] for b in boxes),
+                               max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _nth(dialogue, index):
+    return dialogue[index] if isinstance(index, int) and 0 <= index < len(dialogue) else None
+
+
+def _match_prompt(dialogue, lines):
+    said = "\n".join(f'{i}: {d.get("text", "")!r}' for i, d in enumerate(dialogue))
+    found = "\n".join(f'{i}: {l["text"]!r} box {l["box"]}' for i, l in enumerate(lines))
+    return f"DIALOGUE\n{said}\n\nOCR LINES\n{found}"
 
 
 def _merge_panels(panels, analysed, known_ids, page):

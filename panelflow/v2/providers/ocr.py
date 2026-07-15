@@ -23,9 +23,18 @@ TIMEOUT_SECONDS = 300
 
 def text_regions(image_path):
     """[[x1, y1, x2, y2], ...], one box per bubble/caption on the page."""
+    return group([line["box"] for line in lines(image_path)])
+
+
+def lines(image_path):
+    """[{"text": ..., "box": [x1, y1, x2, y2]}, ...] — one entry per line of
+    text, as OCR found it.
+
+    The text is kept only so 1.3 can match these boxes to the dialogue the
+    vision model read correctly; it is too mangled to use as transcription.
+    """
     task_id = _submit(image_path)
-    boxes = _await_result(task_id)
-    return group([_to_bbox(b) for b in boxes])
+    return [{"text": text, "box": _to_bbox(box)} for text, box in _await_result(task_id)]
 
 
 def group(regions):
@@ -93,18 +102,19 @@ def _await_result(task_id):
         task = requests.get(f"{BASE_URL}/api/tasks/{task_id}", timeout=30).json()
         status = task.get("status")
         if status == "completed":
-            return _boxes(task.get("result"))
+            return _entries(task.get("result"))
         if status == "failed":
             raise RuntimeError(f"OCR task failed: {task.get('error')}")
     raise TimeoutError(f"OCR task {task_id} timed out after {TIMEOUT_SECONDS}s")
 
 
-def _boxes(result):
+def _entries(result):
+    """[(text, quad), ...] for every confident text run."""
     if not result:
         return []
     payload = json.loads(result) if isinstance(result, str) else result
     return [
-        entry["box"] for entry in payload.get("results", [])
+        (entry.get("text", ""), entry["box"]) for entry in payload.get("results", [])
         if entry.get("box") and entry.get("confidence", 0) >= MIN_CONFIDENCE
     ]
 

@@ -97,7 +97,8 @@ def _split_page(assets, index, page, reading_direction):
         logger_config.info(f"1.2 page {index}: no panels found, using the whole page")
         panels = [_whole_page_panel(assets, index, page, panels_dir)]
 
-    regions = _text_regions(assets, index)
+    ocr_lines = _ocr_lines(assets, index)
+    regions = ocr.group([line["box"] for line in ocr_lines])
     for panel in panels:
         panel["text_regions"] = [r for r in regions if _inside(r, panel["bbox"])]
 
@@ -105,6 +106,9 @@ def _split_page(assets, index, page, reading_direction):
         shutil.rmtree(raw_dir, ignore_errors=True)
 
     page["panels"] = panels
+    # Kept for 1.3, which matches these boxes to the dialogue the vision model
+    # read correctly. The text is too mangled to use for anything else.
+    page["ocr_lines"] = ocr_lines
     page["extraction"] = {"tool": "comic-panel-extractor", "panel_count": len(panels)}
     page["status"] = SPLIT
     assets.save_page(index, page)
@@ -169,14 +173,14 @@ def _whole_page_panel(assets, index, page, panels_dir):
     return {"id": 1, "image": f"panels/{filename}", "bbox": [0, 0, page["width"], page["height"]]}
 
 
-def _text_regions(assets, index):
-    """Speech-bubble/caption boxes from OCR, once per page.
+def _ocr_lines(assets, index):
+    """Every line of text OCR found, with its box, once per page.
 
     Not fatal when it fails: without them the director has no lettering to avoid
     cropping through, which makes for worse video, not wrong data.
     """
     try:
-        return ocr.text_regions(assets.page_image(index))
+        return ocr.lines(assets.page_image(index))
     except Exception as e:
         logger_config.warning(f"1.2 OCR failed on page {index}, no text regions: {e}")
         return []

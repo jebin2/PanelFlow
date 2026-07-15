@@ -56,6 +56,7 @@ def no_live_services(monkeypatch):
         raise RuntimeError("OCR was called but not stubbed in this test")
 
     monkeypatch.setattr("panelflow.v2.providers.ttt.generate", blocked_ttt)
+    monkeypatch.setattr("panelflow.v2.providers.ocr.lines", blocked_ocr)
     monkeypatch.setattr("panelflow.v2.providers.ocr.text_regions", blocked_ocr)
 
 
@@ -87,9 +88,11 @@ def fake_extractor(monkeypatch, tmp_path):
         from panelflow.v2.stage1 import split
         counter = {"n": 0}
         monkeypatch.setattr(split, "_ensure_installed", lambda: None)
-        # 1.2 gets text regions from the OCR service, not the extractor.
-        monkeypatch.setattr("panelflow.v2.providers.ocr.text_regions",
-                            lambda image_path: [list(r) for r in (text_regions or [])])
+        # 1.2 gets text lines from the OCR service, not the extractor.
+        monkeypatch.setattr(
+            "panelflow.v2.providers.ocr.lines",
+            lambda image_path: [{"text": f"line {i}", "box": list(r)}
+                                for i, r in enumerate(text_regions or [])])
 
         def fake_run(image_path):
             counter["n"] += 1

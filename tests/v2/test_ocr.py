@@ -43,7 +43,7 @@ def test_empty_and_single():
 
 # ---------------------------------------------------------------- response parsing
 
-def test_boxes_are_read_from_the_real_response_shape():
+def test_text_and_box_are_read_from_the_real_response_shape():
     result = json.dumps({
         "text": "THE CITADEL",
         "results": [
@@ -51,7 +51,8 @@ def test_boxes_are_read_from_the_real_response_shape():
              "box": [[248.0, 17.0], [547.0, 20.0], [547.0, 57.0], [247.0, 55.0]]},
         ],
     })
-    assert ocr._boxes(result) == [[[248.0, 17.0], [547.0, 20.0], [547.0, 57.0], [247.0, 55.0]]]
+    assert ocr._entries(result) == [("THE CITADEL",
+                                    [[248.0, 17.0], [547.0, 20.0], [547.0, 57.0], [247.0, 55.0]])]
 
 
 def test_low_confidence_text_is_dropped():
@@ -59,7 +60,7 @@ def test_low_confidence_text_is_dropped():
         {"text": "clear", "confidence": 0.9, "box": [[0, 0], [10, 0], [10, 10], [0, 10]]},
         {"text": "?!", "confidence": 0.2, "box": [[0, 0], [5, 0], [5, 5], [0, 5]]},
     ]})
-    assert len(ocr._boxes(result)) == 1
+    assert len(ocr._entries(result)) == 1
 
 
 def test_quad_corners_become_a_bbox():
@@ -68,5 +69,5 @@ def test_quad_corners_become_a_bbox():
 
 
 def test_empty_result_is_no_regions():
-    assert ocr._boxes(None) == []
-    assert ocr._boxes(json.dumps({"results": []})) == []
+    assert ocr._entries(None) == []
+    assert ocr._entries(json.dumps({"results": []})) == []
