@@ -55,11 +55,11 @@ Design goals:
     characters.json                    # grounded character registry (see below)
     pages/
       0001/
-        page.jpg                       # extracted page image, ORIGINAL resolution
+        page.jpg                       # extracted page image, ORIGINAL dimensions
         page.json                      # everything known about this page + its panels
         panels/
           panel_01.jpg                 # crops, clean names, reading order,
-          panel_02.jpg                 #   ORIGINAL resolution (no pre-resizing —
+          panel_02.jpg                 #   ORIGINAL dimensions (never resized —
           ...                          #   Remotion/ken-burns wants max pixels)
       0002/
         ...
@@ -99,16 +99,21 @@ Rules:
     "tool": "comic-panel-extractor",
     "panel_count": 5
   },
+  "ocr_lines": [                       // 1.2: every line OCR found, with its box.
+    { "text": "BELOW -THESANGTOMSANGTORUM",  //   Text is kept only so 1.3 can match
+      "box": [33, 69, 766, 105] }      //   dialogue to boxes — it is too mangled to use.
+  ],
   "analysis": {
-    "model": "gemini-2.5-...",         // provenance
-    "prompt_version": "v1",            // bump → this page gets re-analyzed
+    "model": "GeminiUIChat",           // provenance
+    "prompt_version": "v2",            // bump → this page gets re-analyzed
     "scene_summary": "Logan confronts Creed on the helicarrier deck as a storm builds.",
     "mood": "tense",
     "continuity_note": "Follows directly from the ambush on page 2.",
     "reading_order_suspect": false,    // vision model doubts the extractor's panel ordering
     "content_warnings": [],            // e.g. "graphic-violence" | "blood" | "gore" — for monetization decisions
     "unassigned_dialogue": [           // captions/titles in gutters or spanning panels
-      { "speaker": "", "text": "MEANWHILE, IN GENOSHA…", "kind": "caption" }
+      { "speaker": "", "text": "MEANWHILE, IN GENOSHA…", "kind": "caption",
+        "region": [33, 17, 766, 105] } //   located like panel dialogue (below)
     ]
     // NOTE: no page-level character list — characters are per-panel refs;
     // the page-level set is derived (union of panel refs), one source of truth.
@@ -120,9 +125,9 @@ Rules:
       "id": 1,                         // reading order on the page
       "image": "panels/panel_01.jpg",
       "bbox": [1006, 176, 1757, 1085], // [x1, y1, x2, y2] on page.jpg, pixels
-      "text_regions": [                // speech bubbles / captions, page coords —
-        [1050, 200, 1400, 340]         //   camera must never crop through these
-      ],
+      "text_regions": [                // speech bubbles / captions, page coords, from
+        [1050, 200, 1400, 340]         //   OCR in 1.2 — camera must never crop through
+      ],                               //   these. 1.3 cannot write this field.
       "focal_point": [0.62, 0.41],     // where the subject is, normalized to the panel —
                                        //   zoom/ken-burns target
       "role": "establishing",          // establishing | action | reaction | dialogue | reveal | transition
@@ -133,10 +138,11 @@ Rules:
       ],
       "dialogue": [
         {
-          "speaker": "Wolverine",      // "" if unknown/off-panel
+          "speaker": "wolverine",      // roster ref, or "" if unknown/off-panel
           "text": "You shouldn't have come back.",
-          "kind": "speech"             // speech | thought | caption | sfx
-        }
+          "kind": "speech",            // speech | thought | caption | sfx
+          "region": [1050, 200, 1400, 340]  // where this line is written, matched to
+        }                              //   OCR's boxes in 1.3. Absent if unmatched.
       ],
       "intensity": 2,                  // 1 calm … 5 peak action
       "skippable": true                // objective hint: carries no unique story info
@@ -163,11 +169,24 @@ Field notes:
   slices a speech bubble in half is the most amateur-looking artifact a
   comic video can have. (This replaces the old hardcoded `bubbleBbox`
   placeholder in the Remotion manifest.)
-  **As built:** the extractor's text detector is disabled upstream (its
-  import is commented out in comic-panel-extractor's `main.py`), so 1.2
-  records text regions only if a text-coords JSON happens to be present, and
-  in practice the 1.3 vision model supplies them. 1.2 will start populating
-  them for free if that detector is ever re-enabled — no code change here.
+  **They come from OCR in 1.2, and 1.3 is never asked for one.** The
+  extractor's own text detector is disabled upstream (its import is commented
+  out in comic-panel-extractor's `main.py`), and the obvious substitute — ask
+  the vision model, which is already looking at the page — does not work: asked
+  for pixel coordinates it invents them, and a real run returned a text region
+  200px below the bottom of an 800x752 page. Models read; they do not measure.
+- **`region` on a line of dialogue is the other half of that split.**
+  `text_regions` answers "where must a crop not cut", and OCR alone can answer
+  it. `region` answers "where is *this line* written", which needs both
+  sources: OCR knows where lettering is but mangles what it says
+  ("THESANGTOMSANGTORUM"), while the vision model reads it correctly but cannot
+  measure. 1.3 matches one to the other by text and the union is computed in
+  code — see 1.3.
+  Note a panel's `text_regions` and its dialogue's `region` can disagree about
+  which panel owns a bubble, and both are right: `dialogue` answers *who says
+  this* (the speaker's panel), `text_regions` answers *where the ink is* (the
+  box it is drawn in). A bubble floating up out of its speaker's panel lands in
+  both, differently.
 - **`focal_point` is the camera target.** A punch-in or ken-burns needs to
   know where the subject is — a face, the clash point, the revealed object.
   Without it, animation drifts toward empty sky.
@@ -291,6 +310,11 @@ win when both exist. See the Stage 2 doc's prompt contract.)
 {
   "schema_version": 1,
   "title": "X-Men United 001 (2026)",
+  "series": "X-Men United",            // from ComicInfo, when present
+  "publisher": "Marvel",               // from ComicInfo, when present
+  "publisher_summary": "…",            // ComicInfo <Summary>: the publisher's blurb.
+                                       //   Recorded, but deliberately NOT fed to 1.4 or 1.5 —
+                                       //   see "What Stage 1 explicitly does NOT do"
   "category": "comic",
   "source": "X-Men United 001 (2026).cbz",
   "page_count": 22,
@@ -312,8 +336,9 @@ win when both exist. See the Stage 2 doc's prompt contract.)
   },
   "analysis": {
     "model": "…",
-    "prompt_version": "v1",
-    "completed_at": "2026-07-14T00:00:00Z"
+    "prompt_version": "v1",            // 1.5's synthesis prompt — its own version,
+                                       //   unrelated to page.json's (1.3's analyse prompt)
+    "completed_at": "2026-07-14T00:00:00Z"   // written by 1.6, the gate Stage 2 checks
   }
 }
 ```
@@ -359,6 +384,21 @@ every page's prompt. The model is told to use only what the filename says and
 never to correct it against a comic it knows of. If TTT is unreachable the
 folder name is used, so 1.1 still runs offline.
 
+**Oversized pages are recompressed, and never resized.** Scans arrive at
+~2.4MB/page (2730x4200); a 22-page book drops 51.9MB → 33.7MB at JPEG quality
+80, and OCR does not suffer — on a real page it read the same 48 lines and got
+*more* of them right, because the compression smooths the screentone that trips
+PaddleOCR up. Only pages over 900KB are candidates: a small page is small
+because it is already well compressed, and re-encoding an 800x1280 digital
+release comes out *larger* (+6% at q85) while still discarding pixels. The
+result is kept only if it actually shrank.
+
+Dimensions are never touched, and the 900KB ceiling is therefore not always
+met (11.5MP cannot reach it — even q40 misses, at 985KB). That is deliberate:
+the page is only ~1.4x the width of the video frame, and panels are cropped out
+of it and zoomed, so the pixels are spent on the render. Bytes are negotiable;
+pixels are not.
+
 Also determined here, because later sub-stages depend on them:
 
 - **Reading direction.** From the ComicInfo `<Manga>` tag
@@ -375,21 +415,45 @@ Also determined here, because later sub-stages depend on them:
 | | |
 |---|---|
 | **Input**  | pages with `status = extracted`, `book.json.reading_direction` |
-| **Output** | `panels/panel_NN.jpg` crops + `panels[]` skeletons (id, image, bbox, text_regions) in `page.json` |
+| **Output** | `panels/panel_NN.jpg` crops + `panels[]` skeletons (id, image, bbox, text_regions) + `ocr_lines` in `page.json` |
 | **Done**   | every `page.json.status ≥ split` |
-| **Uses**   | comic-panel-extractor + its text detector (local YOLO/CV), no LLM |
+| **Uses**   | comic-panel-extractor (local YOLO/CV) + the OCR service, no LLM |
 
 Run comic-panel-extractor on **every** page upfront (the old pipeline split
 lazily during video creation, which is why shorts had to pick panels at
 random). Parse bboxes from the extractor's filenames, rename crops to
 `panel_NN.jpg` in reading order — **honoring `reading_direction`** (RTL
 books order right-to-left within a row) — and record bboxes in `page.json`.
-Run the extractor's text detector on each page and record speech-bubble /
-caption bboxes as `text_regions` per panel (assigned by overlap with panel
-bboxes). Pages where extraction finds a single panel (covers, splashes)
-just get `panel_count: 1`. Per-page: a page failing extraction falls back
-to `panel_count: 1` (whole page as its single panel) rather than blocking
-the book.
+Pages where extraction finds a single panel (covers, splashes) just get
+`panel_count: 1`. Per-page: a page failing extraction falls back to
+`panel_count: 1` (whole page as its single panel) rather than blocking the
+book. A tool that fails on *every* page is a broken tool rather than a hard
+book, and raises — 19 whole-page "panels" would otherwise sail through 1.6 and
+produce a video with no panel-level camera work at all.
+
+**Duplicate detections are dropped.** The extractor sometimes finds one panel
+twice: real page 6 came back as 710x1132 and 613x1097, nested, the same
+drawing. Left in, the page is described twice and the video shows the same
+panel twice in a row. Overlap alone cannot decide this, because an inset panel
+sits *entirely* inside its parent and is a genuine separate panel. IoU
+separates them — the duplicate scores 0.84, while a real inset scores 0.13
+despite being 100% contained — so boxes above IoU 0.7 collapse to the larger
+one, which may carry gutter where the smaller would cut art.
+
+**Text regions come from OCR here**, not from the extractor's text detector
+(disabled upstream) and not from the vision model in 1.3 (which invents
+coordinates). PaddleOCR returns one box per *line*, so a five-line bubble
+arrives as five boxes with a few pixels between them; a crop could pass
+through those gaps, intersecting no box while cutting the bubble in half.
+Lines are therefore merged into the bubble they belong to — side by side, with
+a vertical gap under ~70% of a line's height — and assigned to panels by
+overlap. Every line is also kept raw in `ocr_lines` for 1.3's dialogue
+matching. OCR failing costs text regions, not the page.
+
+The OCR call and the extractor both need only `page.jpg` and neither uses the
+other's answer, so OCR is started first and waits on the network while the
+extractor has the CPU — its ~18s hides inside the extractor's ~30s. Pages stay
+sequential, so the OCR service still sees one request at a time.
 
 ### Sub-stage 1.3 — Analyze
 
@@ -419,11 +483,11 @@ corrupt the page.
 
 Per panel, 1.3 also produces:
 
-- **`focal_point`** — normalized coordinates of the visual subject (face,
-  clash point, revealed object); the zoom/ken-burns target for Stage 3.
-- **`text_regions` refinement** — confirm/correct the detector's bubble
-  bboxes from 1.2; if the detector found nothing on a page that clearly
-  has dialogue, the model's approximate bboxes are used as fallback.
+- **`focal_point`** — *relative* position of the visual subject within its
+  panel (face, clash point, revealed object), each axis 0..1; the zoom/ken-burns
+  target for Stage 3. Deliberately not a pixel coordinate: "roughly which
+  corner" is a judgement a model can make, and is clamped into range on the way
+  in.
 - **`content_warnings`** (page-level) — objective flags (graphic-violence,
   blood, gore) for downstream monetization decisions.
 - **`reading_order_suspect`** (page-level) — set when the panel ordering
@@ -433,13 +497,26 @@ Per panel, 1.3 also produces:
   spanning panels, so no on-page text is forced into the wrong panel or
   dropped.
 
-Deliberately **not** produced here: `story_beat`. A sequential pass cannot
-know mid-book whether a page is the climax — beats are assigned globally
-in 1.5.
+Deliberately **not** produced here: `story_beat` (a sequential pass cannot know
+mid-book whether a page is the climax — beats are assigned globally in 1.5) and
+**any pixel coordinate** (see `text_regions`).
 
-Fallback: if the API path fails, the browser-UI (AI Studio) fallback
-handles individual pages; because context is rebuilt from `page.json` +
-`characters.json` files, no special history state is needed.
+**Locating dialogue.** After the page comes back, each line of dialogue is
+given the box of the bubble it is written in. Neither source can do this alone:
+OCR measured the boxes but mangles stylised lettering, and the vision model
+read the text correctly but cannot measure. So both are handed to the text
+model, which returns *line numbers only* — the union of those boxes is computed
+in code, because the moment a model is asked for a coordinate it invents one.
+The vision model's split into bubbles drives the grouping, which no rule about
+pixel gaps can do: two speakers trading one-liners sit as close together as two
+lines of one bubble. Unassigned captions are located the same way, and are the
+text most worth locating, being the least likely to fall inside any panel.
+Best-effort — a failure costs the link, not the page.
+
+**Output format.** The vision model is asked for `label: value` lines, not
+JSON. It is driven through a chat UI which enforces no schema, and a browser
+answering in prose is normal. If the direct parse fails, TTT reshapes the prose
+into JSON against the schema; the reshape is a fallback, not the main path.
 
 ### Sub-stage 1.4 — Reconcile characters
 
@@ -448,7 +525,7 @@ handles individual pages; because context is rebuilt from `page.json` +
 | **Input**  | all pages analyzed + unreconciled `characters.json` |
 | **Output** | merged/named/aliased roster; panel `characters[].ref` rewritten through the merge map |
 | **Done**   | `characters.json.reconciled = true` |
-| **Uses**   | text-only LLM, one call (plus optional vision confirms for ambiguous merges) |
+| **Uses**   | text-only LLM, one call |
 
 One text-only LLM call over the full roster and all page analyses: merges
 duplicates, promotes names grounded by late dialogue, links aliases, infers
@@ -456,6 +533,21 @@ story roles. Stage code then mechanically rewrites all panel
 `characters[].ref` values through the merge map so every `page.json` stays
 consistent. See the characters.json section for the anti-hallucination
 rules this pass operates under.
+
+**It is also told which characters were drawn together in one panel**, computed
+in code. From descriptions alone, one character registered twice and two
+characters who resemble each other are indistinguishable — and the roster is
+full of both. Real book: `pink_snake_left` and `pink_snake_right` read as an
+obvious duplicate and are two characters, seen together three times;
+`bearded_helper` and `mustached_helper` never share a panel and are the real
+merge candidate. 1.4 would have to cross-reference every panel in the book to
+notice, so the pairs are handed over.
+
+Treated as near-absolute but **not enforced in code**: the pairing is 1.3's own
+output rather than ground truth, and a character beside their own reflection or
+wanted poster is registered twice in one panel and *is* one character. Blocking
+a true merge is no better than making a false one, so 1.4 may override with
+evidence that explains the sharing, and must say so in `evidence`.
 
 ### Sub-stage 1.5 — Synthesize story
 
@@ -499,6 +591,51 @@ Any violation is reported with file + field and `completed_at` is withheld.
 
 ---
 
+## Models, and the division of labour
+
+Four workers, and the boundaries between them are the load-bearing part:
+
+| Worker | What it is | What it is asked for |
+|---|---|---|
+| **extractor** | comic-panel-extractor, local YOLO/CV | panel boxes |
+| **OCR** | PaddleOCR at `jebin2-ocr.hf.space` | text boxes (its text is kept only for matching) |
+| **vision** | Gemini web UI, driven in a neko docker browser | descriptions, characters, dialogue words, focal_point |
+| **text** | TTT at `opencode.voidall.com`, model `opencode` | reshape prose→JSON, match dialogue↔boxes, reconcile, synthesize |
+
+The rule underneath: **models transcribe and match; arithmetic and geometry stay
+in code.** A model is never asked for a pixel coordinate, and never asked to
+compute a union, an overlap, or a page number. It returns line numbers and ids;
+code turns those into boxes. Every coordinate bug in this pipeline came from
+crossing that line, and every fix has been to move the arithmetic back.
+
+**Vision is the Gemini UI, and is not configurable.** It needs no API key — it
+rides the browser's Google session. Search AI Mode was the default until it was
+measured: it is a *search query*, capped at 2048 bytes, and 1.3 sends ~7.5KB.
+73% of the prompt was silently dropped, taking every rule from "## Characters"
+onward and the entire user message with the panel list. The model was shown an
+image, half a rulebook, and no panel ids.
+
+That one bug produced every 1.3 failure we spent days treating as prompt-wording
+problems: prose instead of the requested format (the output section, byte 5217,
+never arrived — it was never true that "AI Mode won't return JSON"), blank
+`visual` on every character (its rule sits at byte 3160), and scene summaries
+describing the layout instead of the story (no panel list, half the rules).
+**If output quality ever collapses again, measure the prompt against whatever
+box it is being typed into before rewriting a word of it.**
+
+`gemini` as a *text* provider means the Gemini **API** and wants
+`GEMINI_API_KEY` — a different thing entirely from the browser UI. The vision
+selector was removed rather than repointed, so the name cannot mean two things.
+
+**Text work goes to TTT, not the browser.** 1.4 and 1.5 are one call each, so
+the browser's fragility (a docker container, a Google login, CSS selectors that
+break when Google reships their frontend) buys nothing. Gemini working well for
+1.3 is not an argument for text: 1.3 was never a model-quality problem, and
+opencode is verified good on 1.4 and 1.5. `PANELFLOW_TEXT_PROVIDER` exists if
+that ever stops being true.
+
+---
+
 ## Idempotency & re-run matrix
 
 Every sub-stage scans its done-markers and only processes what isn't done.
@@ -507,14 +644,27 @@ Targeted re-runs:
 | To redo…                        | Do this                                             | What re-runs        |
 |---------------------------------|-----------------------------------------------------|----------------------|
 | one page's analysis             | reset that page's `status` to `split`               | 1.3 for that page, then 1.4–1.6 |
-| all analysis (better prompt)    | bump `prompt_version`                               | 1.3–1.6 only; extraction/split cached |
+| all analysis (better prompt)    | bump `analyze.PROMPT_VERSION`                       | 1.3–1.6 only; extraction/split cached |
 | one page entirely               | delete `pages/NNNN/`                                | 1.1–1.6 for that page |
 | character reconciliation        | set `characters.json.reconciled = false`            | 1.4–1.6              |
+| the story only                  | bump `synthesize.PROMPT_VERSION`                    | 1.5–1.6              |
 | everything                      | delete `assets/`                                    | all                  |
 
 Downstream invalidation is enforced: resetting an earlier sub-stage clears
 the done-markers of later ones (a re-analyzed page invalidates
 `reconciled` and `completed_at`).
+
+**Bumping `PROMPT_VERSION` is a manual step, and the one that gets forgotten.**
+Pages record the version they were analysed under, and `_is_current()` compares
+it to the constant — so rewriting `analyze_page.md` without bumping means every
+already-analysed page is skipped and the book stays half-described by the old
+prompt. This has happened once already: the prompt was rewritten end to end
+while the constant stayed `v1`. If a prompt change appears to do nothing, this
+is why.
+
+Note also that deleting `assets/` costs one 1.2 run — the extractor is ~30s of
+CPU per page and there is no cache below the page level. Page images
+re-extract in about a second, so surgical deletion rarely pays.
 
 ---
 
@@ -525,6 +675,16 @@ the done-markers of later ones (a re-analyzed page invalidates
 - No animation/transition choices.
 - No TTS, STT, resizing, or rendering (Stage 3).
 - No title/description/social-post generation (Stage 2, from `book.json.story`).
+- **No reading of the publisher's blurb.** `publisher_summary` is recorded in
+  `book.json` but reaches no prompt. For naming it is a hazard: a summary
+  reading "Anton and Aleister's mysterious impersonator is revealed" names two
+  characters without saying which face is which, and mapping them onto slugs is
+  exactly the ungrounded guessing the roster rules forbid — names enter from
+  ComicInfo only via *seeded roster entries*, which carry an identity, never via
+  prose. For the story it turned out to be unnecessary: 1.5 found the
+  impersonator reveal from the pages alone ("Lily screams that it is Afanaf's
+  other half"), so the blurb would add marketing bias for no gain. It stays on
+  disk for Stage 2's description/social copy, where it *is* the right source.
 
 ---
 
