@@ -11,10 +11,17 @@ _CHAT = None
 
 
 def generate(system_prompt, user_prompt, image_path=None, **_):
-    response = _chat().chat_fresh(
-        user_prompt=user_prompt, system_prompt=system_prompt, file_path=image_path)
+    try:
+        response = _chat().chat_fresh(
+            user_prompt=user_prompt, system_prompt=system_prompt, file_path=image_path)
+    except Exception:
+        close()
+        raise
     if not response:
-        # chat_bot_ui_handler swallows its exceptions and returns None.
+        # chat_bot_ui_handler swallows its own exceptions and returns None, so a
+        # dead browser looks like an empty answer. Drop the session rather than
+        # let every retry hit the same corpse.
+        close()
         raise RuntimeError("AI Studio returned nothing (browser/session issue)")
     return response
 
@@ -39,5 +46,8 @@ def _chat():
 def close():
     global _CHAT
     if _CHAT is not None:
-        _CHAT.cleanup()
+        try:
+            _CHAT.cleanup()
+        except Exception as e:
+            logger_config.warning(f"AI Studio session cleanup failed: {e}")
         _CHAT = None
