@@ -44,7 +44,7 @@ panelflow/v2/llm.py
 panelflow/v2/paths.py
 panelflow/v2/prompts/__init__.py
 panelflow/v2/providers/__init__.py
-panelflow/v2/providers/aistudio.py
+panelflow/v2/providers/browser_ui.py
 panelflow/v2/providers/gemini.py
 panelflow/v2/providers/ttt.py
 panelflow/v2/stage1/__init__.py
@@ -60,7 +60,7 @@ panelflow/v2/stage1/split.py
 panelflow/v2/stage1/synthesize.py
 panelflow/v2/stage1/validate.py
 tests/v2/conftest.py
-tests/v2/test_aistudio.py
+tests/v2/test_browser_ui.py
 tests/v2/test_cli.py
 tests/v2/test_llm_stages.py
 tests/v2/test_ordering.py

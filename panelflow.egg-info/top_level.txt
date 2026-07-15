@@ -1,8 +1,12 @@
+Strange Scales - Infinity Comic 006 (2026) (digital-mobile-Empire)
 bg_music
+chat_bot_ui_handler_logs
 content_to_be_processed
 docs
 panelflow
 remotion-comic
 temp
+temp_aistudio_ui_handler
+temp_search_google_ai_mode
 test_images
 tests

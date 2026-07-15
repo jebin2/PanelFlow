@@ -118,3 +118,39 @@ def test_ask_json_rejects_a_non_object_response(monkeypatch):
     monkeypatch.setattr(llm.providers, "text", lambda: Listy)
     with pytest.raises(RuntimeError, match="failed after"):
         llm.ask_json("sys", "user")
+
+
+# ---------------------------------------------------------------- prose-wrapped JSON
+
+def _provider(monkeypatch, response):
+    class Fake:
+        @staticmethod
+        def generate(**kwargs):
+            return response
+    monkeypatch.setattr(llm.providers, "text", lambda: Fake)
+
+
+def test_json_is_recovered_from_a_chatty_reply(monkeypatch):
+    """Google AI Mode answers conversationally and offers follow-ups."""
+    _provider(monkeypatch, 'Here is the analysis you asked for:\n'
+                           '{"scene_summary": "a cover", "page_type": "cover"}\n'
+                           'Would you like me to analyze the interior pages?')
+    assert llm.ask_json("sys", "user") == {"scene_summary": "a cover", "page_type": "cover"}
+
+
+def test_json_is_recovered_from_a_fenced_chatty_reply(monkeypatch):
+    _provider(monkeypatch, 'Sure! Here you go:\n```json\n{"a": 1}\n```\nAnything else?')
+    assert llm.ask_json("sys", "user") == {"a": 1}
+
+
+def test_pure_prose_still_fails(monkeypatch):
+    """The real failure we hit: no JSON anywhere, only a description."""
+    _provider(monkeypatch, "This image is a comic book cover rather than an "
+                           "interior story page. Intensity: 1 (Calm / Title Card)")
+    with pytest.raises(RuntimeError, match="failed after 3 attempts"):
+        llm.ask_json("sys", "user")
+
+
+def test_nested_objects_survive_extraction(monkeypatch):
+    _provider(monkeypatch, 'Result: {"panels": [{"id": 1, "characters": [{"ref": "x"}]}]} done')
+    assert llm.ask_json("sys", "user") == {"panels": [{"id": 1, "characters": [{"ref": "x"}]}]}

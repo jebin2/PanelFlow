@@ -36,10 +36,30 @@ def ask_json(system_prompt, user_prompt, schema=None, image_path=None, model=Non
 
 
 def _parse(raw):
-    parsed = json_repair.loads(_strip_fence(raw))
-    if not isinstance(parsed, dict):
-        raise ValueError(f"expected a JSON object, got {type(parsed).__name__}")
-    return parsed
+    text = _strip_fence(raw)
+    parsed = _loads(text)
+    if parsed is not None:
+        return parsed
+
+    # Chat UIs answer conversationally even when told not to ("Here's the
+    # analysis: {...} Would you like me to..."), so dig the object out.
+    start, end = text.find("{"), text.rfind("}")
+    if start != -1 and end > start:
+        parsed = _loads(text[start:end + 1])
+        if parsed is not None:
+            return parsed
+
+    raise ValueError(f"no JSON object in response: {text[:200]!r}")
+
+
+def _loads(text):
+    """A non-empty dict, or None. Never raises: parsers disagree about garbage
+    — json_repair salvages what it can, json.loads throws."""
+    try:
+        parsed = json_repair.loads(text)
+    except Exception:
+        return None
+    return parsed if isinstance(parsed, dict) and parsed else None
 
 
 def _strip_fence(raw):

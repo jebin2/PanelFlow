@@ -70,3 +70,64 @@ one when the visual evidence matches.
 
 Do **not** assign a story beat. You cannot see the rest of the book; beats are
 decided later with full context.
+
+## Output
+
+Return **only** a JSON object. No prose before or after it, no markdown fence,
+no questions, no offers to help. Your entire reply must parse as JSON.
+
+```
+{
+  "scene_summary": "Logan confronts Creed on the deck as a storm builds.",
+  "mood": "tense",
+  "page_type": "story",
+  "continuity_note": "Follows the ambush on page 2.",
+  "reading_order_suspect": false,
+  "content_warnings": [],
+  "unassigned_dialogue": [
+    {"speaker": "", "text": "MEANWHILE, IN GENOSHA...", "kind": "caption"}
+  ],
+  "new_characters": [
+    {
+      "id": "hooded_figure",
+      "name": "",
+      "visual": "tall figure in a deep hood, no face visible",
+      "first_panel": 2,
+      "named_by_panel": 0,
+      "inferred_identity": ""
+    }
+  ],
+  "panels": [
+    {
+      "id": 1,
+      "role": "establishing",
+      "description": "Wide shot of the deck, rain starting, two figures apart.",
+      "intensity": 2,
+      "skippable": false,
+      "focal_point": [0.62, 0.41],
+      "text_regions": [[1050, 200, 1400, 340]],
+      "characters": [
+        {"ref": "wolverine", "confidence": "high", "evidence": "claws, yellow suit"}
+      ],
+      "dialogue": [
+        {"speaker": "Wolverine", "text": "You shouldn't have come back.", "kind": "speech"},
+        {"speaker": "", "text": "SNIKT", "kind": "sfx"}
+      ]
+    }
+  ]
+}
+```
+
+Rules for the values:
+
+- `page_type`: cover | story | splash | credits | ad | recap
+- `role`: establishing | action | reaction | dialogue | reveal | transition
+- `kind`: speech | thought | caption | sfx
+- `confidence`: high | medium | low
+- `intensity`: an integer 1–5
+- `focal_point`: [x, y], each 0–1, relative to that panel
+- `text_regions`: [x1, y1, x2, y2] in **page** pixels
+- Include an entry in `panels` for **every** panel id you were given, using
+  those exact ids. Use empty lists rather than omitting fields, and `""` rather
+  than null for empty strings.
+- A cover or a splash still gets one panel entry.
