@@ -90,3 +90,23 @@ def test_updates_reject_a_role_outside_the_enum():
 
     roster.apply_updates(chars, [{"id": "marcus", "role_in_story": "antagonist"}])
     assert next(c for c in chars["characters"] if c["id"] == "marcus")["role_in_story"] == "antagonist"
+
+
+def test_roster_prompt_shows_visuals_so_the_next_page_can_match():
+    chars = {"characters": [
+        {"id": "anton", "name": "Anton", "visual": "green serpent in scholar robes"},
+        {"id": "hooded", "name": None, "visual": "tall figure in a deep hood"},
+    ]}
+    text = roster.describe_for_prompt(chars)
+    assert 'anton name="Anton" looks like: green serpent in scholar robes' in text
+    assert "hooded (unnamed in story) looks like: tall figure in a deep hood" in text
+
+
+def test_roster_prompt_flags_an_entry_with_no_visual():
+    """Real run: every character landed with visual:"" — nothing to match on."""
+    chars = {"characters": [{"id": "blue_figure", "name": None, "visual": ""}]}
+    assert "(no description recorded)" in roster.describe_for_prompt(chars)
+
+
+def test_empty_roster_tells_the_analyser_everything_is_new():
+    assert "every character you see is new" in roster.describe_for_prompt({"characters": []})

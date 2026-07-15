@@ -48,6 +48,11 @@ Never output a free-form name. Never guess.
   book** keeps a descriptive slug (`hooded_figure`, `bald_guard`). If you
   believe you recognise them from outside knowledge, put that in
   `inferred_identity` — never in `name`.
+- Every character you register in `NEW_CHARACTERS` **must** have a `visual`:
+  what they look like, in enough detail to recognise them again on a later page
+  (build, colour, costume, hair, distinguishing marks). This is how the next
+  page's analysis matches them instead of registering a duplicate. Never leave
+  `visual` blank, and never write only "a figure".
 - Every identification carries `evidence`: what is visibly true that supports
   it ("claws, yellow-blue suit"), and a `confidence`.
 - If you cannot tell who someone is, that is a normal and correct outcome:

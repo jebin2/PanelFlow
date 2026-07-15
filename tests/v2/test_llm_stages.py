@@ -223,3 +223,16 @@ def _with_panel_edit(index, **changes):
     response = copy.deepcopy(PAGE_RESPONSE)
     response["panels"][index].update(changes)
     return response
+
+
+def test_story_so_far_does_not_claim_page_two_is_the_first_page(ready, stub_llm):
+    """The cover often yields no summary; page 2 must not be told it is page 1."""
+    from panelflow.v2.stage1.analyze import _story_so_far
+
+    assert _story_so_far(ready, 1) == "(this is the first page)"
+    assert _story_so_far(ready, 2) == "(nothing recorded from earlier pages)"
+
+    page = ready.load_page(1)
+    page["analysis"] = {"scene_summary": "Anton reviews the wards."}
+    ready.save_page(1, page)
+    assert "page 1: Anton reviews the wards." in _story_so_far(ready, 2)

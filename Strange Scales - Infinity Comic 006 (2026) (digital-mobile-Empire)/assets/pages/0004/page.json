@@ -6,12 +6,21 @@
     "height": 1280,
     "page_type": "story",
     "is_spread": false,
-    "status": "split",
+    "status": "analyzed",
     "extraction": {
         "tool": "comic-panel-extractor",
         "panel_count": 2
     },
-    "analysis": {},
+    "analysis": {
+        "model": "default",
+        "prompt_version": "v1",
+        "scene_summary": "",
+        "mood": "",
+        "continuity_note": "",
+        "reading_order_suspect": false,
+        "content_warnings": [],
+        "unassigned_dialogue": []
+    },
     "panels": [
         {
             "id": 1,
@@ -22,7 +31,17 @@
                 800,
                 1280
             ],
-            "text_regions": []
+            "text_regions": [],
+            "role": "dialogue",
+            "description": "",
+            "intensity": 3,
+            "skippable": false,
+            "focal_point": [
+                0.5,
+                0.5
+            ],
+            "dialogue": [],
+            "characters": []
         },
         {
             "id": 2,
@@ -33,7 +52,17 @@
                 745,
                 1207
             ],
-            "text_regions": []
+            "text_regions": [],
+            "role": "dialogue",
+            "description": "",
+            "intensity": 3,
+            "skippable": false,
+            "focal_point": [
+                0.5,
+                0.5
+            ],
+            "dialogue": [],
+            "characters": []
         }
     ]
 }

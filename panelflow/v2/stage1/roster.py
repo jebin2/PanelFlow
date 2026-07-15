@@ -1,4 +1,5 @@
 """characters.json read/write helpers. Owns roster shape, nothing else."""
+from custom_logger import logger_config
 
 ROLES = ("protagonist", "antagonist", "supporting", "background")
 
@@ -8,14 +9,17 @@ def ids(characters):
 
 
 def describe_for_prompt(characters):
-    """The roster as the analyser sees it: id, name, and what they look like."""
+    """The roster as the analyser sees it: id, name, and what they look like.
+
+    The visual is the whole point — without it there is nothing to match a face
+    on the next page against, and the analyser can only register duplicates."""
     entries = characters.get("characters", [])
     if not entries:
         return "(empty — every character you see is new)"
     lines = []
     for c in entries:
         name = f' name="{c["name"]}"' if c.get("name") else " (unnamed in story)"
-        visual = f' looks like: {c["visual"]}' if c.get("visual") else ""
+        visual = f' looks like: {c["visual"]}' if c.get("visual") else " (no description recorded)"
         lines.append(f'- {c["id"]}{name}{visual}')
     return "\n".join(lines)
 
@@ -27,6 +31,12 @@ def add_new(characters, new_entries, page_index):
         slug = entry.get("id")
         if not slug or slug in known:
             continue
+        if not entry.get("visual"):
+            # Later pages match against this description; without one the
+            # analyser can only keep registering the same character again.
+            logger_config.warning(
+                f"1.3 page {page_index}: character {slug!r} registered with no visual "
+                f"description — it cannot be matched on later pages")
         named_by_panel = entry.get("named_by_panel") or 0
         characters.setdefault("characters", []).append({
             "id": slug,

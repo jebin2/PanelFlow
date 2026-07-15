@@ -4,14 +4,23 @@
     "image": "page.jpg",
     "width": 800,
     "height": 1280,
-    "page_type": "story",
+    "page_type": "",
     "is_spread": false,
-    "status": "split",
+    "status": "analyzed",
     "extraction": {
         "tool": "comic-panel-extractor",
         "panel_count": 3
     },
-    "analysis": {},
+    "analysis": {
+        "model": "default",
+        "prompt_version": "v1",
+        "scene_summary": "Three sequential comic panels depicting characters observing a location from afar using binoculars.",
+        "mood": "",
+        "continuity_note": "",
+        "reading_order_suspect": false,
+        "content_warnings": [],
+        "unassigned_dialogue": []
+    },
     "panels": [
         {
             "id": 1,
@@ -22,7 +31,28 @@
                 741,
                 357
             ],
-            "text_regions": []
+            "text_regions": [],
+            "role": "establishing",
+            "description": "An overhead view of a city or settlement labeled \"The Citadel\" with stylized buildings.",
+            "intensity": 1,
+            "skippable": false,
+            "focal_point": [
+                0.5,
+                0.5
+            ],
+            "dialogue": [
+                {
+                    "speaker": "",
+                    "text": "THE CITADEL.",
+                    "kind": "caption"
+                },
+                {
+                    "speaker": "",
+                    "text": "BELOW THE SANCTUM SANCTORUM.",
+                    "kind": "caption"
+                }
+            ],
+            "characters": []
         },
         {
             "id": 2,
@@ -33,7 +63,17 @@
                 800,
                 828
             ],
-            "text_regions": []
+            "text_regions": [],
+            "role": "reveal",
+            "description": "A circular vignette showing a zoomed-in binocular view of a figure holding a staff near a hanging creature skull.",
+            "intensity": 2,
+            "skippable": false,
+            "focal_point": [
+                0.6,
+                0.4
+            ],
+            "dialogue": [],
+            "characters": []
         },
         {
             "id": 3,
@@ -44,7 +84,23 @@
                 723,
                 1206
             ],
-            "text_regions": []
+            "text_regions": [],
+            "role": "dialogue",
+            "description": "Three small reptilian or alien characters look forward while one looks through mechanical binoculars.",
+            "intensity": 2,
+            "skippable": false,
+            "focal_point": [
+                0.52,
+                0.72
+            ],
+            "dialogue": [
+                {
+                    "speaker": "Character with binoculars",
+                    "text": "OH, AFANAF IS STILL THERE, ALL RIGHT. WAITING FOR THE NIGHT...",
+                    "kind": "speech"
+                }
+            ],
+            "characters": []
         }
     ]
 }

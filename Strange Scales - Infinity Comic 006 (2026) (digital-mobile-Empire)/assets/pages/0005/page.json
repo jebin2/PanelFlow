@@ -6,12 +6,21 @@
     "height": 1280,
     "page_type": "story",
     "is_spread": false,
-    "status": "split",
+    "status": "analyzed",
     "extraction": {
         "tool": "comic-panel-extractor",
         "panel_count": 1
     },
-    "analysis": {},
+    "analysis": {
+        "model": "default",
+        "prompt_version": "v1",
+        "scene_summary": "",
+        "mood": "",
+        "continuity_note": "",
+        "reading_order_suspect": false,
+        "content_warnings": [],
+        "unassigned_dialogue": []
+    },
     "panels": [
         {
             "id": 1,
@@ -22,7 +31,35 @@
                 759,
                 1200
             ],
-            "text_regions": []
+            "text_regions": [
+                [
+                    312,
+                    592,
+                    452,
+                    795
+                ]
+            ],
+            "role": "dialogue",
+            "description": "Two characters on a large creature approach a broken door with flying papers, speaking about a thief.",
+            "intensity": 3,
+            "skippable": false,
+            "focal_point": [
+                0.5,
+                0.45
+            ],
+            "dialogue": [
+                {
+                    "kind": "speech",
+                    "speaker": "",
+                    "text": "...MUST BE IT! BEJEWELED COVER...CAPRICORN LEATHER..."
+                },
+                {
+                    "kind": "speech",
+                    "speaker": "",
+                    "text": "BLOODY THIEF DIDN'T EVEN WAIT FOR SUNSET..."
+                }
+            ],
+            "characters": []
         }
     ]
 }

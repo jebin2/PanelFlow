@@ -145,4 +145,8 @@ def _story_so_far(assets, index):
         summary = assets.load_page(i).get("analysis", {}).get("scene_summary")
         if summary:
             lines.append(f"- page {i}: {summary}")
-    return "\n".join(lines) or "(this is the first page)"
+    if lines:
+        return "\n".join(lines)
+    # Earlier pages can exist but have no summary — a cover, or an analysis that
+    # came back thin. Saying "this is the first page" then is simply false.
+    return "(this is the first page)" if index == 1 else "(nothing recorded from earlier pages)"
