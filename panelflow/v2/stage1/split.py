@@ -33,6 +33,9 @@ BINARY = os.path.expanduser("~/.pyenv/versions/comic-panel-extractor_env/bin/com
 # "panel_...(x1, y1, x2, y2)" part and ignore whatever wraps it — debris like
 # panels_visualization.jpg has no coordinates and cannot match.
 BBOX_IN_NAME = re.compile(r'panel_(?:\d+_)?\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)')
+# Above this, two boxes are one panel found twice. Below it they are two panels,
+# even when one sits wholly inside the other — see _drop_duplicates.
+DUPLICATE_IOU = 0.7
 
 
 def is_done(assets):
@@ -168,13 +171,51 @@ def _parse_bboxes(raw_dir):
 
 
 def _place_panels(raw_dir, bboxes, panels_dir, reading_direction):
-    ordered = sort_panels([list(b) for b in bboxes.keys()], reading_direction)
+    ordered = sort_panels([list(b) for b in _drop_duplicates(bboxes)], reading_direction)
     panels = []
     for panel_id, bbox in enumerate(ordered, start=1):
         filename = f"panel_{panel_id:02d}.jpg"
         shutil.copy2(bboxes[tuple(bbox)], os.path.join(panels_dir, filename))
         panels.append({"id": panel_id, "image": f"panels/{filename}", "bbox": list(bbox)})
     return panels
+
+
+def _drop_duplicates(bboxes):
+    """Drop boxes that are two detections of one panel, keeping the larger.
+
+    Real case, page 6: 710x1132 and 613x1097 nested on top of each other, the
+    same drawing found twice. Left in, the page is described twice, and the
+    video shows the same panel twice in a row.
+
+    Overlap alone cannot decide this — an inset panel sits *entirely* inside its
+    parent and is a real, separate panel. IoU tells them apart, because it asks
+    how much of the *union* is shared rather than how much of the smaller box
+    is: the duplicate scores 0.84, while page 4's inset scores 0.13 despite
+    being 100% contained.
+
+    The larger box wins. It may carry some gutter, but the smaller one risks
+    cutting the art.
+    """
+    kept = []
+    for bbox in sorted(bboxes, key=_area, reverse=True):
+        if any(_iou(bbox, other) > DUPLICATE_IOU for other in kept):
+            logger_config.info(f"1.2 dropped a duplicate detection of one panel: {list(bbox)}")
+            continue
+        kept.append(bbox)
+    return kept
+
+
+def _area(bbox):
+    return max(0, bbox[2] - bbox[0]) * max(0, bbox[3] - bbox[1])
+
+
+def _intersection(a, b):
+    return _area((max(a[0], b[0]), max(a[1], b[1]), min(a[2], b[2]), min(a[3], b[3])))
+
+
+def _iou(a, b):
+    union = _area(a) + _area(b) - _intersection(a, b)
+    return _intersection(a, b) / union if union else 0
 
 
 def _whole_page_panel(assets, index, page, panels_dir):

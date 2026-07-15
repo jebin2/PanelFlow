@@ -183,6 +183,28 @@ def test_split_reruns_only_the_page_reset_in_page_json(comic_folder, fake_extrac
     assert len(assets.load_page(1)["panels"]) == 2
 
 
+def test_one_panel_detected_twice_is_deduplicated(tmp_path):
+    """Real page 6: the extractor found the same drawing twice, nested, and the
+    two panels carried identical descriptions and identical dialogue."""
+    kept = split._drop_duplicates({(40, 68, 750, 1200): "a", (132, 95, 745, 1192): "b"})
+
+    assert kept == [(40, 68, 750, 1200)]        # the larger box survives
+
+
+def test_an_inset_panel_is_not_mistaken_for_a_duplicate(tmp_path):
+    """Real page 4: a 211x624 inset sits 100% inside a full-page panel and is a
+    genuine second panel. Containment would kill it; IoU (0.13) spares it."""
+    boxes = {(0, 0, 800, 1280): "a", (534, 583, 745, 1207): "b"}
+
+    assert len(split._drop_duplicates(boxes)) == 2
+
+
+def test_distinct_panels_are_all_kept(tmp_path):
+    boxes = {(0, 0, 400, 400): "a", (400, 0, 800, 400): "b", (0, 400, 800, 800): "c"}
+
+    assert len(split._drop_duplicates(boxes)) == 3
+
+
 def test_bbox_regex_matches_both_real_extractor_formats_and_ignores_debris(tmp_path):
     """Both prefixes are real: '0016_panel_(...)' comes from the extractor's LLM
     path, 'panel_1_(...)' from its CV path."""
