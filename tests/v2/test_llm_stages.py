@@ -6,7 +6,7 @@ import pytest
 
 from panelflow.v2 import llm
 from panelflow.v2.paths import Assets
-from panelflow.v2.stage1 import analyze, extract, reconcile, split, synthesize
+from panelflow.v2.stage1 import analyze, digest, extract, reconcile, split, synthesize
 
 PAGE_RESPONSE = {
     "scene_summary": "Logan meets Creed.",
@@ -183,6 +183,47 @@ def test_analyze_is_skipped_when_already_current(ready, stub_llm):
 
 
 # ---------------------------------------------------------------- 1.4 reconcile
+
+def test_characters_sharing_a_panel_are_reported_as_pairs(ready, stub_llm):
+    """The real case: pink_snake_left and pink_snake_right read as obvious
+    duplicates from their descriptions alone, and share a panel three times.
+    1.4 would have to cross-reference every panel in the book to notice, so it
+    is computed and handed over."""
+    stub_llm(page=_with_panel_edit(0, characters=[
+        {"ref": "wolverine", "confidence": "high", "evidence": "claws"},
+        {"ref": "sabretooth", "confidence": "high", "evidence": "mane"},
+    ]))
+    analyze.run(ready)
+
+    pairs = digest.distinct_pairs(ready)
+
+    assert ("sabretooth", "wolverine") in pairs
+    # panel 2 holds hooded_figure alone, so it pairs with nobody
+    assert not any("hooded_figure" in pair for pair in pairs)
+
+
+def test_characters_never_sharing_a_panel_are_not_paired(ready, stub_llm):
+    """The merge candidates: bearded_helper and mustached_helper never appeared
+    together in the real book, which is exactly what leaves 1.4 free to merge
+    them. PAGE_RESPONSE keeps wolverine and hooded_figure in separate panels."""
+    stub_llm()
+    analyze.run(ready)
+
+    assert digest.distinct_pairs(ready) == []
+
+
+def test_pairs_are_reported_to_reconcile(ready, stub_llm):
+    seen = stub_llm(page=_with_panel_edit(0, characters=[
+        {"ref": "wolverine", "confidence": "high", "evidence": "claws"},
+        {"ref": "hooded_figure", "confidence": "low", "evidence": "hood"},
+    ]))
+    analyze.run(ready)
+    reconcile.run(ready)
+
+    assert "Drawn together in one panel" in seen["reconcile_prompt"]
+    assert "- hooded_figure and wolverine" in seen["reconcile_prompt"]
+
+
 
 def test_reconcile_merges_and_rewrites_panel_refs(ready, stub_llm):
     stub_llm(reconcile_result={

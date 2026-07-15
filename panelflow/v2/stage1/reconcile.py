@@ -31,6 +31,8 @@ def run(assets, model=None):
         user_prompt="\n\n".join([
             f'Comic: {assets.load_book().get("title", assets.name)}',
             f"Character roster:\n{digest.roster_text(characters)}",
+            f"Drawn together in one panel — almost never the same character:\n"
+            f"{digest.distinct_pairs_text(assets)}",
             f"Pages:\n{digest.pages_text(assets, with_evidence=True)}",
         ]),
         schema=schemas.RECONCILE,

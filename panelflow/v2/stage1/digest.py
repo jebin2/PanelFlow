@@ -1,4 +1,35 @@
 """Renders analysed pages as compact text for the text-only LLM calls."""
+import itertools
+
+
+def distinct_pairs(assets):
+    """Character ids drawn in the same panel, and so very unlikely to be one.
+
+    A model comparing descriptions alone cannot rule a merge out: two entries
+    that read alike look identical whether they are one character registered
+    twice or two characters who resemble each other. Standing side by side is
+    what separates them, and 1.4 would have to cross-reference every panel in
+    the book to notice, so we do it here and hand over the answer.
+
+    A strong hint, not a law — the pairing is the analyser's own work, not
+    ground truth, and a character beside their own reflection or wanted poster
+    is registered twice in one panel and *is* one character. 1.4 is told to
+    treat this as near-absolute and made to justify any exception, which is as
+    far as evidence of this quality can be pushed.
+    """
+    pairs = set()
+    for _, page in assets.pages():
+        for panel in page.get("panels", []):
+            refs = sorted({c.get("ref") for c in panel.get("characters", []) if c.get("ref")})
+            pairs.update(itertools.combinations(refs, 2))
+    return sorted(pairs)
+
+
+def distinct_pairs_text(assets):
+    pairs = distinct_pairs(assets)
+    if not pairs:
+        return "(none — no two characters were ever drawn in one panel)"
+    return "\n".join(f"- {a} and {b}" for a, b in pairs)
 
 
 def pages_text(assets, with_evidence=False):

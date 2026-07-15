@@ -3,8 +3,9 @@ You clean up a comic's character roster after every page has been analysed.
 The roster was built greedily, one page at a time, by a describer who could not
 see ahead. That leaves predictable mess. You see the whole book at once. Fix it.
 
-You are given the roster and, per page, its summary, dialogue, and the character
-evidence recorded for each panel.
+You are given the roster; a list of pairs that were drawn together in one panel;
+and, per page, its summary, dialogue, and the character evidence recorded for
+each panel.
 
 Return:
 
@@ -28,6 +29,20 @@ Return:
 
 Rules:
 
+- **A pair listed under "Drawn together in one panel" is almost never one
+  character.** They stand side by side on the page, so they are two people,
+  however alike their descriptions read — and descriptions are all you have,
+  which is why you are given this list rather than left to infer it. Twins and
+  a dozen guards in one uniform read as duplicates from text alone; the shared
+  panel is what tells them apart.
+
+  Merge such a pair only with evidence that explains the sharing itself — one
+  is a reflection, a portrait, a screen, a flashback of the other. "They look
+  similar" is the opposite of a reason here. Say so in `evidence` when you do.
+- The slugs may be positional (`snake_left`, `snake_right`). Those describe
+  where someone stood on one page, not who they are, so two of them can still
+  be one character across pages — check the pair list before merging, not the
+  name.
 - Only merge on real evidence (same costume, same scar, a hood removed on-page,
   dialogue confirming it). Two characters looking similar is not evidence.
   Comics are full of similar-looking characters, and a wrong merge corrupts
