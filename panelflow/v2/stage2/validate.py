@@ -1,11 +1,17 @@
 """Sub-stage 2.3 — Validate & repair.
 
-Deterministic checks over a direction file, then up to two repair calls. This
-is what sets `validated: true`, which is Stage 3's gate — a file with a dangling
-panel ref, an animation the renderer has never heard of, or a name the book
-never says must not reach a render.
+Checks a direction file, then up to two repair calls. This is what sets
+`validated: true`, which is Stage 3's gate — a file with a dangling panel ref,
+an animation the renderer has never heard of, or a name the book never says
+must not reach a render.
 
-Every check here is a fact, not a judgement. Taste belongs to 2.1/2.2.
+Almost every check here is a fact: does the panel exist, is the animation in the
+renderer's vocabulary, does every beat have a shot. Taste belongs to 2.1/2.2.
+
+The exception is naming, which is asked of a model rather than ruled on, because
+it is a question about language and not about the data — see _check_names. The
+first cut of it was a regex, and it was worse than nothing: it passed
+"Wolverine catches it." while flagging "Beneath".
 """
 import re
 
@@ -20,12 +26,8 @@ WORDS_PER_SECOND = 2.5
 SHORTS_SECONDS = (60, 120)
 ENDING_ANIMATIONS = ["zoom_out", "fade_in", "ken_burns", "breathe"]
 
-# One tokenizer for both the narration and the book, so "Vee-Shanti" is the same
-# token on both sides. Two regexes with different ideas about hyphens is how the
-# first cut of this decided the book never says a word it says on page 6.
-_WORD = re.compile(r"[A-Za-z][A-Za-z'’\-]*")
-_SPLIT_PARTS = re.compile(r"['’\-]")
-_ENDS_SENTENCE = '.!?:;"“”—-'
+# Markup is syntax — a bracket is a bracket in every book, so a rule can own it.
+# Naming is not, and is asked of a model below.
 _MARKUP = re.compile(r'[*_#<>\[\]{}|]|\([^)]*\)')
 
 
@@ -42,7 +44,7 @@ def run(assets, target, model=None):
         raise ValueError(f"2.3: no direction to validate for {target!r}; run 2.1/2.2 first")
 
     for attempt in range(MAX_REPAIRS + 1):
-        problems = check(assets, direction)
+        problems = check(assets, direction, model)
         if not problems:
             direction["validated"] = True
             assets.save_direction(target, direction)
@@ -57,10 +59,10 @@ def run(assets, target, model=None):
         assets.save_direction(target, direction)
 
     # Hard-fail rather than ship: a broken direction file renders a broken video.
-    return [f"{target}: {p}" for p in check(assets, direction)]
+    return [f"{target}: {p}" for p in check(assets, direction, model)]
 
 
-def check(assets, direction):
+def check(assets, direction, model=None):
     """Every violation as one string. Empty list == valid."""
     problems = []
     shots = direction.get("shots", [])
@@ -70,7 +72,7 @@ def check(assets, direction):
     problems += _check_ids(shots)
     problems += _check_sources(assets, shots)
     problems += _check_vocabulary(shots)
-    problems += _check_narration(assets, shots)
+    problems += _check_narration(assets, shots, model)
     problems += _check_meta(assets, direction)
     if direction.get("target") == "longform":
         problems += _check_beats_covered(assets, shots)
@@ -143,84 +145,67 @@ def _check_vocabulary(shots):
     return problems
 
 
-def _check_narration(assets, shots):
-    """Narration must be sayable, and must not name anyone the book does not.
-
-    The naming check is grounded rather than guessed: a capitalised word is
-    allowed if the roster lets us say it, or if the book's own text contains it
-    — that is what makes "Citadel" and "Wongburg" fine and "Wolverine" a
-    violation. Sentence-initial capitals are grammar and are ignored.
-    """
-    allowed = _sayable(assets) | _words_in_book(assets)
+def _check_narration(assets, shots, model=None):
     problems = []
     for shot in shots:
-        text = shot.get("narration") or ""
-        where = f'shot {shot.get("id")}'
-        if _MARKUP.search(text):
-            problems.append(f"{where}: narration has markup or a stage direction — TTS reads it")
-        for token in _unexplained_names(text, allowed):
+        if _MARKUP.search(shot.get("narration") or ""):
             problems.append(
-                f"{where}: narration says {token!r}, which the book never says and the "
-                f"roster does not allow")
+                f'shot {shot.get("id")}: narration has markup or a stage direction — '
+                f"TTS reads it aloud")
+    return problems + _check_names(assets, shots, model)
+
+
+def _check_names(assets, shots, model):
+    """Ask whether the narration names anyone the book never named.
+
+    This is the one check here that is not a fact, and it is asked rather than
+    ruled on. A rule cannot do it: the question is whether a capitalised word is
+    a person's name, and no amount of matching separates "Gambit" from
+    "Beneath" — both are simply words this comic never writes. Nor does the
+    book's own vocabulary settle it, since "Strange" is in this very book's
+    title and "Doctor Strange" is exactly the name that must not appear.
+
+    So the whole narration goes over, unfiltered. Filtering the candidates first
+    would decide, with a rule, the very thing being asked.
+    """
+    speaking = [s for s in shots if (s.get("narration") or "").strip()]
+    if not speaking:
+        return []
+
+    try:
+        result = llm.ask_json(
+            system_prompt=prompts.load("check_narration_names"),
+            user_prompt=_names_prompt(assets, speaking),
+            model=model,
+        )
+    except Exception as e:
+        # Loud, and fatal to validation: silently skipping the anti-hallucination
+        # check would ship the video it exists to stop.
+        raise RuntimeError(f"2.3: could not check narration names: {e}") from e
+
+    problems = []
+    for violation in result.get("violations", []):
+        problems.append(
+            f'shot {violation.get("shot")}: narration names {violation.get("name")!r}, '
+            f"whom this book never names — describe them instead")
     return problems
 
 
-def _unexplained_names(text, allowed):
-    """Capitalised words that are neither grammar nor grounded.
-
-    A word earns its capital three ways: it opens a sentence, the roster lets us
-    say it, or the book puts it on the page. "Wongburg" and "Vee-Shanti" pass on
-    the third — invented nonsense is still the book's nonsense. Only a name from
-    nowhere is left, which is the one thing this is looking for.
-    """
-    found = []
-    for match in _WORD.finditer(text):
-        token = match.group()
-        if not token[0].isupper() or _opens_a_sentence(text, match.start()):
-            continue
-        if all(part in allowed for part in _parts(token)):
-            continue
-        found.append(token)
-    return found
-
-
-def _parts(token):
-    """"Vee-Shanti" -> ["vee", "shanti"] — the book is indexed by plain words."""
-    return [p for p in _SPLIT_PARTS.split(token.lower()) if p]
-
-
-def _opens_a_sentence(text, position):
-    before = text[:position].rstrip()
-    return not before or before[-1] in _ENDS_SENTENCE
-
-
-def _sayable(assets):
-    out = set()
+def _names_prompt(assets, shots):
+    allowed, unnamed = [], []
     for c in assets.load_characters().get("characters", []):
-        for value in [c.get("name"), c.get("inferred_identity")] + (c.get("aliases") or []):
-            if value:
-                out.update(value.lower().split())
-    return out
-
-
-def _words_in_book(assets):
-    """Every word the book itself puts on the page — dialogue, captions, title.
-
-    Place names, inventions and shouted nonsense all live here, and narration is
-    entitled to any of them: they are grounded by definition.
-    """
-    out = set()
-    book = assets.load_book()
-    texts = [book.get("title", ""), (book.get("story") or {}).get("synopsis", "")]
-    for _, page in assets.pages():
-        entries = [d for panel in page.get("panels", []) for d in panel.get("dialogue", [])]
-        entries += page.get("analysis", {}).get("unassigned_dialogue", [])
-        texts += [e.get("text") or "" for e in entries]
-        texts.append(page.get("analysis", {}).get("scene_summary") or "")
-    for text in texts:
-        for token in _WORD.findall(text or ""):
-            out.update(_parts(token))
-    return out
+        name = c.get("name") or c.get("inferred_identity")
+        if name:
+            allowed.append(f'- "{name}" — {c["id"]}'
+                           + (f' (also: {", ".join(c["aliases"])})' if c.get("aliases") else ""))
+        else:
+            unnamed.append(f'- {c["id"]} — {c.get("visual") or "no description"}')
+    lines = "\n".join(f'{s["id"]}: {s.get("narration")}' for s in shots)
+    return (
+        f'ALLOWED\n{"=" * 40}\n' + ("\n".join(allowed) or "(no character may be named)")
+        + f'\n\nUNNAMED — describe, never name\n{"=" * 40}\n' + ("\n".join(unnamed) or "(none)")
+        + f'\n\nNARRATION\n{"=" * 40}\n{lines}'
+    )
 
 
 def _check_meta(assets, direction):

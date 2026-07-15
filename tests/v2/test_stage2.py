@@ -30,6 +30,16 @@ DIRECTION = {
 }
 
 
+@pytest.fixture(autouse=True)
+def clean_names(monkeypatch):
+    """2.3 asks a model whether the narration names anyone it should not.
+
+    Default it to "nobody", so every other check is tested on its own; the tests
+    that care about naming install their own answer.
+    """
+    monkeypatch.setattr(validate.llm, "ask_json", lambda **kw: {"violations": []})
+
+
 @pytest.fixture
 def directed(ready_book):
     """A validated-shaped direction over the stubbed 2-page book."""
@@ -236,35 +246,73 @@ def test_the_first_shot_must_not_transition_in(ready_book, directed):
 
 # ------------------------------------------------- the naming rule, grounded
 
-def test_a_name_from_nowhere_is_caught(ready_book, directed):
+def test_a_reported_name_becomes_a_violation(ready_book, directed, monkeypatch):
     """The whole point: the director may not name someone the book never names."""
+    monkeypatch.setattr(validate.llm, "ask_json",
+                        lambda **kw: {"violations": [{"shot": 1, "name": "Gambit"}]})
     direction = directed()
-    direction["shots"][0]["narration"] = "Deep in the night, Gambit makes his move."
 
     problems = validate.check(ready_book, direction)
 
-    assert any("'Gambit'" in p and "never says" in p for p in problems)
+    assert any("'Gambit'" in p and "never names" in p for p in problems)
 
 
-def test_words_the_book_itself_says_are_allowed(ready_book, directed):
-    """Real false positive: 'Vee-Shanti' was flagged as invented, though page 6
-    shouts it. Place names and coined nonsense are the book's to coin."""
-    page = ready_book.load_page(1)
-    page["panels"][0]["dialogue"] = [
-        {"text": "WHERE IS THE VEE-SHANTI AFFORDANCE?!", "kind": "speech", "speaker": ""}]
-    ready_book.save_page(1, page)
+def test_the_whole_narration_is_sent_unfiltered(ready_book, directed, monkeypatch):
+    """No rule may pre-filter which words are worth asking about — deciding that
+    is the question itself. "Strange" is in this book's own title, so a filter
+    would never ask about "Doctor Strange", which is the one name that matters."""
+    seen = {}
+
+    def fake(system_prompt, user_prompt, **kw):
+        seen["prompt"] = user_prompt
+        return {"violations": []}
+    monkeypatch.setattr(validate.llm, "ask_json", fake)
+
     direction = directed()
-    direction["shots"][0]["narration"] = "She finds the Vee-Shanti Affordance in a box."
+    direction["shots"][0]["narration"] = "The sorcerer Doctor Strange watches."
+    validate.check(ready_book, direction)
 
-    assert validate.check(ready_book, direction) == []
+    assert "Doctor Strange" in seen["prompt"]          # not filtered out
+    assert "Then it moves." in seen["prompt"]          # every speaking shot
+    assert '"Wolverine"' in seen["prompt"]             # who may be named
 
 
-def test_a_capital_that_opens_a_sentence_is_grammar_not_a_name(ready_book, directed):
-    """Real false positive: "…Afanaf. He's been here since dawn." flagged He's."""
+def test_unnamed_characters_are_listed_for_the_name_check(ready_book, directed, monkeypatch):
+    characters = ready_book.load_characters()
+    characters["characters"].append(
+        {"id": "winding_creature", "name": None, "visual": "long, ribbon-like, tan"})
+    ready_book.save_characters(characters)
+    seen = {}
+    monkeypatch.setattr(validate.llm, "ask_json",
+                        lambda **kw: seen.update(prompt=kw["user_prompt"]) or {"violations": []})
+
+    validate.check(ready_book, directed())
+
+    assert "winding_creature — long, ribbon-like, tan" in seen["prompt"]
+
+
+def test_a_silent_book_asks_nobody(ready_book, directed, monkeypatch):
+    """No narration, no question — do not spend a call to hear 'nothing'."""
+    def boom(**kw):
+        raise AssertionError("should not have asked")
+    monkeypatch.setattr(validate.llm, "ask_json", boom)
+
     direction = directed()
-    direction["shots"][0]["narration"] = "A figure waits. He's been here since dawn."
+    for shot in direction["shots"]:
+        shot["narration"] = ""
+        shot["silent_seconds"] = 2
 
-    assert validate.check(ready_book, direction) == []
+    validate.check(ready_book, direction)      # must not raise
+
+
+def test_a_failed_name_check_is_fatal_not_skipped(ready_book, directed, monkeypatch):
+    """Swallowing this would ship the video it exists to stop."""
+    def boom(**kw):
+        raise RuntimeError("TTT down")
+    monkeypatch.setattr(validate.llm, "ask_json", boom)
+
+    with pytest.raises(RuntimeError, match="could not check narration names"):
+        validate.check(ready_book, directed())
 
 
 def test_narration_with_markup_is_caught(ready_book, directed):
