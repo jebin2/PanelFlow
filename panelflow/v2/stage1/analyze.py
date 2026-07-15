@@ -88,7 +88,7 @@ def _locate_dialogue(page, model):
     as two lines of one bubble.
     """
     lines = page.get("ocr_lines") or []
-    dialogue = [d for panel in page["panels"] for d in panel.get("dialogue", [])]
+    dialogue = _all_dialogue(page)
     if not lines or not dialogue:
         return
 
@@ -109,6 +109,18 @@ def _locate_dialogue(page, model):
         if entry is not None and boxes:
             entry["region"] = [min(b[0] for b in boxes), min(b[1] for b in boxes),
                                max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _all_dialogue(page):
+    """Every piece of text the page speaks, panel-bound or not.
+
+    The unassigned ones are captions in gutters and titles spanning panels —
+    the text least likely to sit inside any panel's box, and so the text most
+    worth being able to locate. Returned as the live dicts, which is how the
+    caller writes `region` back into page.json.
+    """
+    return ([d for panel in page["panels"] for d in panel.get("dialogue", [])]
+            + list(page.get("analysis", {}).get("unassigned_dialogue", [])))
 
 
 def _nth(dialogue, index):

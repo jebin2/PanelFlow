@@ -138,6 +138,34 @@ def test_analyze_cannot_touch_text_regions(ready, stub_llm):
     assert ready.load_page(1)["panels"][0]["text_regions"] == [[50, 20, 300, 120]]
 
 
+def test_unassigned_captions_are_located_too(monkeypatch):
+    """A caption in a gutter is the text least likely to fall inside any panel's
+    box, and so the text most worth being able to locate. Verbatim from page 2:
+    the caption spans the page, and _locate_dialogue used to walk only panels."""
+    page = {
+        "page_index": 2,
+        "panels": [{"id": 1, "dialogue": [{"text": "OH, AFANAF IS STILL THERE.", "kind": "speech"}]}],
+        "analysis": {"unassigned_dialogue": [
+            {"text": "THE CITADEL. BELOW THE SANCTUM SANCTORUM.", "kind": "caption"}]},
+        "ocr_lines": [
+            {"text": "OH, AFANAF", "box": [146, 609, 326, 636]},
+            {"text": "THE CITADEL", "box": [247, 17, 547, 57]},
+            {"text": "BELOW -THESANGTOMSANGTORUM", "box": [33, 69, 766, 105]},
+        ],
+    }
+    # 0 is the panel's speech, 1 is the unassigned caption: one flat numbering.
+    monkeypatch.setattr(analyze.llm, "ask_json", lambda **kw: {"matches": [
+        {"dialogue_index": 0, "lines": [0]},
+        {"dialogue_index": 1, "lines": [1, 2]},
+    ]})
+
+    analyze._locate_dialogue(page, None)
+
+    assert page["panels"][0]["dialogue"][0]["region"] == [146, 609, 326, 636]
+    # The union of the caption's two lines, which is what a crop must not cut.
+    assert page["analysis"]["unassigned_dialogue"][0]["region"] == [33, 17, 766, 105]
+
+
 def test_analyze_prompt_carries_roster_and_previous_pages(ready, stub_llm):
     seen = stub_llm()
     analyze.run(ready)
