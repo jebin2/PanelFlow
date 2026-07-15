@@ -1,13 +1,18 @@
 """Single entry point for LLM calls. Stage code never touches provider details.
 
-Only Gemini enforces a response schema. TTT and the AI Studio UI return free
-text, so `schema` is best-effort there and every caller filters what it gets
-back — which is why the prompts spell out their JSON shape.
+Only Gemini enforces a response schema; the browser UIs and TTT return free
+text, so the prompts spell out their JSON shape and every caller filters what it
+gets back.
+
+Google Search AI Mode will not emit raw JSON at all — it renders structured
+answers as formatted text. Its *content* is good (it follows the schema field by
+field), so rather than fight it, a prose answer is handed to TTT to transcribe
+into JSON. Seeing and serialising are different jobs.
 """
 import json_repair
 from custom_logger import logger_config
 
-from . import providers
+from . import prompts, providers
 
 RETRIES = 3
 
@@ -27,12 +32,34 @@ def ask_json(system_prompt, user_prompt, schema=None, image_path=None, model=Non
                 schema=schema,
                 model=model,
             )
-            return _parse(raw)
+            try:
+                return _parse(raw)
+            except ValueError:
+                return reshape(system_prompt, raw)
         except Exception as e:
             last_error = e
             logger_config.warning(f"llm attempt {attempt + 1}/{RETRIES} failed: {e}")
 
     raise RuntimeError(f"LLM call failed after {RETRIES} attempts: {last_error}")
+
+
+def reshape(system_prompt, answer):
+    """Transcribe a prose answer into the JSON its instructions asked for.
+
+    The original instructions go along for the ride because they carry the
+    required shape, so there is nothing extra to keep in sync.
+    """
+    logger_config.info("answer was not JSON; reshaping via TTT")
+    from .providers import ttt
+
+    raw = ttt.generate(
+        system_prompt=prompts.load("reshape_to_json"),
+        user_prompt=(
+            f"INSTRUCTIONS THE ANALYST WAS GIVEN\n{'=' * 40}\n{system_prompt}\n\n"
+            f"THE ANSWER THEY WROTE\n{'=' * 40}\n{answer}"
+        ),
+    )
+    return _parse(raw)
 
 
 def _parse(raw):

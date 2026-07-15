@@ -45,6 +45,15 @@ _stub("google.genai", types=types.SimpleNamespace(Type=_Type, Schema=_Schema))
 sys.modules["google"].genai = sys.modules["google.genai"]
 
 
+@pytest.fixture(autouse=True)
+def no_live_llm(monkeypatch):
+    """No test may reach the real TTT service. Tests that exercise a reshape
+    stub ttt.generate themselves; their patch is applied after this one."""
+    def blocked(*args, **kwargs):
+        raise RuntimeError("TTT was called but not stubbed in this test")
+    monkeypatch.setattr("panelflow.v2.providers.ttt.generate", blocked)
+
+
 @pytest.fixture
 def comic_folder(tmp_path):
     """A folder with a two-page CBZ. `manga` marks it right-to-left."""

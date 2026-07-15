@@ -143,8 +143,9 @@ def test_json_is_recovered_from_a_fenced_chatty_reply(monkeypatch):
     assert llm.ask_json("sys", "user") == {"a": 1}
 
 
-def test_pure_prose_still_fails(monkeypatch):
-    """The real failure we hit: no JSON anywhere, only a description."""
+def test_prose_with_no_json_goes_to_the_reshaper(monkeypatch):
+    """Prose is no longer a dead end — it is handed to TTT to transcribe. Here
+    the reshaper is unavailable (see the no_live_llm fixture), so it fails."""
     _provider(monkeypatch, "This image is a comic book cover rather than an "
                            "interior story page. Intensity: 1 (Calm / Title Card)")
     with pytest.raises(RuntimeError, match="failed after 3 attempts"):
@@ -154,3 +155,82 @@ def test_pure_prose_still_fails(monkeypatch):
 def test_nested_objects_survive_extraction(monkeypatch):
     _provider(monkeypatch, 'Result: {"panels": [{"id": 1, "characters": [{"ref": "x"}]}]} done')
     assert llm.ask_json("sys", "user") == {"panels": [{"id": 1, "characters": [{"ref": "x"}]}]}
+
+
+# ---------------------------------------------------------------- prose -> JSON reshape
+
+REAL_GOOGLE_AI_ANSWER = '''The image provided is a comic book cover or title card rather than a narrative comic page with standard sequential panels.
+Panels
+Panel 1
+role: establishing
+intensity: 1
+skippable: false
+focal_point: [0.5, 0.5]
+dialogue:
+kind: caption
+text: "ALL AGES"
+speaker: ""
+Characters
+No characters from a roster appear in this title image.
+If you'd like, let me know if you want to analyze more pages from this comic.'''
+
+
+def test_prose_answer_is_reshaped_via_ttt(monkeypatch):
+    """Google AI Mode follows the schema but renders it as text, never JSON."""
+    seen = {}
+
+    class Vision:
+        @staticmethod
+        def generate(**kwargs):
+            return REAL_GOOGLE_AI_ANSWER
+
+    def fake_ttt_generate(system_prompt, user_prompt, **kwargs):
+        seen["system"] = system_prompt
+        seen["user"] = user_prompt
+        return '{"page_type": "cover", "panels": [{"id": 1, "role": "establishing"}]}'
+
+    monkeypatch.setattr(llm.providers, "vision", lambda: Vision)
+    monkeypatch.setattr("panelflow.v2.providers.ttt.generate", fake_ttt_generate)
+
+    out = llm.ask_json("analyst instructions here", "user", image_path="/tmp/p.jpg")
+
+    assert out == {"page_type": "cover", "panels": [{"id": 1, "role": "establishing"}]}
+    # the reshaper is told to transcribe, and gets the shape via the original prompt
+    assert "transcriber" in seen["system"]
+    assert "analyst instructions here" in seen["user"]
+    assert "ALL AGES" in seen["user"]
+
+
+def test_json_answers_skip_the_reshape(monkeypatch):
+    """A provider that can emit JSON (AI Studio, Gemini) costs no extra call."""
+    calls = []
+
+    class Vision:
+        @staticmethod
+        def generate(**kwargs):
+            return '{"page_type": "story"}'
+
+    monkeypatch.setattr(llm.providers, "vision", lambda: Vision)
+    monkeypatch.setattr("panelflow.v2.providers.ttt.generate",
+                        lambda **kw: calls.append(1) or "{}")
+
+    assert llm.ask_json("sys", "user", image_path="/tmp/p.jpg") == {"page_type": "story"}
+    assert calls == []
+
+
+def test_a_reshape_that_also_fails_is_retried(monkeypatch):
+    attempts = []
+
+    class Vision:
+        @staticmethod
+        def generate(**kwargs):
+            attempts.append(1)
+            return "just prose, no data at all"
+
+    monkeypatch.setattr(llm.providers, "vision", lambda: Vision)
+    monkeypatch.setattr("panelflow.v2.providers.ttt.generate",
+                        lambda **kw: "still not json")
+
+    with pytest.raises(RuntimeError, match="failed after 3 attempts"):
+        llm.ask_json("sys", "user", image_path="/tmp/p.jpg")
+    assert len(attempts) == llm.RETRIES
