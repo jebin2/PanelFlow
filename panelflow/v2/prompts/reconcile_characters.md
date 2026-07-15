@@ -35,3 +35,30 @@ Rules:
 - Never introduce a name that does not appear in the book's own text.
 - When unsure, leave it alone. An unmerged duplicate is a small cosmetic
   problem; a wrong merge is a factual error in the final video.
+
+## Output
+
+Return only JSON, no prose and no markdown fence:
+
+```
+{
+  "merges": [
+    {"from_id": "hooded_figure", "into_id": "marcus", "evidence": "hood comes off on p9, same scar"}
+  ],
+  "updates": [
+    {
+      "id": "marcus",
+      "name": "Marcus",
+      "named_by_page": 15,
+      "named_by_panel": 4,
+      "aliases": ["The Scar"],
+      "role_in_story": "antagonist",
+      "inferred_identity": ""
+    }
+  ]
+}
+```
+
+`role_in_story` must be exactly one of: protagonist, antagonist, supporting,
+background. Omit any field you are not changing; return empty lists when there
+is nothing to merge or update.

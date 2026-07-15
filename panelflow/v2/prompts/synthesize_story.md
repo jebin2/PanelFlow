@@ -25,3 +25,25 @@ Return:
 
 Be accurate over interesting. The director will make it interesting; it can only
 do that if what you give it is true.
+
+## Output
+
+Return only JSON, no prose and no markdown fence:
+
+```
+{
+  "synopsis": "...",
+  "main_characters": ["wolverine", "sabretooth"],
+  "beats": [
+    {"beat": "setup", "pages": [1, 2]},
+    {"beat": "climax", "pages": [17, 18]}
+  ],
+  "skip_overrides": [
+    {"page": 3, "panel": 2, "skippable": false, "reason": "sets up the page-19 payoff"}
+  ]
+}
+```
+
+`beat` must be exactly one of: setup, inciting, rising, climax, resolution.
+`main_characters` are roster ids, never display names. Return an empty list for
+`skip_overrides` when nothing needs overriding.

@@ -9,7 +9,7 @@ def _chars():
          "first_seen": {"page": 9, "panel": 3}, "reference_images": ["b.jpg"]},
         {"id": "marcus", "name": "Marcus", "named_in_story": True, "visual": "scar",
          "named_by": {"page": 15, "panel": 4}, "first_seen": {"page": 15, "panel": 1},
-         "reference_images": ["c.jpg"]},
+         "reference_images": ["c.jpg"], "role_in_story": None},
     ]}
 
 
@@ -79,3 +79,14 @@ def test_add_new_skips_ids_already_in_roster():
     guard = chars["characters"][-1]
     assert guard["named_in_story"] is False and guard["source"] == "visual-only"
     assert guard["first_seen"] == {"page": 4, "panel": 2}
+
+
+def test_updates_reject_a_role_outside_the_enum():
+    """Providers without schema enforcement answer freely: opencode returned
+    'fugitive pursued by guards' for role_in_story."""
+    chars = _chars()
+    roster.apply_updates(chars, [{"id": "marcus", "role_in_story": "fugitive pursued by guards"}])
+    assert next(c for c in chars["characters"] if c["id"] == "marcus")["role_in_story"] is None
+
+    roster.apply_updates(chars, [{"id": "marcus", "role_in_story": "antagonist"}])
+    assert next(c for c in chars["characters"] if c["id"] == "marcus")["role_in_story"] == "antagonist"

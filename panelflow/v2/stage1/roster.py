@@ -1,5 +1,7 @@
 """characters.json read/write helpers. Owns roster shape, nothing else."""
 
+ROLES = ("protagonist", "antagonist", "supporting", "background")
+
 
 def ids(characters):
     return {c["id"] for c in characters.get("characters", [])}
@@ -103,7 +105,9 @@ def apply_updates(characters, updates):
                 character["source"] = "dialogue"
         if update.get("aliases"):
             character["aliases"] = list(dict.fromkeys(character.get("aliases", []) + update["aliases"]))
-        if update.get("role_in_story"):
+        # Providers without schema enforcement answer this freely
+        # ("fugitive pursued by guards"); only the enum may land on disk.
+        if update.get("role_in_story") in ROLES:
             character["role_in_story"] = update["role_in_story"]
         if "inferred_identity" in update:
             character["inferred_identity"] = update["inferred_identity"] or None
