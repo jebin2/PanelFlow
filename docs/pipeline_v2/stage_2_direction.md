@@ -1,10 +1,10 @@
 # Pipeline v2 — Stage 2: Direction
 
-Stage 2 is the **director**: a text-only LLM pass (Claude) that reads the
-Stage 1 assets and decides *how the video tells the story* — which panels
-to show or skip, what the narration says, which animation and transition
-each shot gets, and the pacing. It emits schema-validated shot lists into
-`direction/`, which are the only input Stage 3 (production) consumes.
+Stage 2 is the **director**: a text-only LLM pass that reads the Stage 1 assets
+and decides *how the video tells the story* — which panels to show or skip, what
+the narration says, which animation and transition each shot gets, and the
+pacing. It emits schema-validated shot lists into `direction/`, which are the
+only input Stage 3 (production) consumes.
 
 Design goals:
 
@@ -25,31 +25,42 @@ Design goals:
 
 ## Sub-stages
 
-| Sub-stage | Name              | Kind                        | Done-marker                          |
-|-----------|-------------------|-----------------------------|--------------------------------------|
-| 2.1       | Direct longform   | text LLM (Claude)           | `direction/longform.json` exists     |
-| 2.2       | Direct shorts     | text LLM (Claude)           | `direction/shorts.json` exists       |
-| 2.3       | Validate & repair | deterministic + LLM repair  | `validated: true` in each file       |
+| Sub-stage | Name              | Kind                        | Done-marker                                     |
+|-----------|-------------------|-----------------------------|-------------------------------------------------|
+| 2.1       | Direct longform   | text LLM                    | `longform.json` has shots at the current `style_version` |
+| 2.2       | Direct shorts     | text LLM                    | `shorts.json` has shots at the current `style_version`   |
+| 2.3       | Validate & repair | checks + LLM repair         | `validated: true` in each file                  |
 
 ```
 assets/ ──2.1─▶ longform.json ──┐
         ──2.2─▶ shorts.json  ───┴──2.3─▶ validate ⇄ repair (≤2) ──▶ validated: true
 ```
 
-2.1 and 2.2 are **separate passes, not one call**: the two formats have
-opposed philosophies (longform covers the whole story with even pacing;
-shorts is hook-first and ruthless about cutting, hard 60–120s), and one
-prompt doing both does both worse. They share the same input context, so
-the second call is cache-friendly.
+2.1 and 2.2 are **separate calls, not one call answering twice**: the two
+formats have opposed philosophies (longform covers the whole story at an even
+pace; shorts is hook-first and ruthless about cutting, hard 60–120s), and one
+prompt doing both does both worse.
 
-**Shorts count:** one per book (`max_shorts` config knob, default 1 — a
-book has one best hook; more shorts cannibalize each other and spoil the
-longform). If ever raised, files become `shorts_01.json`, `shorts_02.json`;
-nothing else changes.
+They are **one module**, though — `stage2/direct.py`, taking a target. The
+philosophies live entirely in the system prompt (`direct_longform.md`,
+`direct_shorts.md`); both read the identical book, so nothing in the code needs
+to know which is running. Two modules would have differed by a string.
 
-**Model:** `direction_model` config value, default Sonnet — direction is a
-long-context text reasoning task; switching models never invalidates
-existing direction files by itself (re-direction is always explicit).
+**Shorts count:** one per book. A book has one best hook; more shorts
+cannibalize each other and spoil the longform. If that ever changes, files
+become `shorts_01.json`, `shorts_02.json` and nothing else does.
+
+**Model: TTT/opencode**, like every other text call in the pipeline — there is
+no Claude API here. `llm.ask_json` routes on the absence of an image, so the
+director gets the text provider automatically; `PANELFLOW_TEXT_PROVIDER`
+overrides it, and `--model` overrides per run. Switching models never
+invalidates existing direction files by itself (re-direction is always
+explicit).
+
+**Cost, measured on a 19-page book:** 2.1 took 299s, 2.2 took 507s, 2.3 with a
+repair ~200s and without one 13s. Input context is ~6k tokens for the whole
+book — one call, no chunking. (A thick 100+ page volume might change that;
+deferred until one shows up.)
 
 ---
 
@@ -60,8 +71,8 @@ existing direction files by itself (re-direction is always explicit).
   "schema_version": 1,
   "target": "longform",                  // longform | shorts
   "style_version": "v1",                 // re-direct knob, like Stage 1's prompt_version
-  "direction_model": "claude-sonnet-…",  // provenance
-  "validated": true,                     // set only by 2.3
+  "direction_model": "default",          // provenance; "default" = TTT's own (opencode)
+  "validated": true,                     // set only by 2.3 — Stage 3's gate
   "meta": {
     "youtube_title": "…",
     "description": "…",
@@ -102,13 +113,34 @@ Key properties:
 - **No durations in the shot list.** Shot duration comes from TTS audio
   length in Stage 3. The director controls pacing through narration
   *length* (word budget, below) and explicit `silent_seconds` beat shots.
-- **Animation vocabulary is a schema enum** — the existing Remotion set
-  (`burst`, `punch_in`, `slam_left`, `slam_right`, `snap`, `ken_burns`,
-  `breathe`, `three_part_build_up`, `pan_up`, `pan_down`, `zoom_in`,
-  `zoom_out`, `tilt_in`, `slide_bottom`, …). The prompt documents *when*
-  each is appropriate (reveal → `punch_in`, fight → `slam_*`, calm →
-  `ken_burns`, ending → `zoom_out`). This replaces the old
-  `random.choice(_MID_ANIMS)`.
+- **The shot vocabulary is not ours.** Animations, transitions and events are
+  whatever the renderer can actually play, and that is declared in TypeScript:
+
+  | vocabulary | source of truth |
+  |---|---|
+  | animations | `remotion-animation-kit/src/types.ts` → `AnimationName` (27 today) |
+  | PanelFlow's own two | `remotion-comic/src/types.ts` → `PanelAnimation` (`assemble`, `three_part_build_up`) |
+  | transitions | `remotion-animation-kit/src/types.ts` → `TransitionName` |
+  | events | `remotion-comic/src/types.ts` → `PanelEvent.type` |
+
+  `stage2/schemas.py` transcribes those unions into Python, and a transcription
+  rots the moment the kit gains a move — so `tests/v2/test_vocabulary.py` reads
+  the real `.ts` files and fails when they disagree, naming what drifted. The
+  kit is a github dependency and an actively improving repo; without that test,
+  a new animation would silently never reach the director, and a removed one
+  would validate here and die at render.
+
+  **When the kit changes, update `schemas.py` and both director prompts.** The
+  prompts group the names and say *when* each is appropriate (reveal →
+  `punch_in`, fight → `slam_*`, calm → `ken_burns`, ending → `zoom_out`); that
+  judgement is hand-written and cannot be generated from a type. The test
+  catches the enum drifting, not the guidance.
+
+  Note `shockwave`, `flash`, `heartbeat`, `tremble` and `rattle` are both
+  animations *and* events, and are not the same thing either way: an animation
+  is the shot's movement, an event fires *during* it.
+
+  All of this replaces the old `random.choice(_MID_ANIMS)`.
 - **`why` on every shot** costs a few tokens and makes bad output
   debuggable — read the director's reasoning instead of guessing.
 
@@ -116,22 +148,35 @@ Key properties:
 
 ## Prompt contract (what the director is told)
 
-**Input context:** `book.json` (story, beats, page index), reconciled
-`characters.json`, every `page.json` in reading order. A 22-page book is
-roughly 30–60k tokens — one call, no chunking. (Thick 100+ page volumes
-would need a chunked strategy; deferred until one actually shows up.)
+**Input context:** the book's title and synopsis, its beats, the roster, and
+every page in reading order — rendered by `stage2/digest.py`, not handed over as
+raw JSON. Measured at **~6k tokens** for a 19-page book: one call, no chunking.
+
+The digest is a different view from Stage 1's, and deliberately:
+
+- **`skip_overrides` are resolved in code.** 1.3 marks a panel skippable seeing
+  only the pages before it; 1.5 overturns that with the whole book. The director
+  is handed the answer and the reason, rather than two lists to cross-reference
+  — and a director that missed the override would cut the setup for the ending.
+- **Appearance is withheld, except where it is the only thing to say.** The
+  director never sees pixels, so a character's `visual` is noise — unless the
+  book never names them, in which case it is what the narration must reach for
+  instead of a name.
+- **Spreads, suspect ordering and content warnings are flagged inline**, since
+  each one constrains what the director may do with that page.
 
 **Rules, both targets:**
 
-1. **Word budget.** Narration is timed at ~2.5 words/second. Longform
-   target length comes from category config; shorts is a **hard 60–120s
-   window** (~150–300 narration words total). The validator enforces this,
-   so the prompt states it explicitly with the running-total expectation.
-2. **Character naming.** Narration may name a character only if their
-   roster entry has `named_in_story: true`, is ComicInfo-sourced, or has a
-   (1.4-reconciled) `inferred_identity` — inferred identities are allowed
-   by default (famous cameos get named), but roster-grounded names win
-   when both exist. Everyone else is "a figure", "the guard".
+1. **Word budget.** Narration is timed at ~2.5 words/second.
+   **Longform is unbudgeted** — coverage is what matters, and the story decides
+   its length; a book that earns four minutes must not be stretched to eight.
+   **Shorts is a hard 60–120s window** (~150–300 narration words total),
+   enforced by the validator, so its prompt states it explicitly.
+2. **Character naming.** Decided in the digest, not the prompt: each roster line
+   either says `say "X"` (with where the book grounded it) or `NOT named in this
+   book — describe them`. Roster-grounded names win over a 1.4-reconciled
+   `inferred_identity` when both exist. Everyone else is "a figure", "the
+   guard".
 3. **Never narrate `kind: "sfx"` dialogue.** (Stage 1 classified it; this
    rule replaces the old `remove_sound_effect` sanitise step.)
 4. **Content warnings** on a page mean: don't linger — no slow pans, no
@@ -168,29 +213,54 @@ would need a chunked strategy; deferred until one actually shows up.)
 |---|---|
 | **Input**  | `direction/*.json` with `validated` absent/false |
 | **Output** | `validated: true`, or a hard-fail report |
-| **Uses**   | deterministic checks; failed checks go back to the director (≤ 2 repair calls) |
+| **Uses**   | deterministic checks + one model call for naming; failures go back to the director (≤ 2 repair calls) |
 
-Deterministic checklist:
+Facts, checked in code:
 
 - every `source` page/panel ref resolves in `assets/` and the page has
-  `status = analyzed`; pan shots reference two panels on the *same* page
-- `animation`, `transition_in`, `events[].type` all from their enums;
-  `animation_target` valid for the source kind
-- word budget: total narration words within target ±15% (shorts: inside
-  the 60–120s window); `silent_seconds` only on empty-narration shots
-- first/last shot rules (shorts opens intensity ≥ 4, `transition_in:
-  "none"`; last shot uses an ending-class animation)
-- narration names: every capitalized name-like token matches a roster
-  name, alias, or reconciled `inferred_identity` — anything from *nowhere*
-  is a violation
-- narration is TTS-safe: no markup, no bracketed stage directions, no
-  sfx-looking onomatopoeia
+  `status = analyzed`; pan shots reference two panels on the *same* page, and
+  never on a page whose ordering is suspect
+- `animation`, `transition_in`, `events[].type` all from their enums (see the
+  vocabulary table above); `at_fraction` within 0..1
+- `silent_seconds` only on empty-narration shots, and always on them — a shot's
+  length otherwise comes from its voice track
+- shot 1 opens on `transition_in: "none"`
+- **longform:** every beat in `book.json.story.beats` has at least one shot. It
+  may skip pages; it may not skip the plot. There is no length check.
+- **shorts:** inside the 60–120s window; opens on intensity ≥ 4; ends on an
+  ending-class animation
+- narration is TTS-safe: no markup, no bracketed stage directions
 - `meta` complete; thumbnail ref resolves; shot ids sequential from 1
 
-On violation: the full error list goes back to the director as a repair
-call ("fix these, change nothing else"), **max 2 retries**, then hard-fail
-with the report — a book failing validation never silently ships a broken
-video. `validated: true` is the gate Stage 3 checks.
+**Naming is asked, not ruled on** — the one check here that is not a fact. The
+whole narration goes to the text model with the roster: which names are sayable,
+and which characters must be described instead.
+
+It was a regex first, and that was worse than nothing. It passed "Wolverine
+catches it." — narration puts the name first, and sentence-initial capitals were
+exempt — while flagging "Beneath", "Nothing" and "They" in real narration. Its
+false positives would have driven repairs, and a repair that fires on good work
+damages it. No rule can do this job: the question is whether a capitalised word
+is a person's name, and a book's own vocabulary cannot separate "Gambit" from
+"Beneath". "Doctor Strange" is the proof — both words are in *Strange Scales*'
+own title, so no grounding rule could flag it, and no prefilter would even
+nominate it for asking. That is why the narration goes over unfiltered:
+filtering candidates with a rule decides the very thing being asked.
+
+A failure to reach the checker is **fatal, not skipped**. Swallowing it would
+ship the video the check exists to stop.
+
+On violation: the full error list goes back to the director as a repair call
+("fix these, change nothing else"), **max 2 retries**, then hard-fail with the
+report — a book failing validation never silently ships a broken video.
+`validated: true` is the gate Stage 3 checks.
+
+**A repair must repair, not delete.** The first real run proved why this needs
+saying: told an event had the wrong key, the model dropped the event entirely
+rather than fixing the key, discarding a `shockwave` the director had chosen for
+the moment a notebook slams shut. The prompt now says deleting is not fixing,
+whatever the fault is in — the only exception being a shot whose source page or
+panel does not exist, which cannot be repaired.
 
 ---
 
@@ -200,8 +270,13 @@ video. `validated: true` is the gate Stage 3 checks.
 |------------------------------|--------------------------------------------|--------------|
 | longform direction           | delete `direction/longform.json`           | 2.1, 2.3     |
 | shorts direction             | delete `direction/shorts.json`             | 2.2, 2.3     |
-| both, new style              | bump `style_version` in config             | 2.1–2.3      |
+| both, new style              | bump `direct.STYLE_VERSION`                | 2.1–2.3      |
 | validation only              | set `validated: false` in the file         | 2.3          |
+
+As in Stage 1, **the version bump is manual and is the step that gets
+forgotten**: a direction file records the `style_version` it was written under,
+and `is_done` compares it to the constant. Rewrite a director prompt without
+bumping, and the existing file is simply kept.
 
 Stage 1 invalidation cascades here: any Stage 1 re-run that clears
 `completed_at` also clears `validated` on all direction files (the assets
@@ -226,3 +301,8 @@ per shot, STT word timings, resolve page/panel ids to images + bboxes +
 focal points, compile the Remotion manifest, render, music, loudness,
 optimize. Mostly existing code (`create_comic_panel_video.py`,
 `combineVideo`, `addMusic`, …) re-plumbed to consume `direction/*.json`.
+
+It is the first consumer of two Stage 1 fields nothing has read yet, so both are
+unproven in anger: `focal_point` (the zoom target, relative to its panel) and
+`text_regions` (the boxes a crop must not cut through). Expect to find out there
+whether they are right.
