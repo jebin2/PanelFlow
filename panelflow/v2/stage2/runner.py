@@ -2,15 +2,15 @@
 from custom_logger import logger_config
 
 from ..paths import Assets
-from . import longform, validate
+from . import direct, validate
 
-# (id, module) — 2.2 shorts joins here.
-DIRECTORS = [("2.1", longform)]
+# sub-stage id -> target. 2.3 validates whatever 2.1 and 2.2 produced.
+SUB_STAGES = {"2.1": "longform", "2.2": "shorts"}
 VALIDATE = "2.3"
 
 
 def run(comic_folder, only=None, model=None):
-    """Run Stage 2. `only` limits to one sub-stage id ('2.1', '2.3')."""
+    """Run Stage 2. `only` limits to one sub-stage id ('2.1', '2.2', '2.3')."""
     assets = Assets(comic_folder)
     if not assets.stage1_complete():
         raise ValueError(
@@ -18,20 +18,20 @@ def run(comic_folder, only=None, model=None):
             f"is unset). The director must not read assets 1.6 has not validated."
         )
 
-    for number, module in DIRECTORS:
+    for number, target in SUB_STAGES.items():
         if only not in (None, number):
             continue
-        if module.is_done(assets):
-            logger_config.info(f"{number} {module.TARGET}: already directed")
+        if direct.is_done(assets, target):
+            logger_config.info(f"{number} {target}: already directed")
             continue
-        module.run(assets, model=model)
+        direct.run(assets, target, model=model)
 
     if only not in (None, VALIDATE):
         return assets
 
     problems = []
-    for _, module in DIRECTORS:
-        problems += validate.run(assets, module.TARGET, model=model)
+    for target in SUB_STAGES.values():
+        problems += validate.run(assets, target, model=model)
     if problems:
         raise ValueError(
             f"Stage 2.3 could not validate after {validate.MAX_REPAIRS} repair(s):\n  "

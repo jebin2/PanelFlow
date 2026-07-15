@@ -11,7 +11,7 @@ import pytest
 from panelflow.v2 import llm
 from panelflow.v2.paths import Assets
 from panelflow.v2.stage1 import extract, split
-from panelflow.v2.stage2 import digest, longform, validate
+from panelflow.v2.stage2 import digest, direct, validate
 
 DIRECTION = {
     "music": {"mood": "tense"},
@@ -244,6 +244,72 @@ def test_the_first_shot_must_not_transition_in(ready_book, directed):
                for p in validate.check(ready_book, direction))
 
 
+# ---------------------------------------------------------------- 2.2 shorts
+
+def _shorts(ready_book, words, first_panel=2, last_animation="zoom_out"):
+    """A short whose narration runs to `words`, over the 2-page fixture."""
+    direction = copy.deepcopy(DIRECTION)
+    direction["target"] = "shorts"
+    direction["shots"][0]["source"] = {"kind": "panel", "page": 1, "panel": first_panel}
+    direction["shots"][0]["narration"] = " ".join(["word"] * words)
+    direction["shots"][1]["narration"] = ""
+    direction["shots"][1]["silent_seconds"] = 2
+    direction["shots"][1]["animation"] = last_animation
+    for shot_id, shot in enumerate(direction["shots"], start=1):
+        shot["id"] = shot_id
+    return direction
+
+
+def test_a_short_under_sixty_seconds_is_caught(ready_book):
+    """The window is hard: 2.5 words/second, so 100 words is 40s."""
+    problems = validate.check(ready_book, _shorts(ready_book, words=100))
+
+    assert any("outside the hard 60-120s window" in p for p in problems)
+
+
+def test_a_short_over_two_minutes_is_caught(ready_book):
+    problems = validate.check(ready_book, _shorts(ready_book, words=400))
+
+    assert any("outside the hard 60-120s window" in p for p in problems)
+
+
+def test_a_short_inside_the_window_passes(ready_book):
+    """200 words ≈ 80s. Panel 2 of the fixture is intensity 3 — bump it so the
+    hook rule is satisfied and only the length is under test."""
+    page = ready_book.load_page(1)
+    page["panels"][1]["intensity"] = 5
+    ready_book.save_page(1, page)
+
+    assert validate.check(ready_book, _shorts(ready_book, words=200)) == []
+
+
+def test_a_short_that_opens_quietly_is_caught(ready_book):
+    """The first two seconds decide whether anyone sees the third."""
+    direction = _shorts(ready_book, words=200, first_panel=1)   # panel 1 is intensity 2
+
+    problems = validate.check(ready_book, direction)
+
+    assert any("must hook on 4 or 5" in p for p in problems)
+
+
+def test_a_short_ending_on_an_impact_animation_is_caught(ready_book):
+    page = ready_book.load_page(1)
+    page["panels"][1]["intensity"] = 5
+    ready_book.save_page(1, page)
+
+    direction = _shorts(ready_book, words=200, last_animation="burst")
+
+    assert any("last shot should end on" in p for p in validate.check(ready_book, direction))
+
+
+def test_longform_is_not_held_to_the_shorts_window(ready_book, directed):
+    """Longform is unbudgeted by design — the story decides its length."""
+    direction = directed()
+    direction["shots"][0]["narration"] = " ".join(["word"] * 5000)
+
+    assert not any("window" in p for p in validate.check(ready_book, direction))
+
+
 # ------------------------------------------------- the naming rule, grounded
 
 def test_a_reported_name_becomes_a_violation(ready_book, directed, monkeypatch):
@@ -326,21 +392,40 @@ def test_narration_with_markup_is_caught(ready_book, directed):
 
 # ---------------------------------------------------------------- 2.1 gate
 
-def test_the_director_refuses_assets_stage_1_never_validated(ready_book, monkeypatch):
+def test_the_director_refuses_assets_stage_1_never_validated(ready_book):
     book = ready_book.load_book()
     book["analysis"].pop("completed_at")
     ready_book.save_book(book)
 
     with pytest.raises(ValueError, match="Stage 1 is not complete"):
-        longform.run(ready_book)
+        direct.run(ready_book, "longform")
 
 
 def test_shot_ids_are_assigned_here_not_asked_for(ready_book, monkeypatch):
-    monkeypatch.setattr(llm, "ask_json", lambda **kw: copy.deepcopy(DIRECTION))
-    monkeypatch.setattr(longform.llm, "ask_json", lambda **kw: copy.deepcopy(DIRECTION))
+    monkeypatch.setattr(direct.llm, "ask_json", lambda **kw: copy.deepcopy(DIRECTION))
 
-    longform.run(ready_book)
+    direct.run(ready_book, "longform")
 
     direction = ready_book.load_direction("longform")
     assert [s["id"] for s in direction["shots"]] == [1, 2]
     assert direction["validated"] is False      # 2.3 owns that flag
+
+
+def test_both_targets_read_the_same_book_and_differ_only_in_prompt(ready_book, monkeypatch):
+    """The philosophies are opposed, and all of that lives in the system prompt:
+    one call cannot cover a story evenly and cut it to the bone at once."""
+    seen = {}
+
+    def fake(system_prompt, user_prompt, **kw):
+        seen.setdefault("prompts", []).append(system_prompt)
+        seen.setdefault("books", []).append(user_prompt)
+        return copy.deepcopy(DIRECTION)
+    monkeypatch.setattr(direct.llm, "ask_json", fake)
+
+    direct.run(ready_book, "longform")
+    direct.run(ready_book, "shorts")
+
+    assert seen["books"][0] == seen["books"][1]          # same book
+    assert seen["prompts"][0] != seen["prompts"][1]      # different job
+    assert ready_book.load_direction("shorts")["target"] == "shorts"
+    assert "60" in seen["prompts"][1]                    # the hard window
