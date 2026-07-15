@@ -27,6 +27,7 @@ class Assets:
         self.characters_path = os.path.join(self.assets_dir, "characters.json")
         self.cbz_path = os.path.join(self.folder, f"{self.name}.cbz")
         self.direction_dir = os.path.join(self.folder, "direction")
+        self.render_dir = os.path.join(self.folder, "render")
 
     def page_dir(self, index):
         return os.path.join(self.pages_dir, f"{index:04d}")
@@ -70,6 +71,32 @@ class Assets:
 
     def save_direction(self, target, data):
         jsonio.write(self.direction_path(target), data)
+
+    # ------------------------------------------------------------------ stage 3
+
+    def target_dir(self, target):
+        return os.path.join(self.render_dir, target)
+
+    def shot_audio_path(self, target, shot_id):
+        return os.path.join(self.target_dir(target), "audio", f"shot_{shot_id:03d}.wav")
+
+    def manifest_path(self, target):
+        return os.path.join(self.target_dir(target), "manifest.json")
+
+    def video_path(self, target):
+        return os.path.join(self.target_dir(target), f"{target}.mp4")
+
+    def rel_to_book(self, path):
+        """A path as the renderer sees it.
+
+        Stage 3 symlinks remotion-comic/public/render_assets at this comic
+        folder, so `staticFile("render_assets/<this>")` resolves to `path`.
+        """
+        return "render_assets/" + os.path.relpath(os.path.abspath(path), self.folder)
+
+    def stage2_complete(self, target):
+        """The gate Stage 3 checks: 2.3 passed, so the direction is playable."""
+        return bool(self.load_direction(target).get("validated"))
 
     def stage1_complete(self):
         """The gate Stage 2 checks: 1.6 passed, so the assets are consistent."""

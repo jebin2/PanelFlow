@@ -1,7 +1,9 @@
 """python -m panelflow.v2.cli <comic.cbz | comic_folder> [--only 1.3] [--model NAME]
 
-Runs Stage 1 (assets) then Stage 2 (direction). `--only` picks one sub-stage
-from either: '1.3' analyses pages, '2.1' directs the longform, '2.3' validates.
+Runs Stage 1 (assets), Stage 2 (direction), then Stage 3 (production). `--only`
+picks one sub-stage from any of them: '1.3' analyses pages, '2.1' directs the
+longform, '2.3' validates, '3.3' renders. `--target` limits Stage 3 to one
+output.
 """
 import argparse
 import os
@@ -12,6 +14,7 @@ from custom_logger import logger_config
 
 from .stage1 import runner
 from .stage2 import runner as stage2_runner
+from .stage3 import runner as stage3_runner
 
 
 def prepare_folder(target):
@@ -39,14 +42,17 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="panelflow-v2", description="Run the v2 pipeline on one comic.")
     parser.add_argument("target", help="A .cbz file, or a comic folder containing <name>.cbz")
-    parser.add_argument("--only", help="Run a single sub-stage, e.g. 1.3 or 2.1")
+    parser.add_argument("--only", help="Run a single sub-stage, e.g. 1.3, 2.1 or 3.3")
     parser.add_argument("--model", help="Override the LLM model for this run")
+    parser.add_argument("--output", choices=stage3_runner.TARGETS,
+                        help="Limit Stage 3 to one output (default: both)")
     args = parser.parse_args(argv)
 
     folder = prepare_folder(args.target)
-    # No --only means both stages; --only names the stage by its first digit.
+    # No --only means every stage; --only names the stage by its first digit.
     stage1 = args.only is None or args.only.startswith("1")
     stage2 = args.only is None or args.only.startswith("2")
+    stage3 = args.only is None or args.only.startswith("3")
 
     try:
         if stage1:
@@ -63,6 +69,10 @@ def main(argv=None):
                 f'Stage 2 complete: {len(direction.get("shots", []))} shots, '
                 f'validated={direction.get("validated")}'
             )
+        if stage3:
+            assets = stage3_runner.run(folder, only=args.only, target=args.output)
+            for name in ([args.output] if args.output else stage3_runner.TARGETS):
+                logger_config.info(f"Stage 3 complete: {assets.video_path(name)}")
     except Exception as e:
         logger_config.error(str(e))
         return 1

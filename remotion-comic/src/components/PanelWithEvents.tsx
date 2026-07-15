@@ -22,7 +22,23 @@ const EVENT_SFX: Partial<Record<PanelEvent["type"], { file: string; volume: numb
 
 export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   const frame = useCurrentFrame();
-  const animProps = getAnimationProps(panel.animation ?? "ken_burns");
+  // The animation says how to move; the panel says where to aim and how far it
+  // may go. The panel wins, because only it knows where the subject and the
+  // lettering are.
+  const animProps = {
+    ...getAnimationProps(panel.animation ?? "ken_burns"),
+    ...(panel.focalOrigin && { originX: panel.focalOrigin[0], originY: panel.focalOrigin[1] }),
+    ...(panel.zoomLimit != null && { zoomLimit: panel.zoomLimit }),
+    ...(panel.camera && {
+      zoomStart: panel.camera.zoom,
+      zoomEnd: panel.camera.zoom,
+      zoomSettleFraction: 1,
+      panXStart: panel.camera.panStart[0],
+      panYStart: panel.camera.panStart[1],
+      panXEnd: panel.camera.panEnd[0],
+      panYEnd: panel.camera.panEnd[1],
+    }),
+  };
   const events = panel.events ?? [];
 
   let eventShakeX = 0;
