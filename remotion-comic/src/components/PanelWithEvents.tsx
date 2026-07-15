@@ -22,6 +22,18 @@ const EVENT_SFX: Partial<Record<PanelEvent["type"], { file: string; volume: numb
 
 export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   const frame = useCurrentFrame();
+
+  // PanelFlow's own two animations are whole components rather than a set of
+  // transforms, so they leave before any of the below applies — and leaving
+  // here rather than further down is what narrows `panel.animation` to the
+  // names the kit actually knows.
+  if (panel.animation === "assemble") {
+    return <AssembleIntro panel={panel} />;
+  }
+  if (panel.animation === "three_part_build_up") {
+    return <ThreePartBuildUp data={panel} />;
+  }
+
   // The animation says how to move; the panel says where to aim and how far it
   // may go. The panel wins, because only it knows where the subject and the
   // lettering are.
@@ -89,14 +101,6 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   }
 
   const hasEventTransform = eventShakeX !== 0 || eventShakeY !== 0 || eventScale !== 1;
-
-  if (panel.animation === "assemble") {
-    return <AssembleIntro panel={panel} />;
-  }
-
-  if (panel.animation === "three_part_build_up") {
-    return <ThreePartBuildUp data={panel} />;
-  }
 
   return (
     <AbsoluteFill
