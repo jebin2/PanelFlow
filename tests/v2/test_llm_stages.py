@@ -124,18 +124,71 @@ def test_analyze_keeps_split_geometry_as_truth(ready, stub_llm):
     assert [p["id"] for p in page["panels"]] == [1, 2]
 
 
-def test_analyze_cannot_touch_text_regions(ready, stub_llm):
-    """OCR measured them in 1.2. A vision model asked for pixel coordinates
-    invents them — a real run returned a region below the page bottom — so 1.3
-    is not asked, and anything it volunteers is ignored."""
-    page = ready.load_page(1)
-    page["panels"][0]["text_regions"] = [[50, 20, 300, 120]]
-    ready.save_page(1, page)
-
+def test_a_text_region_the_model_volunteers_is_ignored(ready, stub_llm):
+    """A vision model asked for pixel coordinates invents them — a real run
+    returned a region 200px below the bottom of the page. The boxes come from
+    OCR; anything the model offers is dropped on the floor."""
     stub_llm(page=_with_panel_edit(0, text_regions=[[0, 0, 99999, 99999]]))
     analyze.run(ready)
 
-    assert ready.load_page(1)["panels"][0]["text_regions"] == [[50, 20, 300, 120]]
+    assert ready.load_page(1)["panels"][0]["text_regions"] == []
+
+
+def test_text_regions_are_the_bubbles_the_model_grouped_plus_loose_lettering(ready, monkeypatch):
+    """Verbatim from real page 9. OCR found six lines: three are one bubble, and
+    three are words drawn into the art (a zine title, a sign). The bubble is
+    grouped by the model — no rule can, since two speakers trading one-liners
+    sit as close as two lines of one speech — and the loose lettering is still
+    ink a zoom must not cut, so each stands on its own.
+    """
+    page = {
+        "page_index": 9,
+        "panels": [{"id": 1, "bbox": [0, 0, 800, 700], "dialogue": []},
+                   {"id": 2, "bbox": [0, 700, 800, 1280],
+                    "dialogue": [{"text": "THAT'S IT?! THOSE HIPPIES!", "kind": "speech"}]}],
+        "analysis": {"unassigned_dialogue": []},
+        "ocr_lines": [
+            {"text": "VAFFORDANCE", "box": [289, 307, 639, 447]},   # art, panel 1
+            {"text": "GARDEN", "box": [417, 680, 511, 716]},        # art, panel 1
+            {"text": "THAT'S", "box": [292, 791, 393, 824]},        # ┐
+            {"text": "IT?! THOSE", "box": [262, 827, 425, 859]},    # │ one bubble
+            {"text": "HIPPIES!", "box": [264, 861, 422, 895]},      # ┘
+            {"text": "1/", "box": [655, 848, 725, 899]},            # art, panel 2
+        ],
+    }
+    monkeypatch.setattr(analyze.llm, "ask_json", lambda **kw: {
+        "matches": [{"dialogue_index": 0, "lines": [2, 3, 4]}]})
+
+    analyze._locate_dialogue(page, None)
+    analyze._assign_text_regions(page)
+
+    # the three bubble lines became one box, not three
+    assert [262, 791, 425, 895] in page["panels"][1]["text_regions"]
+    assert [292, 791, 393, 824] not in page["panels"][1]["text_regions"]
+    # the sign in the same panel is protected on its own
+    assert [655, 848, 725, 899] in page["panels"][1]["text_regions"]
+    # art lettering lands in the panel that holds it
+    assert page["panels"][0]["text_regions"] == [[289, 307, 639, 447], [417, 680, 511, 716]]
+
+
+def test_unmatched_lines_are_each_protected_when_the_matching_fails(ready, monkeypatch):
+    """Worse than grouping, much better than nothing: a crop can still slip
+    between two lines of one bubble, but no lettering is left unguarded."""
+    page = {
+        "page_index": 2,
+        "panels": [{"id": 1, "bbox": [0, 0, 800, 1280],
+                    "dialogue": [{"text": "OH, AFANAF", "kind": "speech"}]}],
+        "analysis": {"unassigned_dialogue": []},
+        "ocr_lines": [{"text": "OH, AFANAF", "box": [146, 609, 326, 636]},
+                      {"text": "IS STILL THERE", "box": [142, 640, 330, 667]}],
+    }
+    monkeypatch.setattr(analyze.llm, "ask_json",
+                        lambda **kw: (_ for _ in ()).throw(RuntimeError("TTT down")))
+
+    analyze._locate_dialogue(page, None)      # best-effort: must not raise
+    analyze._assign_text_regions(page)
+
+    assert page["panels"][0]["text_regions"] == [[146, 609, 326, 636], [142, 640, 330, 667]]
 
 
 def test_unassigned_captions_are_located_too(monkeypatch):

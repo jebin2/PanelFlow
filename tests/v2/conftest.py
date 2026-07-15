@@ -57,7 +57,6 @@ def no_live_services(monkeypatch):
 
     monkeypatch.setattr("panelflow.v2.providers.ttt.generate", blocked_ttt)
     monkeypatch.setattr("panelflow.v2.providers.ocr.lines", blocked_ocr)
-    monkeypatch.setattr("panelflow.v2.providers.ocr.text_regions", blocked_ocr)
 
 
 @pytest.fixture

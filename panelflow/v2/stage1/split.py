@@ -1,12 +1,14 @@
 """Sub-stage 1.2 — Split.
 
 Runs comic-panel-extractor on every page, orders panels by reading direction,
-and records panel bboxes + speech-bubble text_regions in page.json.
+and records panel bboxes + every line of lettering OCR found in page.json.
 
-All geometry, no meaning: the panel boxes come from the extractor and the text
+All geometry, no meaning. The panel boxes come from the extractor and the text
 boxes from OCR, so 1.3 is never asked for a pixel coordinate — asked for one it
 invents it (a real run returned a text region 200px below the bottom of the
-page).
+page). But the reverse holds too: which lines share a speech bubble is a
+question about meaning, so 1.2 does not answer it. It records the lines and
+leaves the grouping to 1.3, which can ask.
 """
 import os
 import re
@@ -112,16 +114,14 @@ def _split_page(assets, index, page, reading_direction):
         # _ocr_lines swallows its own failures, so this cannot raise.
         ocr_lines = pending_ocr.result()
 
-    regions = ocr.group([line["box"] for line in ocr_lines])
-    for panel in panels:
-        panel["text_regions"] = [r for r in regions if _inside(r, panel["bbox"])]
-
     if raw_dir:
         shutil.rmtree(raw_dir, ignore_errors=True)
 
     page["panels"] = panels
-    # Kept for 1.3, which matches these boxes to the dialogue the vision model
-    # read correctly. The text is too mangled to use for anything else.
+    # Where the lettering is, one box per line. 1.3 turns these into panel
+    # text_regions once the model has said which lines share a bubble — a
+    # question 1.2 cannot answer, having only the geometry. The text rides along
+    # for that matching and is too mangled to use for anything else.
     page["ocr_lines"] = ocr_lines
     page["extraction"] = {"tool": "comic-panel-extractor", "panel_count": len(panels)}
     page["status"] = SPLIT

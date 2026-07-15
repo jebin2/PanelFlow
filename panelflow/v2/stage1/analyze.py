@@ -74,6 +74,7 @@ def _analyze_page(assets, index, page, system_prompt, model):
     }
     page["panels"] = _merge_panels(page["panels"], result.get("panels", []), known, page)
     _locate_dialogue(page, model)
+    _assign_text_regions(page)      # needs the grouping _locate_dialogue just made
     page["status"] = ANALYZED
     assets.save_page(index, page)
 
@@ -109,6 +110,42 @@ def _locate_dialogue(page, model):
         if entry is not None and boxes:
             entry["region"] = [min(b[0] for b in boxes), min(b[1] for b in boxes),
                                max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _assign_text_regions(page):
+    """Give every panel the boxes a crop must not cut through.
+
+    Two sources, because neither covers the page alone. The bubbles come from
+    `_locate_dialogue`, already grouped the only way they can be — by a model
+    that read them, since lines of one bubble and two speakers trading
+    one-liners are the same handful of pixels apart. The rest is lettering that
+    belongs to no dialogue at all: a shop sign, a logo, a sound effect drawn
+    into the art. It is still ink a zoom should not slice, and it is nearly
+    always a single line, so there is nothing to group.
+
+    If the matching failed, every line is loose and each is protected on its
+    own. That leaves the gaps between lines of one bubble unguarded, which is
+    worse than grouping and much better than nothing.
+    """
+    lines = page.get("ocr_lines") or []
+    bubbles = [d["region"] for d in _all_dialogue(page) if d.get("region")]
+    loose = [line["box"] for line in lines
+             if not any(_covers(bubble, line["box"]) for bubble in bubbles)]
+
+    for panel in page.get("panels", []):
+        panel["text_regions"] = [region for region in bubbles + loose
+                                 if _centre_inside(region, panel["bbox"])]
+
+
+def _covers(outer, inner):
+    return (outer[0] <= inner[0] and outer[1] <= inner[1]
+            and outer[2] >= inner[2] and outer[3] >= inner[3])
+
+
+def _centre_inside(region, bbox):
+    """Region's centre falls within the panel bbox."""
+    cx, cy = (region[0] + region[2]) / 2, (region[1] + region[3]) / 2
+    return bbox[0] <= cx <= bbox[2] and bbox[1] <= cy <= bbox[3]
 
 
 def _all_dialogue(page):

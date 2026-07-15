@@ -100,6 +100,19 @@ def test_a_page_that_recompresses_larger_is_left_alone(tmp_path, monkeypatch):
 
 # ---------------------------------------------------------------- 1.2 split
 
+def test_split_records_every_ocr_line_without_grouping_them(comic_folder, fake_extractor):
+    """1.2 measures and does not interpret: which lines share a bubble is 1.3's
+    question, because it is about who is speaking rather than about pixels."""
+    fake_extractor(text_regions=[(520, 20, 700, 120), (520, 130, 700, 190)])
+    assets = Assets(comic_folder())
+    extract.run(assets)
+    split.run(assets)
+
+    page = assets.load_page(1)
+    assert [l['box'] for l in page['ocr_lines']] == [[520, 20, 700, 120], [520, 130, 700, 190]]
+    assert all('text_regions' not in p for p in page['panels'])
+
+
 def test_split_orders_panels_and_records_bboxes(comic_folder, fake_extractor):
     fake_extractor()
     assets = Assets(comic_folder())
@@ -120,17 +133,6 @@ def test_split_honours_right_to_left_reading_direction(comic_folder, fake_extrac
     extract.run(assets)
     split.run(assets)
     assert assets.load_page(1)["panels"][0]["bbox"] == [500, 10, 900, 400]  # rightmost first
-
-
-def test_split_assigns_text_regions_to_the_panel_containing_them(comic_folder, fake_extractor):
-    fake_extractor(text_regions=[(520, 20, 700, 120)])
-    assets = Assets(comic_folder())
-    extract.run(assets)
-    split.run(assets)
-
-    left, right = assets.load_page(1)["panels"]
-    assert left["text_regions"] == []
-    assert right["text_regions"] == [[520, 20, 700, 120]]
 
 
 def test_split_falls_back_to_whole_page_when_no_panels_found(comic_folder, fake_extractor):

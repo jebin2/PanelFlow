@@ -1,44 +1,10 @@
-"""OCR text-region grouping. Pure geometry, no service."""
+"""The OCR provider: reading the service's response. No grouping — which
+lines share a bubble is 1.3's question, tested in test_stage1.py."""
 import json
 
 import pytest
 
 from panelflow.v2.providers import ocr
-
-# Verbatim from a real page-2 OCR response: one box per line of text.
-REAL_PAGE_2_LINES = [
-    [247, 17, 547, 57],     # "THE CITADEL"          ┐ one caption block
-    [33, 69, 766, 105],     # "BELOW - THE SANCTUM…" ┘
-    [146, 609, 326, 636],   # "OH, AFANAF"           ┐
-    [142, 640, 330, 667],   # "IS STILL THERE"       │
-    [112, 672, 363, 699],   # "ALL RIGHT.WAITING"    │ one speech bubble
-    [179, 701, 295, 729],   # "FOR THE"              │
-    [186, 732, 288, 763],   # "NIGHT...."            ┘
-]
-
-
-def test_lines_of_one_bubble_become_one_box():
-    """A crop could otherwise pass through the 5px gap between two lines,
-    intersecting neither box while cutting the bubble in half."""
-    assert ocr.group(REAL_PAGE_2_LINES) == [[33, 17, 766, 105], [112, 609, 363, 763]]
-
-
-def test_far_apart_bubbles_stay_separate():
-    assert len(ocr.group([[100, 100, 200, 130], [100, 400, 200, 430]])) == 2
-
-
-def test_side_by_side_bubbles_stay_separate():
-    """Same line height, no horizontal overlap: two speakers, not one bubble."""
-    assert len(ocr.group([[100, 100, 200, 130], [400, 100, 500, 130]])) == 2
-
-
-def test_grouping_is_order_independent():
-    assert ocr.group(REAL_PAGE_2_LINES) == ocr.group(list(reversed(REAL_PAGE_2_LINES)))
-
-
-def test_empty_and_single():
-    assert ocr.group([]) == []
-    assert ocr.group([[1, 2, 3, 4]]) == [[1, 2, 3, 4]]
 
 
 # ---------------------------------------------------------------- response parsing
