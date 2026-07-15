@@ -33,8 +33,7 @@ def fake_browser(monkeypatch):
             state["cleaned"] += 1
 
     handler = types.ModuleType("chat_bot_ui_handler")
-    handler.AIStudioUIChat = FakeChat
-    handler.GoogleAISearchChat = FakeChat
+    handler.GeminiUIChat = FakeChat
     sys.modules["chat_bot_ui_handler"] = handler
 
     browser_manager = types.ModuleType("browser_manager")
@@ -110,20 +109,15 @@ def test_close_is_a_noop_without_a_session(fake_browser):
     assert browser_ui._CHAT is None
 
 
-def test_handler_is_selected_by_env(fake_browser, monkeypatch):
-    """PANELFLOW_VISION_PROVIDER picks which chatbot UI drives the page."""
-    monkeypatch.setattr(browser_ui, "HANDLER", "google_ai")
-    assert browser_ui.generate("sys", "user", image_path="/tmp/p.jpg") == '{"ok": true}'
+def test_the_handler_is_the_gemini_ui_and_is_not_configurable():
+    """Search AI Mode types into a 2048-byte search query and silently dropped
+    73% of 1.3's prompt. The Gemini UI takes the whole thing, so it is the only
+    handler — no env var can point vision back at a box that cannot hold it."""
+    assert browser_ui.HANDLER == "GeminiUIChat"
 
 
-def test_unknown_handler_is_rejected(fake_browser, monkeypatch):
-    monkeypatch.setattr(browser_ui, "HANDLER", "not_a_handler")
-    with pytest.raises(ValueError, match="Unknown vision handler"):
-        browser_ui.generate("sys", "user", image_path="/tmp/p.jpg")
-
-
-def test_default_handler_is_google_ai():
-    assert browser_ui.HANDLER in browser_ui.HANDLERS
-    import os
-    if "PANELFLOW_VISION_PROVIDER" not in os.environ:
-        assert browser_ui.HANDLER == "google_ai"
+def test_vision_always_resolves_to_the_browser_ui():
+    """`gemini` as a text provider is the API and wants a key; vision must never
+    resolve to it by sharing the name."""
+    from panelflow.v2 import providers
+    assert providers.vision() is browser_ui
