@@ -252,3 +252,30 @@ def test_extract_resumes_after_a_crash_without_losing_reading_direction(comic_fo
     assert extract.is_done(assets)
     assert assets.load_book()["reading_direction"] == "rtl"
     assert assets.page_indices() == [1, 2]
+
+
+def test_extract_builds_a_title_from_series_when_title_tag_is_absent(tmp_path):
+    """Real-world files often carry Series+Number but no Title; the filename is
+    usually scene-release junk."""
+    import zipfile
+    from PIL import Image
+    folder = tmp_path / "Strange Scales 006 (2026) (digital-mobile-Empire)"
+    folder.mkdir()
+    page = tmp_path / "p.jpg"
+    Image.new("RGB", (800, 1280)).save(page)
+    xml = """<?xml version='1.0'?><ComicInfo>
+      <Series>Strange Scales Infinity Comic</Series><Number>6</Number><Volume>2026</Volume>
+      <Summary>Anton and Aleister's impersonator is revealed.</Summary>
+      <Publisher>Marvel</Publisher></ComicInfo>"""
+    with zipfile.ZipFile(folder / f"{folder.name}.cbz", "w") as z:
+        z.writestr("ComicInfo.xml", xml)
+        z.write(page, "000.jpg")
+
+    assets = Assets(str(folder))
+    extract.run(assets)
+
+    book = assets.load_book()
+    assert book["title"] == "Strange Scales Infinity Comic #6 (2026)"
+    assert book["publisher"] == "Marvel"
+    assert book["publisher_summary"].startswith("Anton and Aleister")
+    assert assets.load_characters()["characters"] == []

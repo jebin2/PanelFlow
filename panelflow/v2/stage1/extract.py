@@ -45,6 +45,10 @@ def run(assets, model=None):
         "schema_version": SCHEMA_VERSION,
         "title": info.get("title") or assets.name,
         "series": info.get("series", ""),
+        "publisher": info.get("publisher", ""),
+        # The publisher's own blurb. Kept as book metadata for later stages to
+        # use deliberately — it is marketing copy, not an observation.
+        "publisher_summary": info.get("summary", ""),
         "category": "comic",
         "source": os.path.basename(assets.cbz_path),
         "page_count": len(members),
