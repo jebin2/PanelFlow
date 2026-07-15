@@ -340,8 +340,8 @@ CBZ ──1.1─▶ extract ──1.2─▶ split ──1.3─▶ analyze (per p
 |---|---|
 | **Input**  | `<comic_folder>/<name>.cbz` |
 | **Output** | `pages/NNNN/page.jpg` per page, minimal `page.json` per page, skeleton `book.json`, seeded `characters.json` |
-| **Done**   | every `page.json.status ≥ extracted` |
-| **Uses**   | no LLM, no network |
+| **Done**   | every `page.json.status ≥ extracted` and `book.json.page_count` set |
+| **Uses**   | no LLM, except one text call when the CBZ has no usable title (below) |
 
 Unzip CBZ image members in sorted order to `pages/NNNN/page.jpg`. Write a
 minimal `page.json` per page (`status: "extracted"`, dimensions, index) and
@@ -349,6 +349,15 @@ a skeleton `book.json` (title, source, page index). Parse `ComicInfo.xml`
 if present: seed `characters.json` from its `<Characters>` tag and copy
 title/series metadata into `book.json`. If absent, write an empty roster
 with `seeded_from: null`.
+
+**Title.** ComicInfo's `<Title>` wins; failing that it is composed from
+`Series` + `Number` + `Volume`, which is ground truth and costs nothing. Only
+when the CBZ carries no usable metadata does TTT read the filename — scene
+release names ("Strange Scales - Infinity Comic 006 (2026)
+(digital-mobile-Empire)") defeat tidy pattern rules, and the title goes into
+every page's prompt. The model is told to use only what the filename says and
+never to correct it against a comic it knows of. If TTT is unreachable the
+folder name is used, so 1.1 still runs offline.
 
 Also determined here, because later sub-stages depend on them:
 

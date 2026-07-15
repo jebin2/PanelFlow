@@ -324,3 +324,66 @@ def test_split_stops_when_the_extractor_crashes_on_every_page(comic_folder, monk
     extract.run(assets)
     with pytest.raises(RuntimeError, match="crashed on all"):
         split.run(assets)
+
+
+def _cbz_without_metadata(tmp_path, name):
+    """A CBZ with no ComicInfo.xml at all — nothing but the filename to go on."""
+    import zipfile
+    from PIL import Image
+    folder = tmp_path / name
+    folder.mkdir()
+    page = tmp_path / "p.jpg"
+    Image.new("RGB", (800, 1280)).save(page)
+    with zipfile.ZipFile(folder / f"{name}.cbz", "w") as z:
+        z.write(page, "000.jpg")
+    return str(folder)
+
+
+def test_title_is_parsed_from_a_scene_release_name_when_metadata_is_missing(tmp_path, monkeypatch):
+    monkeypatch.setattr("panelflow.v2.llm.ask_json",
+                        lambda **kw: {"title": "X-Men United #1 (2026)"})
+    folder = _cbz_without_metadata(tmp_path, "X-Men United 001 (2026) (Digital) (Zone-Empire)")
+
+    assets = Assets(folder)
+    extract.run(assets)
+    assert assets.load_book()["title"] == "X-Men United #1 (2026)"
+
+
+def test_comicinfo_beats_the_filename_parser(tmp_path, monkeypatch):
+    """Metadata is ground truth; a model can only add risk to it."""
+    called = []
+    monkeypatch.setattr("panelflow.v2.llm.ask_json",
+                        lambda **kw: called.append(1) or {"title": "Wrong"})
+
+    assets = Assets(comic_folder_with_series(tmp_path))
+    extract.run(assets)
+    assert assets.load_book()["title"] == "Strange Scales Infinity Comic #6 (2026)"
+    assert called == [], "no model call when ComicInfo already answers"
+
+
+def comic_folder_with_series(tmp_path):
+    import zipfile
+    from PIL import Image
+    folder = tmp_path / "Strange Scales 006 (2026) (digital-mobile-Empire)"
+    folder.mkdir()
+    page = tmp_path / "s.jpg"
+    Image.new("RGB", (800, 1280)).save(page)
+    xml = """<?xml version='1.0'?><ComicInfo>
+      <Series>Strange Scales Infinity Comic</Series><Number>6</Number>
+      <Volume>2026</Volume></ComicInfo>"""
+    with zipfile.ZipFile(folder / f"{folder.name}.cbz", "w") as z:
+        z.writestr("ComicInfo.xml", xml)
+        z.write(page, "000.jpg")
+    return str(folder)
+
+
+def test_title_falls_back_to_the_folder_name_when_the_parser_is_unreachable(tmp_path, monkeypatch):
+    def boom(**kw):
+        raise RuntimeError("TTT down")
+    monkeypatch.setattr("panelflow.v2.llm.ask_json", boom)
+    name = "Some Indie Book (2021)"
+    folder = _cbz_without_metadata(tmp_path, name)
+
+    assets = Assets(folder)
+    extract.run(assets)
+    assert assets.load_book()["title"] == name

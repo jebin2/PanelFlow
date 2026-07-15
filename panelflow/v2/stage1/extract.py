@@ -43,7 +43,7 @@ def run(assets, model=None):
     # which would silently re-split an RTL book left-to-right on resume.
     assets.save_book({
         "schema_version": SCHEMA_VERSION,
-        "title": info.get("title") or assets.name,
+        "title": info.get("title") or _title_from_filename(assets.name),
         "series": info.get("series", ""),
         "publisher": info.get("publisher", ""),
         # The publisher's own blurb. Kept as book metadata for later stages to
@@ -104,6 +104,30 @@ def _extract_page(zipf, member, assets, index):
         "analysis": {},
         "panels": [],
     })
+
+
+def _title_from_filename(name):
+    """Last resort when the CBZ carries no usable metadata.
+
+    Scene-release names ("... 006 (2026) (digital-mobile-Empire)") defeat tidy
+    pattern rules, and the title goes into every page's prompt, so let TTT read
+    it. ComicInfo always wins when present — it is ground truth, and a model can
+    only add risk to it.
+    """
+    from .. import llm, prompts
+
+    try:
+        parsed = llm.ask_json(
+            system_prompt=prompts.load("parse_title"),
+            user_prompt=f"Filename: {name}",
+        )
+        title = (parsed.get("title") or "").strip()
+        if title:
+            logger_config.info(f"1.1 title from filename: {title!r}")
+            return title
+    except Exception as e:
+        logger_config.warning(f"1.1 could not parse a title from {name!r}: {e}")
+    return name
 
 
 def _seed_characters(assets, info):
