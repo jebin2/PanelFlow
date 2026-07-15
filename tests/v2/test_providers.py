@@ -234,3 +234,20 @@ def test_a_reshape_that_also_fails_is_retried(monkeypatch):
     with pytest.raises(RuntimeError, match="failed after 3 attempts"):
         llm.ask_json("sys", "user", image_path="/tmp/p.jpg")
     assert len(attempts) == llm.RETRIES
+
+
+# ---------------------------------------------------------------- prompt contract
+
+def test_analyze_asks_for_label_value_and_reshaper_owns_the_json_shape():
+    """Google AI Mode renders structured answers as text and will not emit JSON,
+    so 1.3 asks for label: value and the reshaper holds the JSON shape."""
+    from panelflow.v2 import prompts
+
+    analyze = prompts.load("analyze_page")
+    assert "label: value" in analyze
+    assert "PANEL 1" in analyze and "NEW_CHARACTERS" in analyze
+
+    reshape = prompts.load("reshape_to_json")
+    for field in ("scene_summary", "new_characters", "panels", "focal_point", "text_regions"):
+        assert field in reshape, f"reshaper must define {field}"
+    assert "transcriber" in reshape

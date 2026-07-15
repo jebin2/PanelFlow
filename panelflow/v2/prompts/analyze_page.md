@@ -73,49 +73,51 @@ decided later with full context.
 
 ## Output
 
-Return **only** a JSON object. No prose before or after it, no markdown fence,
-no questions, no offers to help. Your entire reply must parse as JSON.
+Write your answer as plain `label: value` lines under the section headings
+below. Use these exact headings, exact label names, and this exact order. No
+prose before or after, no summary, no questions, no offers to help. Every label
+appears even when its value is empty.
+
+List items each go on **one** line, starting with `- `, with their fields
+separated by ` | `. Never split a list item across lines.
 
 ```
-{
-  "scene_summary": "Logan confronts Creed on the deck as a storm builds.",
-  "mood": "tense",
-  "page_type": "story",
-  "continuity_note": "Follows the ambush on page 2.",
-  "reading_order_suspect": false,
-  "content_warnings": [],
-  "unassigned_dialogue": [
-    {"speaker": "", "text": "MEANWHILE, IN GENOSHA...", "kind": "caption"}
-  ],
-  "new_characters": [
-    {
-      "id": "hooded_figure",
-      "name": "",
-      "visual": "tall figure in a deep hood, no face visible",
-      "first_panel": 2,
-      "named_by_panel": 0,
-      "inferred_identity": ""
-    }
-  ],
-  "panels": [
-    {
-      "id": 1,
-      "role": "establishing",
-      "description": "Wide shot of the deck, rain starting, two figures apart.",
-      "intensity": 2,
-      "skippable": false,
-      "focal_point": [0.62, 0.41],
-      "text_regions": [[1050, 200, 1400, 340]],
-      "characters": [
-        {"ref": "wolverine", "confidence": "high", "evidence": "claws, yellow suit"}
-      ],
-      "dialogue": [
-        {"speaker": "Wolverine", "text": "You shouldn't have come back.", "kind": "speech"},
-        {"speaker": "", "text": "SNIKT", "kind": "sfx"}
-      ]
-    }
-  ]
-}
+PAGE
+scene_summary: Logan confronts Creed on the deck as a storm builds.
+mood: tense
+page_type: story
+continuity_note: Follows the ambush on page 2.
+reading_order_suspect: false
+content_warnings: blood, graphic-violence
+unassigned_dialogue:
+- kind: caption | speaker:  | text: MEANWHILE, IN GENOSHA...
+
+NEW_CHARACTERS
+- id: hooded_figure | name:  | visual: tall figure in a deep hood, face unseen | first_panel: 2 | named_by_panel: 0 | inferred_identity: 
+
+PANEL 1
+role: establishing
+description: Wide shot of the deck, rain starting, two figures apart.
+intensity: 2
+skippable: false
+focal_point: 0.62, 0.41
+text_regions: 1050, 200, 1400, 340
+characters:
+- ref: wolverine | confidence: high | evidence: claws, yellow suit
+dialogue:
+- kind: speech | speaker: Wolverine | text: You shouldn't have come back.
+- kind: sfx | speaker:  | text: SNIKT
+
+PANEL 2
+role: reaction
+description: Creed snarls, rain running off his mane.
+intensity: 3
+skippable: true
+focal_point: 0.40, 0.35
+text_regions: 
+characters:
+- ref: sabretooth | confidence: medium | evidence: mane, fangs, partial view
+dialogue:
 ```
 
 Rules for the values:
@@ -124,10 +126,14 @@ Rules for the values:
 - `role`: establishing | action | reaction | dialogue | reveal | transition
 - `kind`: speech | thought | caption | sfx
 - `confidence`: high | medium | low
-- `intensity`: an integer 1–5
-- `focal_point`: [x, y], each 0–1, relative to that panel
-- `text_regions`: [x1, y1, x2, y2] in **page** pixels
-- Include an entry in `panels` for **every** panel id you were given, using
-  those exact ids. Use empty lists rather than omitting fields, and `""` rather
-  than null for empty strings.
-- A cover or a splash still gets one panel entry.
+- `intensity`: a whole number 1-5
+- `skippable`, `reading_order_suspect`: true | false
+- `focal_point`: two numbers 0-1, `x, y`, relative to that panel
+- `text_regions`: `x1, y1, x2, y2` in **page** pixels; one region per line,
+  each on its own `text_regions:` line if there are several
+- `content_warnings`: comma-separated, or empty
+- Write one `PANEL n` section for **every** panel id you were given, using those
+  exact ids, in that order. A cover or splash still gets `PANEL 1`.
+- Leave a value blank after the colon when there is nothing to report, and leave
+  a list heading with no `- ` lines under it when it is empty. Do not write
+  "none", "N/A" or a sentence explaining the absence.
