@@ -96,17 +96,26 @@ def test_split_falls_back_to_whole_page_when_no_panels_found(comic_folder, fake_
     assert panels[0]["bbox"] == [0, 0, 1000, 1500]
 
 
-def test_split_falls_back_when_the_extractor_crashes(comic_folder, monkeypatch):
+def test_split_falls_back_when_the_extractor_crashes_on_one_page(comic_folder, fake_extractor,
+                                                                 monkeypatch):
+    """The tool works, but chokes on this one page: fall back for that page
+    rather than blocking the book."""
     from panelflow.v2.stage1 import split as split_module
+    fake_extractor()
+    working = split_module._run_extractor
 
-    def boom(image_path):
-        raise RuntimeError("extractor exploded")
-    monkeypatch.setattr(split_module, "_run_extractor", boom)
+    def boom_on_first(image_path):
+        if "0001" in image_path:
+            raise RuntimeError("extractor exploded")
+        return working(image_path)
+    monkeypatch.setattr(split_module, "_run_extractor", boom_on_first)
 
     assets = Assets(comic_folder())
     extract.run(assets)
     split.run(assets)
-    assert len(assets.load_page(1)["panels"]) == 1
+
+    assert len(assets.load_page(1)["panels"]) == 1      # fell back
+    assert len(assets.load_page(2)["panels"]) == 2      # unaffected
     assert split.is_done(assets)
 
 
@@ -126,15 +135,20 @@ def test_split_reruns_only_the_page_reset_in_page_json(comic_folder, fake_extrac
     assert len(assets.load_page(1)["panels"]) == 2
 
 
-def test_bbox_regex_matches_extractor_names_and_ignores_debris(tmp_path):
+def test_bbox_regex_matches_both_real_extractor_formats_and_ignores_debris(tmp_path):
+    """Both prefixes are real: '0016_panel_(...)' comes from the extractor's LLM
+    path, 'panel_1_(...)' from its CV path."""
     from PIL import Image
-    for name in ["panel_1_(10, 20, 30, 40).jpg", "panel_2_(50, 60, 70, 80).jpg",
-                 "panels_visualization.jpg", "row_gutters.jpg"]:
+    for name in ["0016_panel_(56, 74, 759, 1200).jpg",     # LLM extractor
+                 "panel_1_(10, 20, 30, 40).jpg",            # CV extractor
+                 "panels_visualization.jpg",                # debris
+                 "0000_convert_to_clahe.jpg",               # debris
+                 "row_gutters.jpg"]:
         Image.new("RGB", (5, 5)).save(tmp_path / name)
     (tmp_path / "config.json").write_text("{}")
 
     found = split._parse_bboxes(str(tmp_path))
-    assert set(found) == {(10, 20, 30, 40), (50, 60, 70, 80)}
+    assert set(found) == {(56, 74, 759, 1200), (10, 20, 30, 40)}
 
 
 # ---------------------------------------------------------------- 1.6 validate
@@ -279,3 +293,34 @@ def test_extract_builds_a_title_from_series_when_title_tag_is_absent(tmp_path):
     assert book["publisher"] == "Marvel"
     assert book["publisher_summary"].startswith("Anton and Aleister")
     assert assets.load_characters()["characters"] == []
+
+
+def test_split_stops_loudly_when_the_extractor_cannot_be_installed(comic_folder, monkeypatch):
+    """A missing tool is systemic: silently splitting every page into one
+    whole-page panel would ruin the video with no error anywhere."""
+    from panelflow.v2.stage1 import split as split_module
+
+    def unavailable():
+        raise RuntimeError("comic-panel-extractor is unavailable after install")
+    monkeypatch.setattr(split_module, "_ensure_installed", unavailable)
+
+    assets = Assets(comic_folder())
+    extract.run(assets)
+    with pytest.raises(RuntimeError, match="unavailable"):
+        split.run(assets)
+    assert not split.is_done(assets)
+
+
+def test_split_stops_when_the_extractor_crashes_on_every_page(comic_folder, monkeypatch):
+    """The binary exists but is broken (e.g. a CUDA/cudnn mismatch). Falling
+    back on all 19 pages would pass 1.6 and silently produce a video with no
+    panel-level camera work."""
+    from panelflow.v2.stage1 import split as split_module
+    monkeypatch.setattr(split_module, "_ensure_installed", lambda: None)
+    monkeypatch.setattr(split_module, "_run_extractor",
+                        lambda image_path: (_ for _ in ()).throw(RuntimeError("core dumped")))
+
+    assets = Assets(comic_folder())
+    extract.run(assets)
+    with pytest.raises(RuntimeError, match="crashed on all"):
+        split.run(assets)

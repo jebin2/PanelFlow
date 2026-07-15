@@ -72,6 +72,7 @@ def fake_extractor(monkeypatch, tmp_path):
         from PIL import Image
         from panelflow.v2.stage1 import split
         counter = {"n": 0}
+        monkeypatch.setattr(split, "_ensure_installed", lambda: None)
 
         def fake_run(image_path):
             counter["n"] += 1
