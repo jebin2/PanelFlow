@@ -58,3 +58,10 @@ remotion-comic/public/sfx
 remotion-comic/public/fonts
 # Stage 3 build output inside each comic folder (audio, crops, manifests, videos)
 render/
+
+# Books are working data, not source, and they are disposable by design: once
+# pub_yt_x uploads one it deletes everything beside progress.json. Tracking a
+# folder the publisher is going to wipe only means committing 74 deletions
+# afterwards. `content_to_be_processed*/` above already covers books kept in
+# the v1 location; this is for one worked on at the repo root.
+/Strange Scales - Infinity Comic 006 (2026) (digital-mobile-Empire)/
