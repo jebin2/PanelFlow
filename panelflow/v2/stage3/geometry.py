@@ -118,6 +118,35 @@ def zoom_limit(regions, image_size, frame_size, origin):
     return max(limit, 1.0)
 
 
+def fill_crop(image_size, frame_size, focal, min_fill):
+    """A focal-centred crop that stops a panel being drowned in letterbox.
+
+    Drawn `contain`, a panel whose aspect is far from the frame's covers only
+    `min(a, fa) / max(a, fa)` of the frame's short-changed axis — a wide panel
+    in a portrait frame is a thin strip over a blurred bar, and unreadable. This
+    cuts the panel toward the frame's aspect, around `focal`, *just far enough*
+    to cover `min_fill` of that axis — never further, so only the excess that
+    was going to be letterbox is lost and the rest of the panel survives.
+
+    Returns None when the panel already covers `min_fill` (no crop needed); the
+    caller then draws it whole. Otherwise returns pixels in the image's own
+    space, ready for PIL's crop — a cover_box against a virtual frame of the
+    capped aspect, so the clamping and focal framing are shared, not repeated.
+
+    `focal` is a fraction of the image.
+    """
+    width, height = image_size
+    frame_aspect = frame_size[0] / frame_size[1]
+    aspect = width / height
+    if min(aspect, frame_aspect) / max(aspect, frame_aspect) >= min_fill:
+        return None
+    # Move the aspect toward the frame's but leave a `min_fill` bar: a wide
+    # panel keeps its height and is cut narrower (a larger target aspect than
+    # the frame), a tall panel keeps its width and is cut shorter.
+    capped = frame_aspect / min_fill if aspect > frame_aspect else frame_aspect * min_fill
+    return cover_box(image_size, (capped, 1.0), focal)
+
+
 def cover_box(image_size, frame_size, focal):
     """The box to cut from an image so it *fills* a frame, framed on `focal`.
 

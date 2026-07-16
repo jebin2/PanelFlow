@@ -209,3 +209,54 @@ def test_a_wide_image_is_cut_on_the_sides_instead():
 
     assert (y1, y2) == (0, 1000)
     assert (x2 - x1) == round(1000 * 1920 / 1080)
+
+
+PORTRAIT = (1080, 1920)
+
+
+def _fill(box, frame_size):
+    """The fraction of the frame's short-changed axis a `contain` of this box
+    covers — the very thing the fill crop exists to raise."""
+    aspect = (box[2] - box[0]) / (box[3] - box[1])
+    frame_aspect = frame_size[0] / frame_size[1]
+    return min(aspect, frame_aspect) / max(aspect, frame_aspect)
+
+
+def test_a_panel_that_already_fills_enough_is_left_whole():
+    """Aspect 0.667 in a 0.5625 frame already covers 84% of the height — cutting
+    it would only lose artwork for nothing."""
+    assert geometry.fill_crop((1000, 1500), PORTRAIT, (0.5, 0.5), 0.55) is None
+
+
+def test_a_wide_panel_in_a_portrait_frame_is_cut_narrower_keeping_its_height():
+    x1, y1, x2, y2 = geometry.fill_crop((2000, 1000), PORTRAIT, (0.5, 0.5), 0.55)
+
+    assert (y1, y2) == (0, 1000)                 # full height survives
+    assert (x2 - x1) < 2000                       # only the width is cut
+    assert _fill((x1, y1, x2, y2), PORTRAIT) == pytest.approx(0.55, abs=0.01)
+
+
+def test_a_tall_panel_in_a_landscape_frame_is_cut_shorter_keeping_its_width():
+    x1, y1, x2, y2 = geometry.fill_crop((1000, 2000), HD, (0.5, 0.5), 0.55)
+
+    assert (x1, x2) == (0, 1000)
+    assert (y2 - y1) < 2000
+    assert _fill((x1, y1, x2, y2), HD) == pytest.approx(0.55, abs=0.01)
+
+
+def test_the_crop_stops_at_the_fill_and_takes_no_more_than_it_must():
+    """A ceiling, not a target: the cut leaves exactly enough to reach the fill,
+    so a wider panel keeps more of itself than a narrower one does."""
+    wider = geometry.fill_crop((3000, 1000), PORTRAIT, (0.5, 0.5), 0.55)
+    narrower = geometry.fill_crop((2000, 1000), PORTRAIT, (0.5, 0.5), 0.55)
+
+    assert (wider[2] - wider[0]) == pytest.approx(narrower[2] - narrower[0], abs=1)
+    assert _fill(wider, PORTRAIT) == pytest.approx(_fill(narrower, PORTRAIT), abs=0.01)
+
+
+def test_a_fill_crop_frames_the_focal_point_but_stays_on_the_artwork():
+    centred = geometry.fill_crop((2000, 1000), PORTRAIT, (0.5, 0.5), 0.55)
+    toward_right = geometry.fill_crop((2000, 1000), PORTRAIT, (0.95, 0.5), 0.55)
+
+    assert toward_right[0] > centred[0]           # window slid toward the subject
+    assert 0 <= toward_right[0] < toward_right[2] <= 2000  # but not past the edge

@@ -34,6 +34,14 @@ TRANSITION_SECONDS = TRANSITION_FRAMES / config.FPS
 # An event is punctuation, not a phase — it hits and it is gone.
 EVENT_SECONDS = 0.6
 
+# A wide panel in the portrait short is drawn as a thin strip over a blurred
+# bar, unreadable, so we crop it toward the frame around its focal point. A
+# ceiling, not a target — the crop stops the moment the panel covers this much
+# of the short-changed axis, to lose as little of the artwork as possible. Only
+# the portrait target crops: longform's tall panels would lose too much height,
+# and its letterbox is far milder to begin with.
+MIN_FRAME_FILL = 0.55
+
 
 def run(assets, target, direction, voiced):
     """Build the Remotion manifest for one target. Returns the manifest dict."""
@@ -110,10 +118,7 @@ def _resolve(assets, target, shot, frame):
 
     if source["kind"] == "panel":
         panel = _find_panel(page, source["panel"], source["page"])
-        regions = geometry.regions_to_panel_fractions(
-            panel.get("text_regions") or [], panel["bbox"])
-        focal = tuple(panel["focal_point"]) if aim and panel.get("focal_point") else None
-        return _panel_image(assets, source["page"], panel), regions, None, focal
+        return _panel_source(assets, target, shot, panel, frame, aim)
 
     if source["kind"] == "full_page":
         regions = geometry.regions_to_panel_fractions(
@@ -124,6 +129,53 @@ def _resolve(assets, target, shot, frame):
         return _pan(assets, target, shot, page, frame)
 
     raise ValueError(f"3.2: unknown source kind {source['kind']!r} in shot {shot['id']}")
+
+
+def _panel_source(assets, target, shot, panel, frame, aim):
+    """A single-panel shot -> (image, regions, camera=None, focal).
+
+    In the portrait short a wide panel is cropped toward the frame around its
+    focal point (see geometry.fill_crop), so it is not a thin strip over a
+    blurred bar. Longform is left alone — see MIN_FRAME_FILL. The crop is
+    measured in the panel image's own pixels, so both the text regions (page
+    pixels) and the focal point (a panel fraction) are rebased onto whatever
+    image we end up showing — the whole panel, or the cut of it.
+    """
+    image_path = _panel_image(assets, shot["source"]["page"], panel)
+    size = _image_size(image_path)
+    bx1, by1, _, _ = panel["bbox"]
+    regions_px = [[rx1 - bx1, ry1 - by1, rx2 - bx1, ry2 - by1]
+                  for rx1, ry1, rx2, ry2 in (panel.get("text_regions") or [])]
+    focal = tuple(panel.get("focal_point") or (0.5, 0.5))
+
+    portrait = frame[1] > frame[0]
+    crop = geometry.fill_crop(size, frame, focal, MIN_FRAME_FILL) if portrait else None
+    if crop:
+        image_path = _crop_image(assets, target, shot["id"], image_path, crop)
+        focal = ((focal[0] * size[0] - crop[0]) / (crop[2] - crop[0]),
+                 (focal[1] * size[1] - crop[1]) / (crop[3] - crop[1]))
+        regions_px = [[rx1 - crop[0], ry1 - crop[1], rx2 - crop[0], ry2 - crop[1]]
+                      for rx1, ry1, rx2, ry2 in regions_px]
+        size = _image_size(image_path)
+
+    regions = _clip(geometry.regions_to_panel_fractions(
+        regions_px, [0, 0, size[0], size[1]]))
+    return image_path, regions, None, (focal if aim else None)
+
+
+def _clip(regions):
+    """Keep only the on-screen part of each region.
+
+    After a fill crop a text region may hang off an edge, or sit outside the cut
+    entirely. Zoom protection is about what is visible: a region clamped to the
+    unit square is protected where it shows; one wholly outside is dropped.
+    """
+    clipped = []
+    for x1, y1, x2, y2 in regions:
+        cx1, cy1, cx2, cy2 = max(0.0, x1), max(0.0, y1), min(1.0, x2), min(1.0, y2)
+        if cx1 < cx2 and cy1 < cy2:
+            clipped.append((cx1, cy1, cx2, cy2))
+    return clipped
 
 
 def _pan(assets, target, shot, page, frame):
