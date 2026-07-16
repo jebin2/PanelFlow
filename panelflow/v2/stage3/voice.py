@@ -34,14 +34,14 @@ def run(assets, target, shots):
 
     voiced = []
     for shot in shots:
-        voiced.append(_voice_shot(assets, target, shot, tts, stt))
+        voiced.append(_voice_shot(assets, target, shot, len(shots), tts, stt))
     spoken = sum(1 for v in voiced if v["audio"])
     logger_config.info(
         f"3.1 {target}: {spoken} shot(s) voiced, {len(voiced) - spoken} silent")
     return voiced
 
 
-def _voice_shot(assets, target, shot, tts, stt):
+def _voice_shot(assets, target, shot, total, tts, stt):
     from jebin_lib import utils
 
     from panelflow import common
@@ -54,7 +54,7 @@ def _voice_shot(assets, target, shot, tts, stt):
 
     path = assets.shot_audio_path(target, shot["id"])
     if not utils.is_valid_audio(path):
-        logger_config.info(f"3.1 {target}: speaking shot {shot['id']}")
+        logger_config.info(f"3.1 {target}: speaking shot {shot['id']} of {total}")
         tts.generate_audio_segment(narration, path)
         utils.trim_silence(path)
         utils.speed_up_audio(path)
