@@ -74,6 +74,7 @@ def _analyze_page(assets, index, page, system_prompt, model):
     }
     page["panels"] = _merge_panels(page["panels"], result.get("panels", []), known, page)
     _locate_dialogue(page, model)
+    _drop_echoed_captions(page)     # needs the regions _locate_dialogue just placed
     _assign_text_regions(page)      # needs the grouping _locate_dialogue just made
     page["status"] = ANALYZED
     assets.save_page(index, page)
@@ -110,6 +111,41 @@ def _locate_dialogue(page, model):
         if entry is not None and boxes:
             entry["region"] = [min(b[0] for b in boxes), min(b[1] for b in boxes),
                                max(b[2] for b in boxes), max(b[3] for b in boxes)]
+
+
+def _drop_echoed_captions(page):
+    """A caption that spans panels is one line, not one per panel.
+
+    A scene-setter or a closing verse belongs to the page, not to any panel it
+    happens to cross — but the vision model often copies it onto every panel it
+    touches. Left alone, the director reads it once per panel and the narration
+    stutters. `_locate_dialogue` already found where the lettering really is, so
+    the copy that got a region is the true one and the region-less copies are
+    echoes; the echoes are dropped.
+
+    Restricted to captions, and to text that a sibling copy *did* place, so it
+    never silences two characters who happen to say the same short line — that
+    repeat is real, and each copy keeps its own region.
+    """
+    located = {_norm(entry["text"])
+               for panel in page.get("panels", [])
+               for entry in panel.get("dialogue", [])
+               if entry.get("kind") == "caption" and entry.get("region")
+               and entry.get("text")}
+    if not located:
+        return
+
+    for panel in page.get("panels", []):
+        panel["dialogue"] = [
+            entry for entry in panel.get("dialogue", [])
+            if not (entry.get("kind") == "caption"
+                    and not entry.get("region")
+                    and _norm(entry.get("text", "")) in located)
+        ]
+
+
+def _norm(text):
+    return " ".join(text.split()).lower()
 
 
 def _assign_text_regions(page):

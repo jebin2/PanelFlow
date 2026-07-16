@@ -219,6 +219,70 @@ def test_unassigned_captions_are_located_too(monkeypatch):
     assert page["analysis"]["unassigned_dialogue"][0]["region"] == [33, 17, 766, 105]
 
 
+def test_a_caption_echoed_onto_every_panel_is_kept_only_where_it_is(monkeypatch):
+    """Verbatim from page 21: a closing verse the model copied onto all three
+    panels. It is lettered in panel 1, so _locate_dialogue placed it there; the
+    copies on 2 and 3 have no region and would make the director read it thrice.
+    """
+    verse = "Elvira and Harley, a sight to behold."
+    page = {
+        "page_index": 21,
+        "panels": [
+            {"id": 1, "bbox": [7, 70, 2106, 4170],
+             "dialogue": [{"text": verse, "kind": "caption", "region": [100, 100, 900, 200]}]},
+            {"id": 2, "bbox": [2101, 0, 2726, 2402],
+             "dialogue": [{"text": verse, "kind": "caption"}]},
+            {"id": 3, "bbox": [2122, 0, 2718, 3662],
+             "dialogue": [{"text": verse, "kind": "caption"}]},
+        ],
+        "analysis": {"unassigned_dialogue": []},
+    }
+
+    analyze._drop_echoed_captions(page)
+
+    assert [d["text"] for d in page["panels"][0]["dialogue"]] == [verse]
+    assert page["panels"][1]["dialogue"] == []
+    assert page["panels"][2]["dialogue"] == []
+
+
+def test_a_caption_genuinely_repeated_keeps_every_placed_copy(monkeypatch):
+    """The guard against over-eager dedup: the same words really lettered in two
+    panels each got their own region, so both are real and both stay."""
+    page = {
+        "page_index": 1,
+        "panels": [
+            {"id": 1, "dialogue": [{"text": "MEANWHILE...", "kind": "caption",
+                                    "region": [0, 0, 100, 40]}]},
+            {"id": 2, "dialogue": [{"text": "MEANWHILE...", "kind": "caption",
+                                    "region": [500, 0, 600, 40]}]},
+        ],
+        "analysis": {"unassigned_dialogue": []},
+    }
+
+    analyze._drop_echoed_captions(page)
+
+    assert len(page["panels"][0]["dialogue"]) == 1
+    assert len(page["panels"][1]["dialogue"]) == 1
+
+
+def test_repeated_speech_is_never_dropped(monkeypatch):
+    """Two characters can shout the same word; only captions are page-spanning,
+    so speech is left entirely alone even when a copy went unplaced."""
+    page = {
+        "page_index": 1,
+        "panels": [
+            {"id": 1, "dialogue": [{"text": "HURRY!", "kind": "speech",
+                                    "region": [0, 0, 80, 30]}]},
+            {"id": 2, "dialogue": [{"text": "HURRY!", "kind": "speech"}]},
+        ],
+        "analysis": {"unassigned_dialogue": []},
+    }
+
+    analyze._drop_echoed_captions(page)
+
+    assert len(page["panels"][1]["dialogue"]) == 1
+
+
 def test_analyze_prompt_carries_roster_and_previous_pages(ready, stub_llm):
     seen = stub_llm()
     analyze.run(ready)
