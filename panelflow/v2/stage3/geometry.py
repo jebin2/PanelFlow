@@ -116,3 +116,26 @@ def zoom_limit(regions, image_size, frame_size, origin):
                 elif delta < 0:
                     limit = min(limit, origin[axis] / -delta)
     return max(limit, 1.0)
+
+
+def cover_box(image_size, frame_size, focal):
+    """The box to cut from an image so it *fills* a frame, framed on `focal`.
+
+    Cover, not contain — this is for a thumbnail, where a black bar is worse
+    than a missing corner. Something has to be cut, and the focal point decides
+    what survives: a thumbnail cropped away from its subject is the whole
+    failure mode. Clamped to the image, so a focal point near an edge slides
+    the window rather than reaching past the artwork.
+
+    `focal` is a fraction of the image. Returns pixels in the image's own
+    space, ready for PIL's crop.
+    """
+    width, height = image_size
+    scale = max(frame_size[0] / width, frame_size[1] / height)
+    # Rounded once, here: rounding the two edges separately can land them a
+    # pixel apart from this, which is a box that no longer holds the frame's
+    # aspect and so a thumbnail stretched by a hair.
+    box_width, box_height = round(frame_size[0] / scale), round(frame_size[1] / scale)
+    left = min(max(round(focal[0] * width - box_width / 2), 0), width - box_width)
+    top = min(max(round(focal[1] * height - box_height / 2), 0), height - box_height)
+    return (left, top, left + box_width, top + box_height)

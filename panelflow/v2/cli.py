@@ -13,6 +13,7 @@ import traceback
 
 from custom_logger import logger_config
 
+from .paths import Assets
 from .stage1 import runner
 from .stage2 import runner as stage2_runner
 from .stage3 import runner as stage3_runner
@@ -58,6 +59,12 @@ def main(argv=None):
     args = parser.parse_args(argv)
 
     folder = prepare_folder(args.target)
+    if Assets(folder).published():
+        # The publisher wiped this folder and left the tombstone. There is no
+        # cbz to read and nothing to re-make; saying so beats failing in 1.1.
+        logger_config.info(f"{os.path.basename(folder)}: already published, nothing to do")
+        return 0
+
     # No --only means every stage; --only names the stage by its first digit.
     stage1 = args.only is None or args.only.startswith("1")
     stage2 = args.only is None or args.only.startswith("2")

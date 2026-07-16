@@ -25,12 +25,17 @@ What *does* live here is arithmetic the upstream stages cannot do:
 | 3.1       | voice   | TTS + STT (network)     | audio file per shot, keyed by shot **and text** |
 | 3.2       | compile | pure arithmetic          | nothing — recomputed every run, it is free   |
 | 3.3       | render  | Remotion (subprocess)    | video newer than its direction file          |
+| 3.4       | publish | image + JSON             | nothing; `PUBLISHED` ends the book's life    |
 
 ```
 direction/<target>.json ──3.1─▶ audio + durations + word timings
                          ──3.2─▶ render/<target>/manifest.json
                          ──3.3─▶ render/<target>/<target>.mp4
+                         ──3.4─▶ progress.json + thumbnail.jpg   (both targets)
 ```
+
+3.1–3.3 run per target; **3.4 is book-level** — a handoff names both videos, so
+`--output shorts` skips it and says so.
 
 Both targets (`longform` 1920×1080, `shorts` 1080×1920) run the same three
 modules; the only differences are the frame size and the direction file. The
@@ -123,6 +128,48 @@ then loudness normalization. Two mechanics worth knowing:
 Existence alone would let a re-directed book report "already rendered" and
 quietly ship last cut's video. `--only 3.3` bypasses the marker for a forced
 re-render.
+
+## 3.4 publish — the handoff, and the end of the book's life
+
+Writes `progress.json` at the comic folder root and renders `thumbnail.jpg`.
+That file is the entire contract with **pub_yt_x**, which needs no folder
+convention: it `os.walk`s whatever root you give it looking for that filename.
+
+```
+pub_yt_x /home/jebin/git/PanelFlow      # or any root above the comic folders
+```
+
+**Paths are absolute, deliberately.** pub_yt_x resolves relative paths against
+whichever scan root it was invoked with, and 3.4 cannot know that root. Its
+`to_abs` returns an absolute path untouched, so absolute is the one answer
+correct for every root.
+
+**One title per video.** The longform's `meta` fills `YOUTUBE_TITLE` /
+`YT_DESCRIPTION`; the short's fills `SHORTS_YOUTUBE_TITLE` /
+`SHORTS_YT_DESCRIPTION`. Stock pub_yt_x read a single title and put it on both
+uploads, which threw away the hook-first title 2.2 exists to write — so it now
+takes a `key_prefix` and falls back to the unprefixed keys, leaving every older
+progress.json working unchanged.
+
+**The thumbnail is the panel the director chose** (`meta.thumbnail`, validated
+by 2.3), cover-cropped to 1920×1080 around the panel's `focal_point` — v1 took
+the first panel of the book and cropped from the top. Cover, not contain: a
+thumbnail may lose a corner but never gains a bar, and the focal point decides
+what survives.
+
+**The schedule lives in progress.json.** The next free Wed/Fri/Sun slot at
+03:30 or 14:30 UTC, found by reading the *sibling* folders' progress files —
+nothing else knows what is queued. A slot already booked and still ahead is
+kept, so re-running 3.4 after a re-render cannot move a video someone is
+expecting on Sunday.
+
+**This file is a tombstone, and the folder is disposable.** Once the upload
+succeeds, pub_yt_x deletes everything beside progress.json — cbz, assets,
+direction, render, all of it — and sets `PUBLISHED`. That is the intended
+lifecycle: a book on the channel is done, and the disk comes back.
+`Assets.published()` is what stops the CLI from walking into the wreckage and
+trying to re-extract from a cbz that is gone; it is checked before Stage 1, not
+inside it.
 
 ## The renderer: two layers, three copies
 

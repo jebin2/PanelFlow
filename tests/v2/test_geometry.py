@@ -175,3 +175,37 @@ def test_a_limit_keeps_the_lettering_inside_the_frame():
         for axis in (0, 1):
             landed = origin[axis] + (point[axis] - origin[axis]) * limit
             assert -1e-9 <= landed <= 1 + 1e-9
+
+
+def test_a_cover_crop_fills_the_frame_and_keeps_its_aspect():
+    """A tall panel cropped for a 16:9 thumbnail: the full width survives and
+    the height is cut to match, because cover never leaves a bar."""
+    x1, y1, x2, y2 = geometry.cover_box((400, 800), HD, (0.5, 0.5))
+
+    assert (x1, x2) == (0, 400)
+    assert (y2 - y1) == round(400 * 1080 / 1920)
+
+
+def test_a_cover_crop_frames_the_focal_point():
+    """The whole reason the focal point is passed: the subject is at the top of
+    this panel, so the window must sit at the top, not centre."""
+    _, centred_top, _, _ = geometry.cover_box((400, 800), HD, (0.5, 0.5))
+    _, high_top, _, _ = geometry.cover_box((400, 800), HD, (0.5, 0.1))
+
+    assert high_top < centred_top
+    assert high_top == 0        # clamped: there is no artwork above the panel
+
+
+def test_a_cover_crop_never_reaches_past_the_artwork():
+    for focal in ((0.0, 0.0), (1.0, 1.0), (0.5, 0.99)):
+        x1, y1, x2, y2 = geometry.cover_box((400, 800), HD, focal)
+        assert 0 <= x1 < x2 <= 400
+        assert 0 <= y1 < y2 <= 800
+
+
+def test_a_wide_image_is_cut_on_the_sides_instead():
+    """The other axis binds: a very wide page keeps its full height."""
+    x1, y1, x2, y2 = geometry.cover_box((4000, 1000), HD, (0.5, 0.5))
+
+    assert (y1, y2) == (0, 1000)
+    assert (x2 - x1) == round(1000 * 1920 / 1080)

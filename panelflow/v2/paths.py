@@ -29,6 +29,9 @@ class Assets:
         self.cbz_path = os.path.join(self.folder, f"{self.name}.cbz")
         self.direction_dir = os.path.join(self.folder, "direction")
         self.render_dir = os.path.join(self.folder, "render")
+        # The handoff to pub_yt_x, and the tombstone it leaves behind — see 3.4.
+        self.progress_path = os.path.join(self.folder, "progress.json")
+        self.thumbnail_path = os.path.join(self.folder, "thumbnail.jpg")
 
     def page_dir(self, index):
         return os.path.join(self.pages_dir, f"{index:04d}")
@@ -103,6 +106,21 @@ class Assets:
         folder, so `staticFile("render_assets/<this>")` resolves to `path`.
         """
         return "render_assets/" + os.path.relpath(os.path.abspath(path), self.folder)
+
+    def load_progress(self):
+        return jsonio.read(self.progress_path, {})
+
+    def save_progress(self, data):
+        jsonio.write(self.progress_path, data)
+
+    def published(self):
+        """The publisher has uploaded this book and wiped the folder behind it.
+
+        progress.json is all that is left — no cbz, no assets, nothing to
+        re-make. Every stage checks this before touching a folder, because the
+        honest answer to "re-run me" here is that there is nothing to run.
+        """
+        return bool(self.load_progress().get("PUBLISHED"))
 
     def stage2_complete(self, target):
         """The gate Stage 3 checks: 2.3 passed, so the direction is playable."""

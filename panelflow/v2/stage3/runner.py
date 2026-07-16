@@ -14,15 +14,20 @@ from custom_logger import logger_config
 from .. import jsonio
 from ..paths import Assets
 from . import compile as compiler
-from . import render, voice
+from . import publish, render, voice
 
 TARGETS = ("longform", "shorts")
-SUB_STAGES = {"3.1": "voice", "3.2": "compile", "3.3": "render"}
+SUB_STAGES = {"3.1": "voice", "3.2": "compile", "3.3": "render", "3.4": "publish"}
+PUBLISH = "3.4"
 
 
 def run(comic_folder, only=None, target=None):
     """Run Stage 3. `only` limits to one sub-stage id, `target` to one output."""
     assets = Assets(comic_folder)
+    if assets.published():
+        logger_config.info(f"3: {assets.name} is already published")
+        return assets
+
     targets = [target] if target else list(TARGETS)
 
     for name in targets:
@@ -33,8 +38,21 @@ def run(comic_folder, only=None, target=None):
                 f"{assets.name}: {name} direction is not validated "
                 f"(direction/{name}.json has no validated: true). Stage 3 must not "
                 f"render a direction 2.3 has not passed.")
-        _run_target(assets, name, only)
+        if only != PUBLISH:
+            _run_target(assets, name, only)
+
+    if only in (None, PUBLISH):
+        _publish(assets, target)
     return assets
+
+
+def _publish(assets, target):
+    """The handoff is book-level, not per-target: it names both videos."""
+    if target:
+        logger_config.info(
+            f"3.4: skipped — a handoff needs both videos and only {target} was asked for")
+        return
+    publish.run(assets)
 
 
 def _run_target(assets, target, only):
