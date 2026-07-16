@@ -15,7 +15,11 @@ BASE_URL = os.environ.get("TTT_API_URL", "https://opencode.voidall.com").rstrip(
 # character-merge task, and it answers faster. Override per call if needed.
 MODEL = os.environ.get("TTT_MODEL", "opencode")
 POLL_SECONDS = 3
-TIMEOUT_SECONDS = 420
+# A whole-book reconcile or director pass is a large prompt, and opencode takes
+# ~5 minutes on one. This must clear the server's own opencode timeout plus time
+# spent queued behind another task, or the client abandons a task the server is
+# about to finish. Kept in step with the server's 600s cap.
+TIMEOUT_SECONDS = 900
 
 
 def generate(system_prompt, user_prompt, model=None, **_):
