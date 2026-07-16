@@ -108,9 +108,12 @@ already enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
 `tilt_in`); put those transitions on camera or impact shots instead. `toss` and
 `fade` survive on anything.
 
-`events` fire *during* a shot, as punctuation — a short with an event on every
-shot has none. Each is `{"type": "...", "at_fraction": 0.4}`, where `type` is
-one of `tremble`, `flash`, `shockwave`, `heartbeat`, `rattle`, and
+`events` fire *during* a shot, as punctuation, and a short lives on them: land
+one on every hard beat (intensity 4-5), matched to what the panel does —
+`shockwave` for a blow landing, `flash` for a shock, `rattle` for an explosion,
+`heartbeat` for held dread. But a short with an event on *every* shot has none,
+so save them for the hits. Each is `{"type": "...", "at_fraction": 0.4}`, where
+`type` is one of `tremble`, `flash`, `shockwave`, `heartbeat`, `rattle`, and
 `at_fraction` is 0..1 through the shot. Use `[]` for none.
 
 **`silent_seconds` belongs only to a shot with no narration at all.** A silent
