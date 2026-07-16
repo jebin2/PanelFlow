@@ -20,6 +20,13 @@ Rules:
 - If a problem says narration names someone the book never names, rewrite that
   narration to describe them instead. Do not simply delete the sentence.
 - If a problem says a beat has no shot, add one for a page in that beat's range.
+- If a problem says one animation is over the cap, that fault spans many shots,
+  not one: change enough of the shots using that move to bring it under the cap,
+  and no more. Pick each replacement from what that panel is doing — dread
+  creeps, a reveal zooms, an opening fades, a strike slams — never a random
+  swap. Leave every other shot, and every shot's source and narration,
+  untouched. This is the one problem whose fix is spread across shots; treat the
+  rest as strictly local.
 
 Return the **whole** file back in the same JSON shape you received — `music`,
 `meta`, `shots` — with only the faults corrected. No prose, no markdown fence.

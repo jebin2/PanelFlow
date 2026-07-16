@@ -88,7 +88,8 @@ Use only these names.
 
 A short leans hard on the impact and directional sets — but a video where every
 shot is a `punch_in` is as flat as one where every shot is a `ken_burns`. Contrast
-is what makes a hit land.
+is what makes a hit land, so no single animation may carry more than a quarter of
+the shots.
 
 `transition_in` is one of `none`, `fade`, `slide`, `wipe`, `flip`, `toss`. **The
 first shot is always `none`** — a short cannot afford to fade in. Hard cuts keep

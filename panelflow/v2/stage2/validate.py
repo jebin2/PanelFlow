@@ -14,6 +14,7 @@ first cut of it was a regex, and it was worse than nothing: it passed
 "Wolverine catches it." while flagging "Beneath".
 """
 import re
+from collections import Counter
 
 from custom_logger import logger_config
 
@@ -29,6 +30,13 @@ MAX_REPAIRS = 2
 WORDS_PER_SECOND = 3.5
 SHORTS_MAX_SECONDS = 120
 ENDING_ANIMATIONS = ["zoom_out", "fade_in", "ken_burns", "breathe"]
+
+# No single animation may carry more than this share of a video, or the camera
+# work reads as one repeated move rather than direction — see
+# _check_animation_variety. A floor keeps a short video from tripping on a
+# natural repeat, and leaves the plurality move (usually ken_burns) plenty of room.
+ANIMATION_CAP_FRACTION = 0.25
+ANIMATION_CAP_FLOOR = 3
 
 # Markup is syntax — a bracket is a bracket in every book, so a rule can own it.
 # Naming is not, and is asked of a model below.
@@ -76,6 +84,7 @@ def check(assets, direction, model=None):
     problems += _check_ids(shots)
     problems += _check_sources(assets, shots)
     problems += _check_vocabulary(shots)
+    problems += _check_animation_variety(shots)
     problems += _check_narration(assets, shots, model)
     problems += _check_meta(assets, direction)
     if direction.get("target") == "longform":
@@ -146,6 +155,27 @@ def _check_vocabulary(shots):
             problems.append(f"{where}: silent shot without silent_seconds")
     if shots and shots[0].get("transition_in") != "none":
         problems.append("shot 1: must open with transition_in 'none'")
+    return problems
+
+
+def _check_animation_variety(shots):
+    """No single animation may dominate the video.
+
+    A book where nearly half the shots are the same slow drift is not directed,
+    it is defaulted — the camera stops being a choice. Which move a panel *wants*
+    is the director's call and cannot be ruled on here, but "not the same one
+    over and over" is arithmetic, so the ceiling lives in code and the repair is
+    asked to vary the work, never told which move to put where.
+    """
+    if not shots:
+        return []
+    cap = max(ANIMATION_CAP_FLOOR, int(ANIMATION_CAP_FRACTION * len(shots)))
+    problems = []
+    for animation, count in Counter(s.get("animation") for s in shots).most_common():
+        if count > cap:
+            problems.append(
+                f"animation {animation!r} is on {count} of {len(shots)} shots, over "
+                f"the {cap} cap — vary the camera work so no one move dominates")
     return problems
 
 

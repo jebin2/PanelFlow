@@ -67,9 +67,13 @@ entire). Prefer `focal_point` for close work, `whole` for establishing shots.
 
 Use only these names. Match the movement to what the panel is doing.
 
-- **Camera** — `ken_burns` (calm drift, default for quiet panels), `zoom_in`
-  (draw attention inward), `zoom_out` (endings, reveals of scale), `pan_up`,
-  `pan_down`, `creep` (dread), `fade_in` (openings, dreams).
+- **Camera** — `ken_burns` (a calm drift, when a quiet panel wants nothing more
+  than to breathe), `zoom_in` (draw attention inward), `zoom_out` (endings,
+  reveals of scale), `pan_up`, `pan_down`, `creep` (dread), `fade_in` (openings,
+  dreams). A quiet panel is not automatically `ken_burns`: dread creeps, a
+  reveal zooms, an opening fades, a landscape pans. Reach for `ken_burns` only
+  when none of those is truer, not as the thing you do when nothing else
+  suggests itself.
 - **Impact** — `burst` (openings, sudden arrivals), `snap`, `punch_in` (a
   reveal landing), `recoil`, `shockwave`, `flash`.
 - **Tension** — `heartbeat`, `tremble`, `breathe` (a held, uneasy moment),
@@ -81,7 +85,10 @@ Use only these names. Match the movement to what the panel is doing.
   costly, use sparingly).
 
 Intensity is your guide: 1-2 wants camera moves, 4-5 wants impact. A book where
-every shot is `punch_in` is as flat as one where every shot is `ken_burns`.
+every shot is `punch_in` is as flat as one where every shot is `ken_burns`. No
+single animation may carry more than a quarter of the shots — if you find
+yourself reaching for the same move a fourth time, the panel almost certainly
+wants a different one.
 
 `transition_in` is one of `none`, `fade`, `slide`, `wipe`, `flip`, `toss`. The
 first shot is always `none`. Hard cuts (`none`) are the right choice mid-scene;
