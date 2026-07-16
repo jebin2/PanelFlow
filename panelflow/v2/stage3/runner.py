@@ -60,6 +60,11 @@ def _run_target(assets, target, only):
 
 
 def _done(assets, target):
-    """The video exists. Nothing cheaper is a reliable marker: the manifest is
-    rewritten every render, and the audio is cached per shot regardless."""
-    return os.path.exists(assets.video_path(target))
+    """The video exists and is newer than its direction. Existence alone is
+    not enough: a re-directed book still has last cut's video on disk, and
+    "already rendered" would quietly ship the old cut. Nothing cheaper works
+    as a marker — the manifest is rewritten every render, and the audio is
+    cached per shot regardless."""
+    video = assets.video_path(target)
+    return (os.path.exists(video)
+            and os.path.getmtime(video) >= os.path.getmtime(assets.direction_path(target)))

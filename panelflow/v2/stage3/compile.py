@@ -48,7 +48,6 @@ def run(assets, target, direction, voiced):
         "width": frame[0],
         "height": frame[1],
         "comicTitle": assets.load_book().get("title") or assets.name,
-        "pageNumber": 1,
         "panels": panels,
     }
     seconds = sum(panel["durationInSeconds"] for panel in panels)
@@ -76,7 +75,6 @@ def _panel(assets, target, shot, voice, frame, overlaps_next):
         # hard cut eats nothing — padding there is just dead air on screen.
         "durationInSeconds": voice["duration"]
                              + (TRANSITION_SECONDS if overlaps_next else 0),
-        "bubbleBbox": [0, 0, frame[0], frame[1]],
         "narrationText": shot.get("narration") or "",
         "sceneCaption": "",
         "animation": shot["animation"],

@@ -1,3 +1,4 @@
+import hashlib
 import os
 
 from . import jsonio
@@ -77,8 +78,17 @@ class Assets:
     def target_dir(self, target):
         return os.path.join(self.render_dir, target)
 
-    def shot_audio_path(self, target, shot_id):
-        return os.path.join(self.target_dir(target), "audio", f"shot_{shot_id:03d}.wav")
+    def audio_dir(self, target):
+        return os.path.join(self.target_dir(target), "audio")
+
+    def shot_audio_path(self, target, shot_id, narration):
+        """Keyed by what is spoken, not just by position: a re-directed or
+        repaired shot 3 must not find the audio of the *old* shot 3 and play
+        the old script over the new cut. New words, new file — the old one
+        stays behind as a dead cache entry, which costs bytes and nothing else.
+        """
+        spoken = hashlib.md5(narration.encode("utf-8")).hexdigest()[:8]
+        return os.path.join(self.audio_dir(target), f"shot_{shot_id:03d}_{spoken}.wav")
 
     def manifest_path(self, target):
         return os.path.join(self.target_dir(target), "manifest.json")

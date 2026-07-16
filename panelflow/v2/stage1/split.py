@@ -236,9 +236,3 @@ def _ocr_lines(assets, index):
     except Exception as e:
         logger_config.warning(f"1.2 OCR failed on page {index}, no text regions: {e}")
         return []
-
-
-def _inside(region, bbox):
-    """Region's centre falls within the panel bbox."""
-    cx, cy = (region[0] + region[2]) / 2, (region[1] + region[3]) / 2
-    return bbox[0] <= cx <= bbox[2] and bbox[1] <= cy <= bbox[3]

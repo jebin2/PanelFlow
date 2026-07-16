@@ -29,7 +29,7 @@ def run(assets, target, shots):
     """
     from jebin_lib import HFTTSClient, HFSTTClient  # not importable in the test env
 
-    os.makedirs(os.path.dirname(assets.shot_audio_path(target, 1)), exist_ok=True)
+    os.makedirs(assets.audio_dir(target), exist_ok=True)
     tts, stt = HFTTSClient(), HFSTTClient()
 
     voiced = []
@@ -52,7 +52,7 @@ def _voice_shot(assets, target, shot, total, tts, stt):
                 "duration": float(shot.get("silent_seconds") or MIN_SECONDS),
                 "word_timings": []}
 
-    path = assets.shot_audio_path(target, shot["id"])
+    path = assets.shot_audio_path(target, shot["id"], narration)
     if not utils.is_valid_audio(path):
         logger_config.info(f"3.1 {target}: speaking shot {shot['id']} of {total}")
         tts.generate_audio_segment(narration, path)
@@ -62,10 +62,10 @@ def _voice_shot(assets, target, shot, total, tts, stt):
     _, duration, _, _ = common.get_media_metadata(path)
     return {"audio": path,
             "duration": max(float(duration), MIN_SECONDS),
-            "word_timings": _word_timings(path, stt)}
+            "word_timings": _word_timings(path, narration, stt)}
 
 
-def _word_timings(audio_path, stt):
+def _word_timings(audio_path, narration, stt):
     """Word-level timings for the kinetic subtitles.
 
     `transcribe` reports success by writing `<audio>.json` beside the audio
@@ -84,7 +84,25 @@ def _word_timings(audio_path, stt):
         return []
 
     words = jsonio.read(json_path, {}).get("segments", {}).get("word", [])
-    return [{"word": word.get("word", ""),
-             "start": word.get("start", 0.0),
-             "end": word.get("end", 0.0)}
-            for word in words]
+    timings = [{"word": word.get("word", ""),
+                "start": word.get("start", 0.0),
+                "end": word.get("end", 0.0)}
+               for word in words]
+    return _script_words(narration, timings)
+
+
+def _script_words(narration, timings):
+    """Subtitle the script, on STT's clock.
+
+    STT only exists here to say *when* each word is spoken; what the words are
+    was decided by the director and read verbatim by TTS. Left as heard, one
+    mistranscription puts a wrong word on screen over a voice saying the right
+    one. When the counts pair up one to one, print the script; when they do
+    not, the alignment is unknowable, so what was heard is better than a guess.
+    """
+    spoken = narration.split()
+    if len(spoken) != len(timings):
+        return timings
+    for timing, word in zip(timings, spoken):
+        timing["word"] = word
+    return timings

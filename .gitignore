@@ -56,3 +56,5 @@ node_modules/
 remotion-comic/public/render_assets
 remotion-comic/public/sfx
 remotion-comic/public/fonts
+# Stage 3 build output inside each comic folder (audio, crops, manifests, videos)
+render/

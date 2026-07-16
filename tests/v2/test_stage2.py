@@ -260,21 +260,23 @@ def _shorts(ready_book, words, first_panel=2, last_animation="zoom_out"):
     return direction
 
 
-def test_a_short_under_sixty_seconds_is_caught(ready_book):
-    """The window is hard: 2.5 words/second, so 100 words is 40s."""
+def test_a_brief_short_is_fine(ready_book):
+    """Only the ceiling is hard. A short that runs shorter is a shorter short,
+    not a defect — the first real render came out at 47s and was right to."""
     problems = validate.check(ready_book, _shorts(ready_book, words=100))
 
-    assert any("outside the hard 60-120s window" in p for p in problems)
+    assert not any("ceiling" in p for p in problems)
 
 
 def test_a_short_over_two_minutes_is_caught(ready_book):
-    problems = validate.check(ready_book, _shorts(ready_book, words=400))
+    """3.5 words/second, so 500 words ≈ 143s — over the 120s ceiling."""
+    problems = validate.check(ready_book, _shorts(ready_book, words=500))
 
-    assert any("outside the hard 60-120s window" in p for p in problems)
+    assert any("over the 120s ceiling" in p for p in problems)
 
 
-def test_a_short_inside_the_window_passes(ready_book):
-    """200 words ≈ 80s. Panel 2 of the fixture is intensity 3 — bump it so the
+def test_a_short_under_the_ceiling_passes(ready_book):
+    """200 words ≈ 57s. Panel 2 of the fixture is intensity 3 — bump it so the
     hook rule is satisfied and only the length is under test."""
     page = ready_book.load_page(1)
     page["panels"][1]["intensity"] = 5
@@ -428,4 +430,4 @@ def test_both_targets_read_the_same_book_and_differ_only_in_prompt(ready_book, m
     assert seen["books"][0] == seen["books"][1]          # same book
     assert seen["prompts"][0] != seen["prompts"][1]      # different job
     assert ready_book.load_direction("shorts")["target"] == "shorts"
-    assert "60" in seen["prompts"][1]                    # the hard window
+    assert "120 seconds" in seen["prompts"][1]           # the hard ceiling

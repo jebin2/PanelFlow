@@ -16,7 +16,8 @@ export interface PanelData {
   imageSrc: string;
   audioSrc: string;
   durationInSeconds: number;
-  bubbleBbox: [number, number, number, number];
+  /** Where AssembleIntro assembles its pieces; whole frame when omitted. */
+  bubbleBbox?: [number, number, number, number];
   narrationText: string;
   sceneCaption: string;
   animation: PanelAnimation;
@@ -56,6 +57,5 @@ export interface ComicManifest {
   width: number;
   height: number;
   comicTitle: string;
-  pageNumber: number;
   panels: PanelData[];
 }

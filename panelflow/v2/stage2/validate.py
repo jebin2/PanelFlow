@@ -22,8 +22,12 @@ from ..paths import ANALYZED
 from . import schemas
 
 MAX_REPAIRS = 2
-WORDS_PER_SECOND = 2.5
-SHORTS_SECONDS = (60, 120)
+# Post-trim, post-speedup speech runs faster than read-aloud prose; measured on
+# a real render, not assumed. Only a ceiling hangs on this estimate — a short
+# that runs long gets rejected by the platform, a short that runs short is just
+# a shorter short — so a rough number is enough.
+WORDS_PER_SECOND = 3.5
+SHORTS_MAX_SECONDS = 120
 ENDING_ANIMATIONS = ["zoom_out", "fade_in", "ken_burns", "breathe"]
 
 # Markup is syntax — a bracket is a bracket in every book, so a rule can own it.
@@ -242,10 +246,10 @@ def _check_shorts(shots, assets):
     problems = []
     words = sum(len((s.get("narration") or "").split()) for s in shots)
     seconds = words / WORDS_PER_SECOND
-    if not SHORTS_SECONDS[0] <= seconds <= SHORTS_SECONDS[1]:
+    if seconds > SHORTS_MAX_SECONDS:
         problems.append(
-            f"narration is {words} words ≈ {seconds:.0f}s, outside the hard "
-            f"{SHORTS_SECONDS[0]}-{SHORTS_SECONDS[1]}s window")
+            f"narration is {words} words ≈ {seconds:.0f}s, over the "
+            f"{SHORTS_MAX_SECONDS}s ceiling")
     first = shots[0].get("source", {})
     page = dict(assets.pages()).get(first.get("page")) or {}
     panel = next((p for p in page.get("panels", []) if p["id"] == first.get("panel")), {})

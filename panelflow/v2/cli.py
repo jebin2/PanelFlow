@@ -9,12 +9,20 @@ import argparse
 import os
 import shutil
 import sys
+import traceback
 
 from custom_logger import logger_config
 
 from .stage1 import runner
 from .stage2 import runner as stage2_runner
 from .stage3 import runner as stage3_runner
+
+# Every sub-stage that exists. argparse enforces this so a typo ("3.9") errors
+# at the prompt instead of silently doing nothing — or worse, in Stage 3, where
+# an unknown id falls past every early return and runs everything.
+ONLY_CHOICES = ([number for number, _, _ in runner.SUB_STAGES]
+                + sorted(stage2_runner.SUB_STAGES) + [stage2_runner.VALIDATE]
+                + sorted(stage3_runner.SUB_STAGES))
 
 
 def prepare_folder(target):
@@ -42,7 +50,8 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="panelflow-v2", description="Run the v2 pipeline on one comic.")
     parser.add_argument("target", help="A .cbz file, or a comic folder containing <name>.cbz")
-    parser.add_argument("--only", help="Run a single sub-stage, e.g. 1.3, 2.1 or 3.3")
+    parser.add_argument("--only", choices=ONLY_CHOICES, metavar="SUB_STAGE",
+                        help=f"Run a single sub-stage: {', '.join(ONLY_CHOICES)}")
     parser.add_argument("--model", help="Override the LLM model for this run")
     parser.add_argument("--output", choices=stage3_runner.TARGETS,
                         help="Limit Stage 3 to one output (default: both)")
@@ -73,9 +82,16 @@ def main(argv=None):
             assets = stage3_runner.run(folder, only=args.only, target=args.output)
             for name in ([args.output] if args.output else stage3_runner.TARGETS):
                 logger_config.info(f"Stage 3 complete: {assets.video_path(name)}")
-    except Exception as e:
-        logger_config.error(str(e))
+    except Exception:
+        # The whole traceback: a KeyError from deep in a sub-stage as just
+        # its message is one quoted word with no clue where it came from.
+        logger_config.error(traceback.format_exc())
         return 1
+    finally:
+        # 1.3's browser rides a docker container that outlives the process if
+        # nobody says goodbye. No-op when vision never ran.
+        from .providers import browser_ui
+        browser_ui.close()
     return 0
 
 

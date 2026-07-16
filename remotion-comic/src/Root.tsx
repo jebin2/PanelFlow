@@ -11,13 +11,11 @@ const defaultManifest: ComicManifest = {
   width: 1920,
   height: 1080,
   comicTitle: "Comic",
-  pageNumber: 1,
   panels: [
     {
       imageSrc: "",
       audioSrc: "",
       durationInSeconds: 5,
-      bubbleBbox: [0, 0, 1920, 1080],
       narrationText: "",
       sceneCaption: "",
       animation: "ken_burns",

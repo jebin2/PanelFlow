@@ -38,7 +38,7 @@ assets/ ──2.1─▶ longform.json ──┐
 
 2.1 and 2.2 are **separate calls, not one call answering twice**: the two
 formats have opposed philosophies (longform covers the whole story at an even
-pace; shorts is hook-first and ruthless about cutting, hard 60–120s), and one
+pace; shorts is hook-first and ruthless about cutting, ≤120s), and one
 prompt doing both does both worse.
 
 They are **one module**, though — `stage2/direct.py`, taking a target. The
@@ -167,11 +167,14 @@ The digest is a different view from Stage 1's, and deliberately:
 
 **Rules, both targets:**
 
-1. **Word budget.** Narration is timed at ~2.5 words/second.
+1. **Word budget.** Narration is timed at ~3.5 words/second — post-trim,
+   post-speedup speech as 3.1 actually produces it, measured on a real render.
    **Longform is unbudgeted** — coverage is what matters, and the story decides
    its length; a book that earns four minutes must not be stretched to eight.
-   **Shorts is a hard 60–120s window** (~150–300 narration words total),
-   enforced by the validator, so its prompt states it explicitly.
+   **Shorts has a hard 120s ceiling** (~420 narration words total), enforced by
+   the validator, so its prompt states it explicitly. Only the ceiling is hard:
+   a short that runs 47s is a shorter short, not a defect — the platform
+   punishes long, never brief.
 2. **Character naming.** Decided in the digest, not the prompt: each roster line
    either says `say "X"` (with where the book grounded it) or `NOT named in this
    book — describe them`. Roster-grounded names win over a 1.4-reconciled
@@ -227,7 +230,7 @@ Facts, checked in code:
 - shot 1 opens on `transition_in: "none"`
 - **longform:** every beat in `book.json.story.beats` has at least one shot. It
   may skip pages; it may not skip the plot. There is no length check.
-- **shorts:** inside the 60–120s window; opens on intensity ≥ 4; ends on an
+- **shorts:** under the 120s ceiling; opens on intensity ≥ 4; ends on an
   ending-class animation
 - narration is TTS-safe: no markup, no bracketed stage directions
 - `meta` complete; thumbnail ref resolves; shot ids sequential from 1
