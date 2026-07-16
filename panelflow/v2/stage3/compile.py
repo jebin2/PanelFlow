@@ -38,8 +38,10 @@ EVENT_SECONDS = 0.6
 def run(assets, target, direction, voiced):
     """Build the Remotion manifest for one target. Returns the manifest dict."""
     frame = FRAME[target]
-    panels = [_panel(assets, target, shot, voice, frame)
-              for shot, voice in zip(direction["shots"], voiced)]
+    shots = direction["shots"]
+    panels = [_panel(assets, target, shot, voice, frame,
+                     overlaps_next=_has_transition(shots[i + 1]) if i + 1 < len(shots) else False)
+              for i, (shot, voice) in enumerate(zip(shots, voiced))]
 
     manifest = {
         "fps": config.FPS,
@@ -55,7 +57,11 @@ def run(assets, target, direction, voiced):
     return manifest
 
 
-def _panel(assets, target, shot, voice, frame):
+def _has_transition(shot):
+    return (shot.get("transition_in") or "none") != "none"
+
+
+def _panel(assets, target, shot, voice, frame, overlaps_next):
     image_path, regions, camera, focal = _resolve(assets, target, shot, frame)
     size = _image_size(image_path)
 
@@ -64,9 +70,12 @@ def _panel(assets, target, shot, voice, frame):
         "originalWidth": size[0],
         "originalHeight": size[1],
         "audioSrc": assets.rel_to_book(voice["audio"]) if voice["audio"] else "",
-        # The transition overlaps this shot with the next, so it must outlast
-        # its own narration by the overlap or the voice is cut off mid-word.
-        "durationInSeconds": voice["duration"] + TRANSITION_SECONDS,
+        # A transition eats this shot's last TRANSITION_FRAMES by overlapping
+        # them with the next shot, so a shot feeding a transition must outlast
+        # its narration by the overlap or the voice is cut off mid-word. A
+        # hard cut eats nothing — padding there is just dead air on screen.
+        "durationInSeconds": voice["duration"]
+                             + (TRANSITION_SECONDS if overlaps_next else 0),
         "bubbleBbox": [0, 0, frame[0], frame[1]],
         "narrationText": shot.get("narration") or "",
         "sceneCaption": "",
