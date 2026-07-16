@@ -91,9 +91,22 @@ shot is a `punch_in` is as flat as one where every shot is a `ken_burns`. Contra
 is what makes a hit land, so no single animation may carry more than a quarter of
 the shots.
 
-`transition_in` is one of `none`, `fade`, `slide`, `wipe`, `flip`, `toss`. **The
-first shot is always `none`** — a short cannot afford to fade in. Hard cuts keep
-the pace up; save `fade` for a real jump in place or time.
+`transition_in` opens a shot. **The first shot is always `none`** — a short
+cannot afford to fade in. Hard cuts (`none`) keep the pace up and are right for
+most shots; use a transition only at a real seam, and let the seam pick it:
+
+- `fade` — time passes or the place changes; the quiet, neutral seam.
+- `wipe` — a clean, assertive break to a new scene.
+- `slide` — a move to an adjacent space.
+- `flip` — a turn to the other side: a reveal or reversal.
+- `toss` — a violent throw into the next shot; chaos and impact, and it lands
+  hard in a short.
+
+Do not make every seam a `fade` — the whole palette is available. But `slide`,
+`wipe` and `flip` get quietly downgraded to `fade` when the shot's animation
+already enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
+`tilt_in`); put those transitions on camera or impact shots instead. `toss` and
+`fade` survive on anything.
 
 `events` fire *during* a shot, as punctuation — a short with an event on every
 shot has none. Each is `{"type": "...", "at_fraction": 0.4}`, where `type` is

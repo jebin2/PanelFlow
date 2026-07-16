@@ -90,9 +90,27 @@ single animation may carry more than a quarter of the shots — if you find
 yourself reaching for the same move a fourth time, the panel almost certainly
 wants a different one.
 
-`transition_in` is one of `none`, `fade`, `slide`, `wipe`, `flip`, `toss`. The
-first shot is always `none`. Hard cuts (`none`) are the right choice mid-scene;
-`fade` marks a change of place or time.
+`transition_in` opens a shot. The first shot is always `none`, and most shots
+should be `none`: a hard cut is how comics move between panels inside a scene,
+and fading between every panel is the mark of an amateur. A transition is for a
+*seam* in the story — and when there is one, the kind of seam picks the kind:
+
+- `none` — a hard cut. Mid-scene, panel to panel. Your default by far.
+- `fade` — time passes, or the place changes. The quiet, neutral seam.
+- `wipe` — a clean break to a new scene, more assertive than a fade.
+- `slide` — the camera moves to an adjacent space: next room, next moment.
+- `flip` — a turn to the other side of something: a reveal, a reversal.
+- `toss` — a violent throw into the next shot, for chaos and impact.
+
+Do not reach for `fade` every time you want a seam — the palette is there to be
+used, and a book whose only two transitions are `none` and `fade` is leaving
+half its vocabulary on the table.
+
+One pairing to avoid: `slide`, `wipe` and `flip` fight a shot that already
+enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
+`tilt_in`), and the renderer quietly downgrades them to `fade`. Put a
+directional transition on a camera, impact or tension shot, where it survives;
+`toss` and `fade` are safe on anything.
 
 `events` fire *during* a shot, as punctuation — a book with an event on every
 shot has none. Each is `{"type": "...", "at_fraction": 0.4}`, where `type` is
