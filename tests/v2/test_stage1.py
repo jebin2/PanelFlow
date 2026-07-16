@@ -146,27 +146,96 @@ def test_split_falls_back_to_whole_page_when_no_panels_found(comic_folder, fake_
     assert panels[0]["bbox"] == [0, 0, 1000, 1500]
 
 
-def test_split_falls_back_when_the_extractor_crashes_on_one_page(comic_folder, fake_extractor,
-                                                                 monkeypatch):
-    """The tool works, but chokes on this one page: fall back for that page
-    rather than blocking the book."""
-    from panelflow.v2.stage1 import split as split_module
-    fake_extractor()
-    working = split_module._run_extractor
+def _crash_on_first_page(monkeypatch):
+    """The extractor works, but chokes on page 1."""
+    working = split._run_extractor
 
     def boom_on_first(image_path):
         if "0001" in image_path:
             raise RuntimeError("extractor exploded")
         return working(image_path)
-    monkeypatch.setattr(split_module, "_run_extractor", boom_on_first)
+    monkeypatch.setattr(split, "_run_extractor", boom_on_first)
 
+
+def test_a_page_the_extractor_choked_on_is_left_for_a_retry(comic_folder, fake_extractor,
+                                                            monkeypatch):
+    """A crash writes nothing. A whole-page panel banked here would be
+    indistinguishable from a real cover, so `is_done` would call the book
+    finished and the retry that could fix it would never run."""
+    fake_extractor()
+    _crash_on_first_page(monkeypatch)
     assets = Assets(comic_folder())
     extract.run(assets)
+
+    with pytest.raises(RuntimeError, match="crashed on 1/2"):
+        split.run(assets)
+
+    assert assets.load_page(1)["status"] == "extracted"      # left for the retry
+    assert not split.is_done(assets)
+    assert len(assets.load_page(2)["panels"]) == 2           # the good page is kept
+
+
+def test_the_retry_splits_only_the_page_that_crashed(comic_folder, fake_extractor, monkeypatch):
+    """The point of refusing to bank the fallback: once the tool is well again,
+    a rerun picks up exactly the page that failed."""
+    fake_extractor()
+    _crash_on_first_page(monkeypatch)
+    assets = Assets(comic_folder())
+    extract.run(assets)
+    with pytest.raises(RuntimeError):
+        split.run(assets)
+
+    monkeypatch.undo()                                       # the tool recovers
+    fake_extractor()
     split.run(assets)
 
-    assert len(assets.load_page(1)["panels"]) == 1      # fell back
-    assert len(assets.load_page(2)["panels"]) == 2      # unaffected
     assert split.is_done(assets)
+    assert len(assets.load_page(1)["panels"]) == 2
+
+
+def _fake_jebin_lib(monkeypatch):
+    """jebin_lib is not importable here, and _ensure_installed imports it inside
+    the function. Returns the list of install calls it makes."""
+    import sys
+    import types
+
+    installs = []
+    utils = types.SimpleNamespace(
+        setup_git_repo_get_install_pip=lambda **kwargs: installs.append(kwargs))
+    monkeypatch.setitem(sys.modules, "jebin_lib", types.SimpleNamespace(utils=utils))
+    return installs
+
+
+def test_a_surviving_binary_does_not_mean_a_working_extractor(monkeypatch, tmp_path):
+    """The reboot case, and the one that got through: /tmp is wiped so the
+    editable install's source is gone, while the binary in its pyenv is
+    untouched. Checking the binary alone called this healthy, and a 22-page book
+    'split' into 22 whole-page panels."""
+    binary = tmp_path / "bin" / "comic-panel-extractor"
+    binary.parent.mkdir()
+    binary.write_text("#!stub")
+    monkeypatch.setattr(split, "BINARY", str(binary))
+    monkeypatch.setattr(split, "REPO_PATH", str(tmp_path / "wiped-by-tmpreaper"))
+    installs = _fake_jebin_lib(monkeypatch)
+
+    with pytest.raises(RuntimeError, match="editable install"):
+        split._ensure_installed()
+
+    assert installs, "a missing repo must trigger the re-clone that heals it"
+
+
+def test_a_complete_install_is_left_alone(monkeypatch, tmp_path):
+    binary = tmp_path / "comic-panel-extractor"
+    binary.write_text("#!stub")
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    monkeypatch.setattr(split, "BINARY", str(binary))
+    monkeypatch.setattr(split, "REPO_PATH", str(repo))
+    installs = _fake_jebin_lib(monkeypatch)
+
+    split._ensure_installed()
+
+    assert installs == []
 
 
 def test_split_reruns_only_the_page_reset_in_page_json(comic_folder, fake_extractor):
@@ -398,9 +467,9 @@ def test_split_stops_loudly_when_the_extractor_cannot_be_installed(comic_folder,
 
 
 def test_split_stops_when_the_extractor_crashes_on_every_page(comic_folder, monkeypatch):
-    """The binary exists but is broken (e.g. a CUDA/cudnn mismatch). Falling
-    back on all 19 pages would pass 1.6 and silently produce a video with no
-    panel-level camera work."""
+    """The binary exists but is broken (e.g. a CUDA/cudnn mismatch). One page
+    defeating the extractor is a page problem; every page defeating it is a
+    broken tool, and the message should say which it is looking at."""
     from panelflow.v2.stage1 import split as split_module
     monkeypatch.setattr(split_module, "_ensure_installed", lambda: None)
     monkeypatch.setattr(split_module, "_run_extractor",
@@ -408,8 +477,9 @@ def test_split_stops_when_the_extractor_crashes_on_every_page(comic_folder, monk
 
     assets = Assets(comic_folder())
     extract.run(assets)
-    with pytest.raises(RuntimeError, match="crashed on all"):
+    with pytest.raises(RuntimeError, match="every page it was given"):
         split.run(assets)
+    assert not split.is_done(assets)
 
 
 def _cbz_without_metadata(tmp_path, name):

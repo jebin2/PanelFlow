@@ -27,6 +27,9 @@ from ..providers import ocr
 from .ordering import sort_panels
 
 REPO_URL = "https://github.com/jebin2/comic-panel-extractor.git"
+# Volatile on purpose, and cheap to lose: a wiped /tmp costs one re-clone,
+# which _ensure_installed does on its own. What it must not cost is a silent
+# fallback — see _ensure_installed for why the binary alone cannot tell us.
 REPO_PATH = "/tmp/comic-panel-extractor"
 BINARY = os.path.expanduser("~/.pyenv/versions/comic-panel-extractor_env/bin/comic-panel-extractor")
 # The extractor encodes each panel's bbox in its filename, but the prefix
@@ -67,22 +70,31 @@ def run(assets, model=None):
         attempted += 1
         crashes += _split_page(assets, index, page, reading_direction)
 
-    # One page defeating the extractor is a page problem; every page defeating
-    # it is a broken tool, and 19 whole-page "panels" would sail through 1.6 and
-    # quietly produce a video with no panel-level camera work at all.
-    if attempted > 1 and crashes == attempted:
-        raise RuntimeError(
-            f"comic-panel-extractor crashed on all {attempted} pages — it is broken, "
-            f"not the book. Check the extractor env (a CUDA/cudnn mismatch crashes it; "
-            f"USE_CPU_IF_POSSIBLE=true avoids the GPU path)."
-        )
-    if crashes:
-        logger_config.warning(f"1.2 extractor crashed on {crashes}/{attempted} page(s)")
     assets.rebuild_index()
+
+    # Any crash is fatal, because a crashed page now saves nothing: carrying on
+    # would only fail in 1.3 with "page N is not split yet" and the real cause a
+    # sub-stage behind it. A rerun retries exactly the pages that failed.
+    if crashes:
+        every = crashes == attempted and attempted > 1
+        raise RuntimeError(
+            f"1.2: comic-panel-extractor crashed on {crashes}/{attempted} page(s). "
+            + ("That is every page it was given — the extractor is broken, not the "
+               "book. Check its env (a CUDA/cudnn mismatch crashes it; "
+               "USE_CPU_IF_POSSIBLE=true avoids the GPU path). " if every else "")
+            + "Those pages are left unsplit rather than faked as one whole-page "
+              "panel; rerun to retry them."
+        )
 
 
 def _split_page(assets, index, page, reading_direction):
-    """Returns 1 when the extractor crashed on this page, else 0."""
+    """Returns 1 when the extractor crashed on this page, else 0.
+
+    A crash writes nothing at all. The page keeps its old status so a rerun
+    retries it — banking a whole-page panel here would be indistinguishable
+    from a legitimate cover, `is_done` would call the page finished, and the
+    retry that could have fixed it would never happen.
+    """
     panels_dir = assets.panels_dir(index)
     shutil.rmtree(panels_dir, ignore_errors=True)
     os.makedirs(panels_dir, exist_ok=True)
@@ -95,27 +107,27 @@ def _split_page(assets, index, page, reading_direction):
     with ThreadPoolExecutor(max_workers=1) as pool:
         pending_ocr = pool.submit(_ocr_lines, assets, index)
 
-        crashed = 0
         try:
             raw_dir = _run_extractor(assets.page_image(index))
             bboxes = _parse_bboxes(raw_dir)
         except Exception as e:
-            logger_config.warning(f"1.2 extractor failed on page {index}, using whole page: {e}")
-            raw_dir, bboxes, crashed = None, [], 1
+            logger_config.warning(f"1.2 extractor failed on page {index}: {e}")
+            return 1
 
         if bboxes:
             panels = _place_panels(raw_dir, bboxes, panels_dir, reading_direction)
         else:
             # Normal for covers and splashes: the extractor drops panels covering
-            # ~the whole page, so it legitimately returns nothing for them.
+            # ~the whole page, so it legitimately returns nothing for them. This
+            # is the whole-page fallback's only remaining job — a page the
+            # extractor *read* and found no panels in, not one it choked on.
             logger_config.info(f"1.2 page {index}: no panels found, using the whole page")
             panels = [_whole_page_panel(assets, index, page, panels_dir)]
 
         # _ocr_lines swallows its own failures, so this cannot raise.
         ocr_lines = pending_ocr.result()
 
-    if raw_dir:
-        shutil.rmtree(raw_dir, ignore_errors=True)
+    shutil.rmtree(raw_dir, ignore_errors=True)
 
     page["panels"] = panels
     # Where the lettering is, one box per line. 1.3 turns these into panel
@@ -126,7 +138,7 @@ def _split_page(assets, index, page, reading_direction):
     page["extraction"] = {"tool": "comic-panel-extractor", "panel_count": len(panels)}
     page["status"] = SPLIT
     assets.save_page(index, page)
-    return crashed
+    return 0
 
 
 def _run_extractor(image_path):
@@ -144,19 +156,27 @@ def _run_extractor(image_path):
 
 
 def _ensure_installed():
-    """Clone and pip-install the extractor on first use. Checks for the binary
-    we actually invoke, so a half-finished install is not mistaken for success."""
-    if os.path.exists(BINARY):
+    """Clone and pip-install the extractor on first use.
+
+    Both halves are checked, because either alone lies. The install is
+    *editable*: site-packages holds only a .pth pointing back at REPO_PATH, so
+    the repo is the package and the binary is a 285-byte stub that cannot
+    import it. REPO_PATH lives in /tmp and does not survive a reboot — while
+    the binary, over in its pyenv, does. Checking the binary alone therefore
+    reports a healthy install for a tool that cannot start, which is exactly
+    how a book once split into 22 whole-page panels.
+    """
+    if os.path.exists(BINARY) and os.path.isdir(REPO_PATH):
         return
     from jebin_lib import utils
     utils.setup_git_repo_get_install_pip(
         repo_url=REPO_URL, target_path=REPO_PATH, pip_name="comic-panel-extractor",
     )
-    if not os.path.exists(BINARY):
+    if not (os.path.exists(BINARY) and os.path.isdir(REPO_PATH)):
         raise RuntimeError(
-            f"comic-panel-extractor is unavailable after install: {BINARY} not found. "
-            f"Splitting every page into one whole-page panel would silently ruin the "
-            f"video, so Stage 1.2 stops here."
+            f"comic-panel-extractor is unavailable after install: needs both {BINARY} "
+            f"and {REPO_PATH} (the editable install's source). Splitting every page "
+            f"into one whole-page panel would silently ruin the video, so 1.2 stops."
         )
 
 
