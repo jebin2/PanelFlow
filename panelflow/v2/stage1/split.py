@@ -41,6 +41,12 @@ BBOX_IN_NAME = re.compile(r'panel_(?:\d+_)?\((\d+),\s*(\d+),\s*(\d+),\s*(\d+)\)'
 # Above this, two boxes are one panel found twice. Below it they are two panels,
 # even when one sits wholly inside the other — see _drop_duplicates.
 DUPLICATE_IOU = 0.7
+# A panel this far inside another counts as "contained" by it; a panel that
+# contains this many others is a wrapper; a wrapper the rest of the page covers
+# this fully is redundant, and safe to drop. See _drop_redundant_wrappers.
+CONTAINED_FRACTION = 0.8
+WRAPPER_MIN_CHILDREN = 2
+COVERED_FRACTION = 0.95
 
 
 def is_done(assets):
@@ -191,7 +197,8 @@ def _parse_bboxes(raw_dir):
 
 
 def _place_panels(raw_dir, bboxes, panels_dir, reading_direction):
-    ordered = sort_panels([list(b) for b in _drop_duplicates(bboxes)], reading_direction)
+    kept = _drop_redundant_wrappers(_drop_duplicates(bboxes))
+    ordered = sort_panels([list(b) for b in kept], reading_direction)
     panels = []
     for panel_id, bbox in enumerate(ordered, start=1):
         filename = f"panel_{panel_id:02d}.jpg"
@@ -223,6 +230,67 @@ def _drop_duplicates(bboxes):
             continue
         kept.append(bbox)
     return kept
+
+
+def _drop_redundant_wrappers(bboxes):
+    """Drop a panel that only frames others, when the others still cover it.
+
+    The extractor sometimes returns the page border, or a tall gutter-spanning
+    column, as its own "panel" — page 7 of the Harley book came back with a
+    box covering 97% of the page and wrapping seven real panels inside it. A
+    shot built from that box is the whole page at once, every bubble too small
+    to read.
+
+    A box is dropped only when it *contains at least two other panels* and the
+    panels left behind still cover its area. That second test is the safety
+    catch: a badly split page can hold content that exists *only* inside a
+    wrapper — a panel the extractor never cut out on its own — and dropping
+    that wrapper would lose it. Covered by the rest means redundant, and
+    redundant is the only thing safe to drop.
+
+    Largest first, re-checking after each drop, because the wrappers nest.
+    """
+    kept = [tuple(b) for b in bboxes]
+    while len(kept) > 1:
+        wrappers = [b for b in kept
+                    if sum(_contained(o, b) for o in kept if o != b) >= WRAPPER_MIN_CHILDREN]
+        redundant = next(
+            (b for b in sorted(wrappers, key=_area, reverse=True)
+             if _covered_fraction(b, [o for o in kept if o != b]) >= COVERED_FRACTION),
+            None)
+        if redundant is None:
+            break
+        logger_config.info(f"1.2 dropped a wrapper framing other panels: {list(redundant)}")
+        kept.remove(redundant)
+    return kept
+
+
+def _contained(child, parent):
+    """Most of `child` lies inside `parent`, and `child` is the smaller box."""
+    child_area = _area(child)
+    if not child_area or child_area >= _area(parent):
+        return False
+    return _intersection(child, parent) / child_area >= CONTAINED_FRACTION
+
+
+def _covered_fraction(box, others, grid=60):
+    """What fraction of `box` the union of `others` covers, by grid sampling.
+
+    Sampling rather than exact rectangle union: the panels overlap arbitrarily
+    on a mis-split page, and a fraction of a percent either way never changes
+    the drop decision.
+    """
+    x1, y1, x2, y2 = box
+    if x2 <= x1 or y2 <= y1:
+        return 1.0
+    covered = 0
+    for i in range(grid):
+        px = x1 + (x2 - x1) * (i + 0.5) / grid
+        for j in range(grid):
+            py = y1 + (y2 - y1) * (j + 0.5) / grid
+            if any(o[0] <= px <= o[2] and o[1] <= py <= o[3] for o in others):
+                covered += 1
+    return covered / (grid * grid)
 
 
 def _area(bbox):

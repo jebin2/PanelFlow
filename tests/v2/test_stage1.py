@@ -276,6 +276,56 @@ def test_distinct_panels_are_all_kept(tmp_path):
     assert len(split._drop_duplicates(boxes)) == 3
 
 
+def test_a_whole_page_frame_wrapping_real_panels_is_dropped():
+    """The extractor's worst habit: it returns the page border as a panel. Here a
+    full-page box wraps a clean 2x2 grid — a shot built from it would be the
+    whole page at once. The grid covers it, so it is redundant and goes."""
+    page = (0, 0, 800, 800)
+    grid = [(0, 0, 400, 400), (400, 0, 800, 400), (0, 400, 400, 800), (400, 400, 800, 800)]
+
+    kept = split._drop_redundant_wrappers([page] + grid)
+
+    assert page not in kept
+    assert set(kept) == set(grid)
+
+
+def test_a_wrapper_holding_content_the_others_lack_is_kept():
+    """The safety catch. This wrapper contains two panels but also spans a
+    bottom strip no other panel covers — dropping it would lose that strip, so
+    it stays despite being a wrapper."""
+    wrapper = (0, 0, 800, 1200)          # its bottom third (y>800) is unique
+    a = (0, 0, 400, 400)
+    b = (400, 0, 800, 400)
+
+    kept = split._drop_redundant_wrappers([wrapper, a, b])
+
+    assert wrapper in kept
+
+
+def test_a_single_inset_is_never_treated_as_a_wrapper():
+    """A big panel with one small inset is a real layout, not a frame around
+    others — it contains only one panel, below the wrapper threshold, so IoU is
+    left to judge it and it is kept."""
+    big = (0, 0, 800, 1280)
+    inset = (534, 583, 745, 1207)
+
+    assert set(split._drop_redundant_wrappers([big, inset])) == {big, inset}
+
+
+def test_the_real_page_seven_tangle_drops_the_frames_without_losing_content():
+    """Verbatim from the Harley book, the one page the extractor mangled: a
+    97%-of-page frame (panel 4) and a redundant column (panel 2), plus six real
+    panels. Both frames go; every panel with unique content stays."""
+    p = {1: (0, 0, 1326, 1311), 2: (11, 0, 1309, 3131), 3: (11, 1245, 1338, 3030),
+         4: (16, 49, 2715, 4171), 5: (34, 84, 1698, 4166), 6: (835, 61, 2721, 4176),
+         7: (1326, 83, 2686, 1322), 8: (1383, 1288, 2730, 3057)}
+
+    kept = split._drop_redundant_wrappers(list(p.values()))
+
+    assert p[4] not in kept and p[2] not in kept      # both frames dropped
+    assert {p[1], p[3], p[5], p[6], p[7], p[8]} <= set(kept)   # real panels kept
+
+
 def test_bbox_regex_matches_both_real_extractor_formats_and_ignores_debris(tmp_path):
     """Both prefixes are real: '0016_panel_(...)' comes from the extractor's LLM
     path, 'panel_1_(...)' from its CV path."""
