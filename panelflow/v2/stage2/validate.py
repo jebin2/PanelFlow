@@ -206,10 +206,35 @@ def _names_prompt(assets, shots):
             unnamed.append(f'- {c["id"]} — {c.get("visual") or "no description"}')
     lines = "\n".join(f'{s["id"]}: {s.get("narration")}' for s in shots)
     return (
-        f'ALLOWED\n{"=" * 40}\n' + ("\n".join(allowed) or "(no character may be named)")
+        f'ALLOWED — characters the roster names\n{"=" * 40}\n'
+        + ("\n".join(allowed) or "(no character in the roster is named)")
         + f'\n\nUNNAMED — describe, never name\n{"=" * 40}\n' + ("\n".join(unnamed) or "(none)")
+        + f'\n\nTHE BOOK\'S OWN WORDS — every caption and line of dialogue\n{"=" * 40}\n'
+        + (_book_words(assets) or "(the book has no lettering)")
         + f'\n\nNARRATION\n{"=" * 40}\n{lines}'
     )
+
+
+def _book_words(assets):
+    """Every caption and spoken line the book contains, verbatim.
+
+    The roster is not the whole of what the book names. A caption can call the
+    vampire "The Count" without any character entry ever carrying that as a
+    name, and the narration is right to use it — the reader was told it. So the
+    checker is given the book's actual text as the ground truth for what the
+    book established, not just the roster's tidy list. SFX is dropped: it is
+    noise ("FLAP FLAP"), never a name.
+    """
+    lines = []
+    for index in assets.page_indices():
+        page = assets.load_page(index)
+        entries = [d for panel in page.get("panels", []) for d in panel.get("dialogue", [])]
+        entries += page.get("analysis", {}).get("unassigned_dialogue", [])
+        for entry in entries:
+            text = (entry.get("text") or "").strip()
+            if text and entry.get("kind") != "sfx":
+                lines.append(text)
+    return "\n".join(lines)
 
 
 def _check_meta(assets, direction):

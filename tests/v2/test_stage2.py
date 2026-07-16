@@ -359,6 +359,24 @@ def test_unnamed_characters_are_listed_for_the_name_check(ready_book, directed, 
     assert "winding_creature — long, ribbon-like, tan" in seen["prompt"]
 
 
+def test_the_books_own_words_are_given_to_the_name_check(ready_book, directed, monkeypatch):
+    """A caption can name someone the roster never records — "The Count" for a
+    vampire nobody entered by that name. The checker must see the book's words,
+    or it flags a name the book plainly uses as if it were invented."""
+    page = ready_book.load_page(1)
+    page["panels"][0]["dialogue"] = [
+        {"text": "THE COUNT saved my brain.", "kind": "caption"}]
+    ready_book.save_page(1, page)
+    seen = {}
+    monkeypatch.setattr(validate.llm, "ask_json",
+                        lambda **kw: seen.update(prompt=kw["user_prompt"]) or {"violations": []})
+
+    validate.check(ready_book, directed())
+
+    assert "THE BOOK'S OWN WORDS" in seen["prompt"]
+    assert "THE COUNT saved my brain." in seen["prompt"]
+
+
 def test_a_silent_book_asks_nobody(ready_book, directed, monkeypatch):
     """No narration, no question — do not spend a call to hear 'nothing'."""
     def boom(**kw):

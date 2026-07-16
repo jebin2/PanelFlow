@@ -8,14 +8,23 @@ character — is the failure you are looking for.
 
 You are given:
 
-- **ALLOWED** — every name the narration may say, and who it belongs to.
+- **ALLOWED** — names the roster already ties to a character.
 - **UNNAMED** — characters the book never names. The narration must describe
   these, never name them. Their descriptions are given so you can tell when a
   narration line is talking about one of them.
+- **THE BOOK'S OWN WORDS** — every caption and line of dialogue in the book,
+  verbatim. This is the real test of what the book established. The roster is
+  tidy but incomplete: a caption may call someone "The Count" without the
+  roster ever recording that name, and the narration is right to use it,
+  because the reader was told it. A personal name is grounded when the book's
+  words **use it as a name** here — not merely when the letters appear inside
+  some other word. "Strange" inside the title "Strange Scales" does not ground
+  "Doctor Strange"; a caption that reads "THE COUNT opted for..." does ground
+  "The Count".
 - **NARRATION** — the lines, numbered by shot.
 
-Report every place the narration uses a **person's name** that is not in
-ALLOWED.
+Report every place the narration uses a **person's name** that is neither in
+ALLOWED nor used as a name anywhere in THE BOOK'S OWN WORDS.
 
 What is *not* a violation:
 
@@ -27,11 +36,14 @@ What is *not* a violation:
 - Describing an unnamed character — "the winding creature", "a figure in a cap",
   "the small blue one". That is exactly what the narration is supposed to do.
 - A name in ALLOWED, wherever it appears and however often.
+- A name the book's own words use as a name, even if the roster never recorded
+  it — "The Count", when a caption says "THE COUNT".
 
 What *is* a violation:
 
-- Any personal name absent from ALLOWED — whether it is a first name, a surname,
-  an alias, or a title plus a name ("Doctor Strange", "Mister Sinister").
+- Any personal name that is neither in ALLOWED nor used as a name in the book's
+  own words — whether it is a first name, a surname, an alias, or a title plus a
+  name ("Doctor Strange", "Mister Sinister").
 - A name that sounds plausible for the artwork but that the book never says.
   Recognising a character is not the same as the book naming them, and this is
   the most likely way a violation gets here.
