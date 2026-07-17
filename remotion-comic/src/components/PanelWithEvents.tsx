@@ -3,6 +3,7 @@ import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame
 import { PanelData, PanelEvent } from "../types";
 import { PanelBase } from "./PanelBase";
 import { AssembleIntro } from "./AssembleIntro";
+import { NameTag } from "./NameTag";
 import { ThreePartBuildUp } from "remotion-animation-kit";
 import { KineticSubtitles } from "remotion-animation-kit";
 import { getAnimationProps } from "remotion-animation-kit";
@@ -229,6 +230,7 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
           bottomPadding={isPortrait ? undefined : "4%"}
         />
       )}
+      {panel.nameTag && <NameTag name={panel.nameTag.name} imageSrc={panel.nameTag.imageSrc} />}
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}

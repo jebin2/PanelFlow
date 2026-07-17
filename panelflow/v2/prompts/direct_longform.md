@@ -152,6 +152,13 @@ used to let a reveal land. Every shot that *has* narration must set
 it by writing more or fewer words. If you want a beat to hang after a line, that
 is a second shot with empty narration, not a number bolted onto the first.
 
+**`speaker` names whose line it is.** When a shot's narration is one
+character's spoken line (quoted or voiced as them), set `speaker` to that
+character's id from the roster — the video shows their face and name in a
+small tag, so the viewer can follow who talks in a long dialogue. Narrator
+voice, description, or several characters in one breath: `"speaker": null`.
+Only roster ids.
+
 Two panels frame the video itself. `thumbnail` is the most arresting panel in
 the book — it sells the click. `outro` is the opposite: the video closes on an
 end card with this panel dimmed behind "THE END", so choose a quiet aftermath
@@ -181,6 +188,7 @@ Return **only** this JSON — no prose before or after, no markdown fence:
       "animation_target": "whole",
       "transition_in": "none",
       "silent_seconds": null,
+      "speaker": null,
       "events": [],
       "why": "establishing, intensity 1 — let the place settle before the plot starts"
     },
@@ -191,6 +199,7 @@ Return **only** this JSON — no prose before or after, no markdown fence:
       "animation_target": "focal_point",
       "transition_in": "none",
       "silent_seconds": 2,
+      "speaker": null,
       "events": [{"type": "shockwave", "at_fraction": 0.3}],
       "why": "the drop lands — no words, let the image hit"
     }

@@ -70,6 +70,8 @@ _SHOT = S(
         "animation_target": S(type=T.STRING, enum=ANIMATION_TARGETS),
         "transition_in": S(type=T.STRING, enum=TRANSITIONS),
         "silent_seconds": S(type=T.NUMBER, description="Only when narration is empty"),
+        "speaker": S(type=T.STRING,
+                     description="Character id whose spoken line this narration is; null for narrator voice"),
         "events": _EVENTS,
         "why": S(type=T.STRING, description="One line of rationale, for debugging pacing"),
     },

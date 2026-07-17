@@ -141,6 +141,12 @@ shot is `"narration": ""` plus `"silent_seconds": 2` — a held image, no voice.
 One of these on the final shot is a strong way to leave a question hanging.
 Every shot that *has* narration must set `"silent_seconds": null`.
 
+**`speaker` names whose line it is.** When a shot's narration is one
+character's spoken line (quoted or voiced as them), set `speaker` to that
+character's id from the roster — the video shows their face and name in a
+small tag, so the viewer can follow who talks. Narrator voice, description,
+or several characters in one breath: `"speaker": null`. Only roster ids.
+
 ## Output
 
 Return **only** this JSON — no prose before or after, no markdown fence:
@@ -162,6 +168,7 @@ Return **only** this JSON — no prose before or after, no markdown fence:
       "animation_target": "focal_point",
       "transition_in": "none",
       "silent_seconds": null,
+      "speaker": "harley_quinn",
       "events": [{"type": "shockwave", "at_fraction": 0.3}],
       "why": "hook — intensity 5, the worst moment in the book, cold open"
     },
@@ -172,6 +179,7 @@ Return **only** this JSON — no prose before or after, no markdown fence:
       "animation_target": "focal_point",
       "transition_in": "none",
       "silent_seconds": 2,
+      "speaker": null,
       "events": [],
       "why": "cliffhanger — hold on the thing coming through, and stop"
     }

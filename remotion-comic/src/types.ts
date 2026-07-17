@@ -56,6 +56,8 @@ export interface PanelData {
   };
   transitionIn?: TransitionName;
   events?: PanelEvent[];
+  /** Speaker tag when this shot's narration is one character's spoken line. */
+  nameTag?: { name: string; imageSrc: string };
   wordTimings?: WordTiming[];
   originalWidth?: number;
   originalHeight?: number;

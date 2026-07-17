@@ -84,6 +84,7 @@ def check(assets, direction, model=None):
     problems += _check_ids(shots)
     problems += _check_sources(assets, shots)
     problems += _check_vocabulary(shots)
+    problems += _check_speakers(assets, shots)
     problems += _check_animation_variety(shots)
     problems += _check_narration(assets, shots, model)
     problems += _check_meta(assets, direction)
@@ -155,6 +156,18 @@ def _check_vocabulary(shots):
             problems.append(f"{where}: silent shot without silent_seconds")
     if shots and shots[0].get("transition_in") != "none":
         problems.append("shot 1: must open with transition_in 'none'")
+    return problems
+
+
+def _check_speakers(assets, shots):
+    """A speaker is a roster id — the tag shows that character's face, so an
+    invented id would render a broken tag."""
+    roster = {c["id"] for c in assets.load_characters().get("characters", [])}
+    problems = []
+    for shot in shots:
+        speaker = shot.get("speaker")
+        if speaker and speaker not in roster:
+            problems.append(f'shot {shot.get("id")}: unknown speaker {speaker!r}')
     return problems
 
 

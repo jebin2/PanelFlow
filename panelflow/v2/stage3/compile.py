@@ -20,7 +20,7 @@ from custom_logger import logger_config
 
 from panelflow import config
 
-from . import geometry
+from . import geometry, nametags
 
 # Shorts are vertical, which is also what makes the renderer show its title
 # card and progress bar — Root.tsx gates both on `height > width`.
@@ -55,6 +55,7 @@ def run(assets, target, direction, voiced):
     panels = [_panel(assets, target, shot, voice, frame,
                      overlaps_next=_has_transition(shots[i + 1]) if i + 1 < len(shots) else False)
               for i, (shot, voice) in enumerate(zip(shots, voiced))]
+    _attach_name_tags(assets, shots, panels)
 
     manifest = {
         "fps": config.FPS,
@@ -81,6 +82,23 @@ def run(assets, target, direction, voiced):
 
 def _has_transition(shot):
     return (shot.get("transition_in") or "none") != "none"
+
+
+def _attach_name_tags(assets, shots, panels):
+    """A shot the director attributed to a speaker carries that character's
+    face and name. Only named characters tag — an avatar with no sayable name
+    is a face the viewer cannot use."""
+    speakers = {shot.get("speaker") for shot in shots if shot.get("speaker")}
+    if not speakers:
+        return
+    roster = {c["id"]: c for c in assets.load_characters().get("characters", [])}
+    faces = nametags.avatars(assets, speakers)
+    for shot, panel in zip(shots, panels):
+        speaker = shot.get("speaker")
+        character = roster.get(speaker) or {}
+        name = character.get("name") or character.get("inferred_identity")
+        if speaker in faces and name:
+            panel["nameTag"] = {"name": name, "imageSrc": assets.rel_to_book(faces[speaker])}
 
 
 def _panel(assets, target, shot, voice, frame, overlaps_next):
