@@ -58,6 +58,21 @@ export function getTotalFrames(panels: PanelData[], fps: number): number {
   }, 0);
 }
 
+/** The frame ranges (relative to the first panel) where narration speaks —
+ * the same cursor arithmetic the TransitionSeries lays panels out with. The
+ * music ducks inside these windows and swells outside them. */
+export function narratedWindows(panels: PanelData[], fps: number): { start: number; end: number }[] {
+  const windows: { start: number; end: number }[] = [];
+  let cursor = 0;
+  panels.forEach((p, i) => {
+    const frames = Math.ceil(p.durationInSeconds * fps);
+    if (effectiveTransition(panels, i, fps) !== "none") cursor -= TRANSITION_FRAMES;
+    if ((p.narrationText ?? "").trim()) windows.push({ start: cursor, end: cursor + frames });
+    cursor += frames;
+  });
+  return windows;
+}
+
 interface Props {
   panels: PanelData[];
   fps: number;

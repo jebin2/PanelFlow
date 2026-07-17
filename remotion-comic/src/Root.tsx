@@ -1,7 +1,7 @@
 import React from "react";
 import { AbsoluteFill, Audio, Composition, Sequence, staticFile } from "remotion";
 import { ComicManifest } from "./types";
-import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
+import { PanelSequences, getTotalFrames, narratedWindows } from "./components/PanelSequences";
 import { CinematicIntro, getIntroDuration } from "./components/CinematicIntro";
 import { EndCard, getOutroDuration } from "./components/EndCard";
 import { ProgressBar, TitleCard, getTitleCardDuration } from "remotion-animation-kit";
@@ -36,6 +36,29 @@ const defaultManifest: ComicManifest = {
   ],
 };
 
+// The bed under the voice is manifest.music.volume; in silence — silent
+// shots, the intro, the end card — it swells to fill the room, ramping on the
+// silent side of each edge so it never fights a word.
+const MUSIC_SWELL = 2.0;
+const SWELL_RAMP_FRAMES = 12;
+
+const musicVolume = (manifest: ComicManifest, intro: number) => {
+  const bed = manifest.music?.volume ?? 0;
+  const windows = narratedWindows(manifest.panels, manifest.fps).map((w) => ({
+    start: w.start + intro,
+    end: w.end + intro,
+  }));
+  return (frame: number) => {
+    let distance = Infinity;
+    for (const w of windows) {
+      if (frame >= w.start && frame < w.end) return bed;
+      distance = Math.min(distance, frame < w.start ? w.start - frame : frame - w.end);
+    }
+    const t = Math.min(distance, SWELL_RAMP_FRAMES) / SWELL_RAMP_FRAMES;
+    return bed * (1 + (MUSIC_SWELL - 1) * t);
+  };
+};
+
 const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => {
   const isPortrait = manifest.height > manifest.width;
   const { intro, outro } = bookendFrames(manifest);
@@ -44,7 +67,7 @@ const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => 
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
       {manifest.music?.src && (
-        <Audio src={staticFile(manifest.music.src)} volume={manifest.music.volume} />
+        <Audio src={staticFile(manifest.music.src)} volume={musicVolume(manifest, intro)} />
       )}
       {isPortrait ? (
         <Sequence from={0} durationInFrames={intro} layout="none">
