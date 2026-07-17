@@ -41,6 +41,10 @@ MIN_SECTION_SECONDS = 16
 # A silent render is a failed score, not a valid quiet one.
 SILENCE_DB = -60.0
 COMPOSE_ATTEMPTS = 2
+# The renderer's bookends (Root.tsx): the music plays from frame 0 and under
+# the end card, so the score must cover intro + shots + outro. Seconds, per
+# target — longform's CinematicIntro/EndCard, shorts' TitleCard.
+BOOKEND_SECONDS = {"longform": (4.0, 5.0), "shorts": (1.6, 0.0)}
 
 _CLI = os.path.join(REMOTION_DIR, "node_modules", "strudel-render", "src", "cli.mjs")
 
@@ -50,7 +54,8 @@ def run(assets, target, direction, manifest, model=None):
     ({"src", "volume"}), or {} when there is nothing to score or scoring failed.
     """
     mood = ((direction.get("music") or {}).get("mood") or "").strip()
-    sections = _sections(assets, direction, manifest)
+    sections = _sections(assets, direction, manifest,
+                         bookends=BOOKEND_SECONDS.get(target, (0.0, 0.0)))
     total_cycles = sum(s["cycles"] for s in sections)
     if not mood or not total_cycles:
         return {}
@@ -80,7 +85,7 @@ def run(assets, target, direction, manifest, model=None):
 
 # ----------------------------------------------------------------- the shape
 
-def _sections(assets, direction, manifest):
+def _sections(assets, direction, manifest, bookends=(0.0, 0.0)):
     """The video merged into a few long sections the composer can score.
 
     Music breathes in phrases, not in shots: scoring every intensity flicker
@@ -111,6 +116,13 @@ def _sections(assets, direction, manifest):
     # A trailing sliver is a coda, not a section — fold it back.
     if len(sections) > 1 and sections[-1]["seconds"] < MIN_SECTION_SECONDS / 2:
         _fold(sections[-2], sections.pop())
+
+    # The bookends breathe with the score's edges: the intro extends the
+    # opening section, the end card extends the closing one.
+    if sections:
+        lead, tail = bookends
+        sections[0]["seconds"] += lead
+        sections[-1]["seconds"] += tail
 
     for section in sections:
         section["band"] = _dominant(section)

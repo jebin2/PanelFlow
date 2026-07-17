@@ -87,6 +87,12 @@ _META = S(
             required=["page", "panel"],
             properties={"page": S(type=T.INTEGER), "panel": S(type=T.INTEGER)},
         ),
+        "outro": S(
+            type=T.OBJECT,
+            required=["page", "panel"],
+            properties={"page": S(type=T.INTEGER), "panel": S(type=T.INTEGER)},
+            description="Longform only: the panel shown dimmed behind the end card",
+        ),
     },
 )
 

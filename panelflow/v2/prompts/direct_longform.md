@@ -152,6 +152,13 @@ used to let a reveal land. Every shot that *has* narration must set
 it by writing more or fewer words. If you want a beat to hang after a line, that
 is a second shot with empty narration, not a number bolted onto the first.
 
+Two panels frame the video itself. `thumbnail` is the most arresting panel in
+the book — it sells the click. `outro` is the opposite: the video closes on an
+end card with this panel dimmed behind "THE END", so choose a quiet aftermath
+image — a farewell, an empty street, the held look after the storm — never the
+thumbnail's hype panel, and never one that spoils the climax for the scroller
+who reads end cards.
+
 ## Output
 
 Return **only** this JSON — no prose before or after, no markdown fence:
@@ -163,7 +170,8 @@ Return **only** this JSON — no prose before or after, no markdown fence:
     "youtube_title": "…",
     "description": "…",
     "twitter_post": "…",
-    "thumbnail": {"page": 2, "panel": 3}
+    "thumbnail": {"page": 2, "panel": 3},
+    "outro": {"page": 21, "panel": 4}
   },
   "shots": [
     {

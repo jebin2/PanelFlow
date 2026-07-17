@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame } from "remotion";
+import { AbsoluteFill, Audio, Sequence, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
 import { PanelData, PanelEvent } from "../types";
 import { PanelBase } from "./PanelBase";
 import { AssembleIntro } from "./AssembleIntro";
@@ -57,6 +57,10 @@ const SpeedLines: React.FC<{ opacity: number; origin: [number, number] }> = ({ o
 
 export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   const frame = useCurrentFrame();
+  // Same kinetic word everywhere; landscape sits it at the bottom edge so it
+  // stays off the artwork, portrait keeps the kit's default height.
+  const { width, height } = useVideoConfig();
+  const isPortrait = height > width;
 
   // PanelFlow's own two animations are whole components rather than a set of
   // transforms, so they leave before any of the below applies — and leaving
@@ -219,7 +223,12 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
       }
     >
       <PanelBase panel={panel} {...animProps} />
-      {panel.wordTimings && <KineticSubtitles wordTimings={panel.wordTimings} />}
+      {panel.wordTimings && (
+        <KineticSubtitles
+          wordTimings={panel.wordTimings}
+          bottomPadding={isPortrait ? undefined : "4%"}
+        />
+      )}
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}

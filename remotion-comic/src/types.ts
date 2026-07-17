@@ -70,6 +70,10 @@ export interface ComicManifest {
   width: number;
   height: number;
   comicTitle: string;
+  /** Cover art for the longform intro; first panel image when omitted. */
+  cover?: string;
+  /** Director-chosen backdrop panel for the end card; dark card when omitted. */
+  outroImage?: string;
   panels: PanelData[];
   /** A single music bed for the whole video, played low under the narration. */
   music?: { src: string; volume: number };

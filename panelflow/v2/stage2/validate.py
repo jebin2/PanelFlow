@@ -273,15 +273,23 @@ def _check_meta(assets, direction):
     for field in ("youtube_title", "description", "twitter_post"):
         if not (meta.get(field) or "").strip():
             problems.append(f"meta.{field} is empty")
-    thumbnail = meta.get("thumbnail") or {}
-    page = dict(assets.pages()).get(thumbnail.get("page"))
-    if page is None:
-        problems.append(f'meta.thumbnail: page {thumbnail.get("page")} does not exist')
-    elif thumbnail.get("panel") not in {p["id"] for p in page.get("panels", [])}:
-        problems.append(f'meta.thumbnail: panel {thumbnail.get("panel")} is not on that page')
+    problems += _check_panel_ref(assets, "meta.thumbnail", meta.get("thumbnail") or {})
+    # The outro backdrop is optional (longform only) — but when the director
+    # chose one, it must exist, or the end card renders on a broken image.
+    if meta.get("outro"):
+        problems += _check_panel_ref(assets, "meta.outro", meta["outro"])
     if not ((direction.get("music") or {}).get("mood") or "").strip():
         problems.append("music.mood is empty")
     return problems
+
+
+def _check_panel_ref(assets, where, ref):
+    page = dict(assets.pages()).get(ref.get("page"))
+    if page is None:
+        return [f'{where}: page {ref.get("page")} does not exist']
+    if ref.get("panel") not in {p["id"] for p in page.get("panels", [])}:
+        return [f'{where}: panel {ref.get("panel")} is not on that page']
+    return []
 
 
 def _check_beats_covered(assets, shots):

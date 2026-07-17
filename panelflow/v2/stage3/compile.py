@@ -63,6 +63,16 @@ def run(assets, target, direction, voiced):
         "comicTitle": assets.load_book().get("title") or assets.name,
         "panels": panels,
     }
+    # Cover art for the longform intro; the renderer falls back to the first
+    # panel image when the book has no thumbnail.
+    if os.path.exists(os.path.join(assets.folder, "thumbnail.jpg")):
+        manifest["cover"] = "render_assets/thumbnail.jpg"
+    # The director's end-card backdrop — a quiet aftermath panel, drawn dimmed
+    # behind THE END. Optional: without it the card stays dark.
+    outro = (direction.get("meta") or {}).get("outro") or {}
+    if outro.get("page") is not None:
+        panel = _find_panel(assets.load_page(outro["page"]), outro.get("panel"), outro["page"])
+        manifest["outroImage"] = assets.rel_to_book(_panel_image(assets, outro["page"], panel))
     seconds = sum(panel["durationInSeconds"] for panel in panels)
     logger_config.info(
         f"3.2 {target}: {len(panels)} shot(s), {seconds:.1f}s at {frame[0]}x{frame[1]}")

@@ -101,6 +101,20 @@ def test_a_trailing_sliver_folds_into_the_last_phrase(tmp_path):
     assert sections[0]["narration"] == "sparse"
 
 
+def test_bookends_extend_the_edge_sections(tmp_path):
+    """The score plays from frame 0 and under the end card, so the intro and
+    outro seconds stretch the opening and closing sections."""
+    assets = _Assets(tmp_path, PAGES)
+    direction = {"shots": [_panel_shot(1)] * 4}
+    manifest = {"panels": [
+        {"narrationText": "x", "durationInSeconds": 5} for _ in range(4)]}
+
+    plain = music._sections(assets, direction, manifest)
+    booked = music._sections(assets, direction, manifest, bookends=(4.0, 5.0))
+
+    assert sum(s["seconds"] for s in booked) == sum(s["seconds"] for s in plain) + 9
+
+
 def test_the_prompt_carries_each_section_length(tmp_path):
     prompt = music._prompt("tense", [{"cycles": 12, "band": "calm", "narration": "heavy"},
                                      {"cycles": 6, "band": "intense", "narration": "sparse"}], 18)
