@@ -95,6 +95,10 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   let speedLinesOpacity = 0;
   let vignetteOpacity = 0;
   let drainAmount = 0;
+  let invertOn = false;
+  let blackOpacity = 0;
+  let blurPx = 0;
+  let pullScale = 1;
 
   for (const event of events) {
     const eventStartFrame = Math.round(event.startSeconds * fps);
@@ -162,24 +166,54 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
         );
         break;
       }
+      case "invert_flash": {
+        // Binary, not faded: a half-inverted image reads as muddy, a fully
+        // inverted couple of frames reads as an impact frame.
+        invertOn = invertOn || ep < 0.5;
+        break;
+      }
+      case "black_flash": {
+        blackOpacity = Math.max(
+          blackOpacity,
+          interpolate(ep, [0, 0.3, 1], [1, 0.5, 0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
+      case "blur_pulse": {
+        blurPx = Math.max(
+          blurPx,
+          interpolate(ep, [0, 0.4, 1], [0, 7, 0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
+      case "zoom_pull": {
+        pullScale = Math.min(
+          pullScale,
+          interpolate(ep, [0, 0.12, 1], [1.0, 0.92, 1.0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
     }
   }
 
-  const hasEventTransform = eventShakeX !== 0 || eventShakeY !== 0 || eventScale !== 1;
-  const hasDrain = drainAmount > 0;
+  const scale = eventScale * pullScale;
+  const hasEventTransform = eventShakeX !== 0 || eventShakeY !== 0 || scale !== 1;
+  const filters = [
+    drainAmount > 0 && `grayscale(${drainAmount}) brightness(${1 - 0.15 * drainAmount})`,
+    invertOn && "invert(1)",
+    blurPx > 0.2 && `blur(${blurPx.toFixed(1)}px)`,
+  ].filter(Boolean);
 
   return (
     <AbsoluteFill
       style={
-        hasEventTransform || hasDrain
+        hasEventTransform || filters.length > 0
           ? {
             ...(hasEventTransform && {
-              transform: `scale(${eventScale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
+              transform: `scale(${scale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
               transformOrigin: "center center",
             }),
-            ...(hasDrain && {
-              filter: `grayscale(${drainAmount}) brightness(${1 - 0.15 * drainAmount})`,
-            }),
+            ...(filters.length > 0 && { filter: filters.join(" ") }),
           }
           : undefined
       }
@@ -189,6 +223,11 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}
+        />
+      )}
+      {blackOpacity > 0 && (
+        <AbsoluteFill
+          style={{ backgroundColor: "#000", opacity: blackOpacity, pointerEvents: "none" }}
         />
       )}
       {speedLinesOpacity > 0 && (

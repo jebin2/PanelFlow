@@ -35,7 +35,9 @@ TRANSITION_SECONDS = TRANSITION_FRAMES / config.FPS
 # atmosphere events breathe a little longer than the impact ones, but even
 # they resolve inside the shot.
 EVENT_SECONDS = 0.6
-EVENT_SECONDS_BY_TYPE = {"vignette_pulse": 1.2, "color_drain": 1.2}
+EVENT_SECONDS_BY_TYPE = {"vignette_pulse": 1.2, "color_drain": 1.2,
+                         "invert_flash": 0.35, "black_flash": 0.4,
+                         "blur_pulse": 0.9}
 
 # A wide panel in the portrait short is drawn as a thin strip over a blurred
 # bar, unreadable, so we crop it toward the frame around its focal point. A

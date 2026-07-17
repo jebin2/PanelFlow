@@ -28,7 +28,8 @@ TRANSITIONS = ["none", "fade", "slide", "wipe", "flip", "toss"]
 # event fires *during* a shot, an animation *is* the shot's movement. The last
 # four are event-only, rendered by PanelWithEvents in remotion-comic.
 EVENTS = ["tremble", "flash", "shockwave", "heartbeat", "rattle",
-          "zoom_punch", "speed_lines", "vignette_pulse", "color_drain"]
+          "zoom_punch", "speed_lines", "vignette_pulse", "color_drain",
+          "invert_flash", "black_flash", "blur_pulse", "zoom_pull"]
 
 SOURCE_KINDS = ["panel", "full_page", "pan"]
 ANIMATION_TARGETS = ["focal_point", "whole"]

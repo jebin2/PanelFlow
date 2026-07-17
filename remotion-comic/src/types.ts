@@ -16,7 +16,11 @@ export interface PanelEvent {
     | "zoom_punch"
     | "speed_lines"
     | "vignette_pulse"
-    | "color_drain";
+    | "color_drain"
+    | "invert_flash"
+    | "black_flash"
+    | "blur_pulse"
+    | "zoom_pull";
   startSeconds: number;
   durationSeconds: number;
 }
