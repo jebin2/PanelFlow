@@ -12,7 +12,8 @@
     "@remotion/cli": "4.0.290",
     "@remotion/transitions": "4.0.290",
     "remotion": "4.0.290",
-    "remotion-animation-kit": "github:jebin2/remotion-animation-kit"
+    "remotion-animation-kit": "github:jebin2/remotion-animation-kit",
+    "strudel-render": "github:jebin2/strudel-render#3fedb78"
   },
   "devDependencies": {
     "@types/react": "^18.0.0",

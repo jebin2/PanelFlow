@@ -1,5 +1,5 @@
 import React from "react";
-import { AbsoluteFill, Composition, Sequence } from "remotion";
+import { AbsoluteFill, Audio, Composition, Sequence, staticFile } from "remotion";
 import { ComicManifest } from "./types";
 import { PanelSequences, getTotalFrames } from "./components/PanelSequences";
 import { ProgressBar, TitleCard, getTitleCardDuration } from "remotion-animation-kit";
@@ -29,6 +29,9 @@ const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => 
   const titleOffset = showTitle ? TITLE_CARD_FRAMES : 0;
   return (
     <AbsoluteFill style={{ backgroundColor: "#000" }}>
+      {manifest.music?.src && (
+        <Audio src={staticFile(manifest.music.src)} volume={manifest.music.volume} />
+      )}
       {showTitle && (
         <Sequence from={0} durationInFrames={TITLE_CARD_FRAMES} layout="none">
           <TitleCard

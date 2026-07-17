@@ -96,6 +96,9 @@ class Assets:
     def manifest_path(self, target):
         return os.path.join(self.target_dir(target), "manifest.json")
 
+    def music_path(self, target):
+        return os.path.join(self.target_dir(target), "music.mp3")
+
     def video_path(self, target):
         return os.path.join(self.target_dir(target), f"{target}.mp4")
 

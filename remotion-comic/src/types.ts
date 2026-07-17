@@ -58,4 +58,6 @@ export interface ComicManifest {
   height: number;
   comicTitle: string;
   panels: PanelData[];
+  /** A single music bed for the whole video, played low under the narration. */
+  music?: { src: string; volume: number };
 }

@@ -14,11 +14,12 @@ from custom_logger import logger_config
 from .. import jsonio
 from ..paths import Assets
 from . import compile as compiler
-from . import publish, render, voice
+from . import music, publish, render, voice
 
 TARGETS = ("longform", "shorts")
-SUB_STAGES = {"3.1": "voice", "3.2": "compile", "3.3": "render", "3.4": "publish"}
-PUBLISH = "3.4"
+SUB_STAGES = {"3.1": "voice", "3.2": "compile", "3.3": "music",
+              "3.4": "render", "3.5": "publish"}
+PUBLISH = "3.5"
 
 
 def run(comic_folder, only=None, target=None):
@@ -69,8 +70,13 @@ def _run_target(assets, target, only):
 
     manifest = compiler.run(assets, target, direction, voiced)
     if only == "3.2":
-        # 3.3 writes the manifest as part of rendering; on its own, 3.2 still
-        # owes the caller the file it just built.
+        # The render writes the manifest itself; on its own, 3.2 still owes the
+        # caller the file it just built.
+        jsonio.write(assets.manifest_path(target), {"manifest": manifest})
+        return
+
+    manifest["music"] = music.run(assets, target, direction, manifest)
+    if only == "3.3":
         jsonio.write(assets.manifest_path(target), {"manifest": manifest})
         return
 
