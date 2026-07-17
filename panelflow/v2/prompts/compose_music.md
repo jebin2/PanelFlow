@@ -81,8 +81,20 @@ The palette is acoustic — an orchestra in a small room, not a synthesizer.
   layer and let strings + bass hold. Where `sparse`, the melody may come
   forward.
 - **Keep gains low:** strings `0.3–0.4`, bass `0.3`, melody `0.15–0.28`.
+- **Put each voice in its register.** Bass in octaves 1–2, chords in 3–4,
+  melody in 4–5, sparkle (harp, vibraphone) in 5–6. Two layers fighting for
+  the same octave turn to mud under a narrator.
+- **`.slow(2)` is the half-time feel.** A melody or bass line wrapped in
+  `.slow(2)` spreads over two cycles — calmer, more spacious, and safe
+  (it is `.fast()` that is forbidden on low parts, never `.slow()`).
+- **`.lpf(800)` darkens a layer** without changing the notes — dread and
+  night-time live below 1000; leave it off for brightness.
 
 ## Verified section recipes — vary these, do not reinvent
+
+Start from the recipe nearest the MOOD and bend it — transpose the key, thin
+or thicken a layer, swap which verified instrument carries the melody. Do not
+compose from a blank page.
 
 Calm/dark (tense mood):
 ```
@@ -97,6 +109,26 @@ stack(chord("<C Am F G>").voicing().s("gm_string_ensemble_1").gain(0.3).attack(0
 Intense/action:
 ```
 stack(note("<c2 c2 f1 g1>").s("gm_cello").gain(0.34).room(0.3), chord("<Cm Cm Fm Gm>").voicing().s("gm_string_ensemble_1").gain(0.32).attack(0.2).release(0.8).room(0.4), note("c5 ~ eb5 g5 ~ eb5 c5 ~").s("gm_pizzicato_strings").gain(0.22).room(0.4), note("<c2 ~ ~ ~>").s("gm_timpani").gain(0.25))
+```
+
+Eerie/mysterious:
+```
+stack(chord("<Cm Cm Bdim Abmaj7>").voicing().s("gm_string_ensemble_1").gain(0.3).attack(1).release(2).room(0.6).lpf(900), note("c2").s("gm_cello").gain(0.28).room(0.4).slow(2), note("g5 ~ ~ eb5 ~ ~ c5 ~").s("gm_vibraphone").gain(0.18).room(0.8))
+```
+
+Melancholy/sad:
+```
+stack(chord("<Am Fmaj7 C G>").voicing().s("gm_string_ensemble_1").gain(0.3).attack(0.8).release(2).room(0.5), note("<a1 f1 c2 g1>").s("gm_cello").gain(0.3).room(0.4), note("e4 ~ c4 ~ b3 ~ ~ ~").s("gm_piano").gain(0.24).room(0.7).slow(2))
+```
+
+Playful/light:
+```
+stack(note("<c2 g1 a1 e1>").s("gm_acoustic_bass").gain(0.3), note("c4 ~ e4 g4 ~ a4 g4 ~").s("gm_pizzicato_strings").gain(0.24).room(0.4), note("<c5 e5 g5 e5>").s("gm_orchestral_harp").gain(0.2).room(0.6))
+```
+
+Heroic/triumphant:
+```
+stack(chord("<C F C G>").voicing().s("gm_string_ensemble_1").gain(0.32).attack(0.4).release(1.5).room(0.5), note("<c2 f1 c2 g1>").s("gm_cello").gain(0.3).room(0.3), note("c4 ~ ~ e4 g4 ~ ~ ~").s("gm_french_horn").gain(0.24).room(0.5), note("<c2 ~ ~ ~>").s("gm_timpani").gain(0.25))
 ```
 
 ## Output
