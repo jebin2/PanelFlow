@@ -6,11 +6,10 @@ import { PanelWithEvents } from "./PanelWithEvents";
 import { getPresentation, TRANSITION_FRAMES } from "remotion-animation-kit";
 
 const TRANSITION_SFX: Partial<Record<PanelTransition, { file: string; volume: number }>> = {
-  toss:     { file: "sfx_punchcrack.mp3", volume: 0.45 },
-  slide:    { file: "sfx_whoosh.mp3",     volume: 0.22 },
-  wipe:     { file: "sfx_whoosh.mp3",     volume: 0.18 },
-  whip_pan: { file: "sfx_whoosh.mp3",     volume: 0.28 },
-  push:     { file: "sfx_whoosh.mp3",     volume: 0.22 },
+  slide:    { file: "sfx_whoosh.mp3", volume: 0.22 },
+  wipe:     { file: "sfx_whoosh.mp3", volume: 0.18 },
+  whip_pan: { file: "sfx_whoosh.mp3", volume: 0.28 },
+  push:     { file: "sfx_whoosh.mp3", volume: 0.22 },
 };
 
 // Animations that provide their own directional entrance.
