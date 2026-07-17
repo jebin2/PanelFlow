@@ -101,16 +101,24 @@ and fading between every panel is the mark of an amateur. A transition is for a
 - `slide` — the camera moves to an adjacent space: next room, next moment.
 - `flip` — a turn to the other side of something: a reveal, a reversal.
 - `toss` — a violent throw into the next shot, for chaos and impact.
+- `whip_pan` — the camera whipped elsewhere mid-action; the fastest, most
+  violent scene change.
+- `zoom_through` — punching *through* this moment into the next: a memory, a
+  detail, an escalation of the same action.
+- `iris` — a circle opens on the next shot; isolates one subject, classic
+  comic punctuation.
+- `clock_wipe` — a radial sweep; time passing with a wink, retro flavor.
 
 Do not reach for `fade` every time you want a seam — the palette is there to be
 used, and a book whose only two transitions are `none` and `fade` is leaving
 half its vocabulary on the table.
 
-One pairing to avoid: `slide`, `wipe` and `flip` fight a shot that already
-enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
-`tilt_in`), and the renderer quietly downgrades them to `fade`. Put a
-directional transition on a camera, impact or tension shot, where it survives;
-`toss` and `fade` are safe on anything.
+One pairing to avoid: `slide`, `wipe`, `flip`, `whip_pan` and `zoom_through`
+fight a shot that already enters with its own direction (`slide_*`, `slam_*`,
+`whip_*`, `spin_in`, `tilt_in`), and the renderer quietly downgrades them to
+`fade`. Put a directional transition on a camera, impact or tension shot,
+where it survives; `toss`, `fade`, `iris` and `clock_wipe` are safe on
+anything.
 
 `events` fire *during* a shot, as punctuation, and they belong on the peaks: a
 book at intensity 1-2 barely needs them, but an intensity 4-5 beat that lands in

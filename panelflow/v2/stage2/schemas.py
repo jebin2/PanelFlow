@@ -22,7 +22,8 @@ DIRECTIONAL = ["slam_left", "slam_right", "whip_left", "whip_right",
 PANELFLOW_OWN = ["assemble", "three_part_build_up"]
 ANIMATIONS = CAMERA + IMPACT + TENSION + DIRECTIONAL + PANELFLOW_OWN
 
-TRANSITIONS = ["none", "fade", "slide", "wipe", "flip", "toss"]
+TRANSITIONS = ["none", "fade", "slide", "wipe", "flip", "toss",
+               "clock_wipe", "iris", "zoom_through", "whip_pan"]
 
 # PanelEvent.type — overlaps the animation names but is not the same thing: an
 # event fires *during* a shot, an animation *is* the shot's movement. The last

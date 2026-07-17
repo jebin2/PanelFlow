@@ -6,9 +6,10 @@ import { PanelWithEvents } from "./PanelWithEvents";
 import { getPresentation, TRANSITION_FRAMES } from "remotion-animation-kit";
 
 const TRANSITION_SFX: Partial<Record<PanelTransition, { file: string; volume: number }>> = {
-  toss:  { file: "sfx_punchcrack.mp3", volume: 0.45 },
-  slide: { file: "sfx_whoosh.mp3",     volume: 0.22 },
-  wipe:  { file: "sfx_whoosh.mp3",     volume: 0.18 },
+  toss:     { file: "sfx_punchcrack.mp3", volume: 0.45 },
+  slide:    { file: "sfx_whoosh.mp3",     volume: 0.22 },
+  wipe:     { file: "sfx_whoosh.mp3",     volume: 0.18 },
+  whip_pan: { file: "sfx_whoosh.mp3",     volume: 0.28 },
 };
 
 // Animations that provide their own directional entrance.
@@ -23,11 +24,15 @@ const SELF_ENTRANCING = new Set([
   "spin_in",    "tilt_in",
 ]);
 
+// Transitions with no direction of their own: safe over any animation.
+// Everything else (slide/wipe/flip/zoom_through/whip_pan) moves the container,
+// and doubles up with an animation that enters under its own motion.
+const NEUTRAL = new Set<PanelTransition>(["none", "fade", "toss", "iris", "clock_wipe"]);
+
 function resolveTransition(panel: PanelData, isFirst: boolean): PanelTransition {
   if (isFirst) return "none";
   const t = panel.transitionIn ?? "none";
-  if (t === "none" || t === "fade" || t === "toss") return t;
-  // slide / wipe / flip would conflict with self-entrancing animations
+  if (NEUTRAL.has(t)) return t;
   if (SELF_ENTRANCING.has(panel.animation)) return "fade";
   return t;
 }

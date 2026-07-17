@@ -101,12 +101,20 @@ most shots; use a transition only at a real seam, and let the seam pick it:
 - `flip` — a turn to the other side: a reveal or reversal.
 - `toss` — a violent throw into the next shot; chaos and impact, and it lands
   hard in a short.
+- `whip_pan` — the camera whipped to somewhere else mid-action; the fastest,
+  most violent scene change.
+- `zoom_through` — punching *through* this moment into the next: into a
+  memory, a detail, an escalation of the same action.
+- `iris` — a circle opens on the next shot; isolates one subject, classic
+  comic punctuation.
+- `clock_wipe` — a radial sweep; time passing with a wink, retro flavor.
 
 Do not make every seam a `fade` — the whole palette is available. But `slide`,
-`wipe` and `flip` get quietly downgraded to `fade` when the shot's animation
-already enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
-`tilt_in`); put those transitions on camera or impact shots instead. `toss` and
-`fade` survive on anything.
+`wipe`, `flip`, `whip_pan` and `zoom_through` get quietly downgraded to `fade`
+when the shot's animation already enters with its own direction (`slide_*`,
+`slam_*`, `whip_*`, `spin_in`, `tilt_in`); put those transitions on camera or
+impact shots instead. `toss`, `fade`, `iris` and `clock_wipe` survive on
+anything.
 
 `events` fire *during* a shot, as punctuation, and a short lives on them: land
 one on every hard beat (intensity 4-5), matched to what the panel does —
