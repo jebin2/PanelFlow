@@ -10,6 +10,7 @@ const TRANSITION_SFX: Partial<Record<PanelTransition, { file: string; volume: nu
   slide:    { file: "sfx_whoosh.mp3",     volume: 0.22 },
   wipe:     { file: "sfx_whoosh.mp3",     volume: 0.18 },
   whip_pan: { file: "sfx_whoosh.mp3",     volume: 0.28 },
+  push:     { file: "sfx_whoosh.mp3",     volume: 0.22 },
 };
 
 // Animations that provide their own directional entrance.
@@ -27,7 +28,9 @@ const SELF_ENTRANCING = new Set([
 // Transitions with no direction of their own: safe over any animation.
 // Everything else (slide/wipe/flip/zoom_through/whip_pan) moves the container,
 // and doubles up with an animation that enters under its own motion.
-const NEUTRAL = new Set<PanelTransition>(["none", "fade", "toss", "iris", "clock_wipe"]);
+const NEUTRAL = new Set<PanelTransition>([
+  "none", "fade", "toss", "iris", "clock_wipe", "halftone", "barn_door",
+]);
 
 function resolveTransition(panel: PanelData, isFirst: boolean): PanelTransition {
   if (isFirst) return "none";

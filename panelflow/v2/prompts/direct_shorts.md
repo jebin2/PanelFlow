@@ -108,13 +108,18 @@ most shots; use a transition only at a real seam, and let the seam pick it:
 - `iris` — a circle opens on the next shot; isolates one subject, classic
   comic punctuation.
 - `clock_wipe` — a radial sweep; time passing with a wink, retro flavor.
+- `halftone` — the next shot develops through comic printing dots; stylish,
+  dreamlike, the most comic-flavored seam there is.
+- `push` — the new scene shoves the old one off; assertive forward motion.
+- `barn_door` — the next shot parts open from a center seam; a curtain-raise
+  on a grand reveal.
 
 Do not make every seam a `fade` — the whole palette is available. But `slide`,
-`wipe`, `flip`, `whip_pan` and `zoom_through` get quietly downgraded to `fade`
-when the shot's animation already enters with its own direction (`slide_*`,
-`slam_*`, `whip_*`, `spin_in`, `tilt_in`); put those transitions on camera or
-impact shots instead. `toss`, `fade`, `iris` and `clock_wipe` survive on
-anything.
+`wipe`, `flip`, `whip_pan`, `zoom_through` and `push` get quietly downgraded
+to `fade` when the shot's animation already enters with its own direction
+(`slide_*`, `slam_*`, `whip_*`, `spin_in`, `tilt_in`); put those transitions
+on camera or impact shots instead. `toss`, `fade`, `iris`, `clock_wipe`,
+`halftone` and `barn_door` survive on anything.
 
 `events` fire *during* a shot, as punctuation, and a short lives on them: land
 one on every hard beat (intensity 4-5), matched to what the panel does —

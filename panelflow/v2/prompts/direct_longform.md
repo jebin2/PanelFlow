@@ -108,17 +108,22 @@ and fading between every panel is the mark of an amateur. A transition is for a
 - `iris` — a circle opens on the next shot; isolates one subject, classic
   comic punctuation.
 - `clock_wipe` — a radial sweep; time passing with a wink, retro flavor.
+- `halftone` — the next shot develops through comic printing dots; stylish,
+  dreamlike, the most comic-flavored seam there is.
+- `push` — the new scene shoves the old one off; assertive forward motion.
+- `barn_door` — the next shot parts open from a center seam; a curtain-raise
+  on a grand reveal.
 
 Do not reach for `fade` every time you want a seam — the palette is there to be
 used, and a book whose only two transitions are `none` and `fade` is leaving
 half its vocabulary on the table.
 
-One pairing to avoid: `slide`, `wipe`, `flip`, `whip_pan` and `zoom_through`
-fight a shot that already enters with its own direction (`slide_*`, `slam_*`,
-`whip_*`, `spin_in`, `tilt_in`), and the renderer quietly downgrades them to
-`fade`. Put a directional transition on a camera, impact or tension shot,
-where it survives; `toss`, `fade`, `iris` and `clock_wipe` are safe on
-anything.
+One pairing to avoid: `slide`, `wipe`, `flip`, `whip_pan`, `zoom_through` and
+`push` fight a shot that already enters with its own direction (`slide_*`,
+`slam_*`, `whip_*`, `spin_in`, `tilt_in`), and the renderer quietly downgrades
+them to `fade`. Put a directional transition on a camera, impact or tension
+shot, where it survives; `toss`, `fade`, `iris`, `clock_wipe`, `halftone` and
+`barn_door` are safe on anything.
 
 `events` fire *during* a shot, as punctuation, and they belong on the peaks: a
 book at intensity 1-2 barely needs them, but an intensity 4-5 beat that lands in
