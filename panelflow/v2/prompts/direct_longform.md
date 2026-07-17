@@ -115,13 +115,17 @@ directional transition on a camera, impact or tension shot, where it survives;
 `events` fire *during* a shot, as punctuation, and they belong on the peaks: a
 book at intensity 1-2 barely needs them, but an intensity 4-5 beat that lands in
 silence is a punch that never connects. Match the event to what the panel does —
-`shockwave` for a blow or a drop landing, `flash` for a shock or a scream,
-`rattle` or `tremble` for an explosion or a quake, `heartbeat` for a held dread.
+`zoom_punch` for the single hardest blow in a scene, `shockwave` for a lesser
+blow or a drop landing, `speed_lines` for a sudden attack or burst of motion,
+`flash` for a shock or a scream, `rattle` or `tremble` for an explosion or a
+quake, `heartbeat` for a held dread, `vignette_pulse` for dread closing in on
+someone, `color_drain` for the moment hope dies or a loss registers.
 Restraint still holds — a book with an event on every shot has none, and quiet
 scenes want stillness — but do not let the hardest beats pass unpunctuated. Each
 is `{"type": "...", "at_fraction": 0.4}`, where `type` is one of `tremble`,
-`flash`, `shockwave`, `heartbeat`, `rattle`, and `at_fraction` is 0..1 through
-the shot. The key is `type`. Use `[]` for none.
+`flash`, `shockwave`, `heartbeat`, `rattle`, `zoom_punch`, `speed_lines`,
+`vignette_pulse`, `color_drain`, and `at_fraction` is 0..1 through the shot.
+The key is `type`. Use `[]` for none.
 
 **`silent_seconds` belongs only to a shot with no narration at all.** A silent
 shot is `"narration": ""` plus `"silent_seconds": 2` — a held image, no voice,

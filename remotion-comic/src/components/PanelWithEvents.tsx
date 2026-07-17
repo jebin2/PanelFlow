@@ -20,6 +20,41 @@ const EVENT_SFX: Partial<Record<PanelEvent["type"], { file: string; volume: numb
   rattle:    { file: "sfx_rumble.mp3",    volume: 0.20 },
 };
 
+/** Comic action lines radiating from the focal point, held clear of it so the
+ * subject stays readable. Geometry is fixed per line index — the burst holds
+ * still while its opacity plays the envelope. */
+const SpeedLines: React.FC<{ opacity: number; origin: [number, number] }> = ({ opacity, origin }) => {
+  const [cx, cy] = [origin[0] * 100, origin[1] * 100];
+  const lines = Array.from({ length: 28 }, (_, i) => {
+    const angle = (i / 28) * Math.PI * 2 + (i % 3) * 0.07;
+    const inner = 24 + (i % 5) * 4;   // % distance where the line starts
+    const outer = 160;                 // safely past every frame corner
+    return {
+      x1: cx + Math.cos(angle) * inner,
+      y1: cy + Math.sin(angle) * inner,
+      x2: cx + Math.cos(angle) * outer,
+      y2: cy + Math.sin(angle) * outer,
+      width: 0.4 + (i % 4) * 0.25,
+    };
+  });
+  return (
+    <AbsoluteFill style={{ opacity, pointerEvents: "none" }}>
+      <svg width="100%" height="100%" viewBox="0 0 100 100" preserveAspectRatio="none">
+        {lines.map((l, i) => (
+          <line
+            key={i}
+            x1={l.x1} y1={l.y1} x2={l.x2} y2={l.y2}
+            stroke="#fff"
+            strokeWidth={l.width}
+            strokeLinecap="round"
+            opacity={0.9}
+          />
+        ))}
+      </svg>
+    </AbsoluteFill>
+  );
+};
+
 export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   const frame = useCurrentFrame();
 
@@ -57,6 +92,9 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
   let eventShakeY = 0;
   let eventScale = 1;
   let flashOpacity = 0;
+  let speedLinesOpacity = 0;
+  let vignetteOpacity = 0;
+  let drainAmount = 0;
 
   for (const event of events) {
     const eventStartFrame = Math.round(event.startSeconds * fps);
@@ -97,18 +135,51 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
         eventShakeY += Math.cos(ef * 4.1) * 4;
         break;
       }
+      case "zoom_punch": {
+        // Harder than shockwave: a sharp jab in, then a settling decay.
+        const punch = interpolate(ep, [0, 0.12, 1], [1.0, 1.12, 1.0], { extrapolateRight: "clamp" });
+        eventScale = Math.max(eventScale, punch);
+        break;
+      }
+      case "speed_lines": {
+        speedLinesOpacity = Math.max(
+          speedLinesOpacity,
+          interpolate(ep, [0, 0.15, 0.7, 1], [0, 0.85, 0.6, 0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
+      case "vignette_pulse": {
+        vignetteOpacity = Math.max(
+          vignetteOpacity,
+          interpolate(ep, [0, 0.4, 1], [0, 0.65, 0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
+      case "color_drain": {
+        drainAmount = Math.max(
+          drainAmount,
+          interpolate(ep, [0, 0.25, 0.75, 1], [0, 1, 1, 0], { extrapolateRight: "clamp" })
+        );
+        break;
+      }
     }
   }
 
   const hasEventTransform = eventShakeX !== 0 || eventShakeY !== 0 || eventScale !== 1;
+  const hasDrain = drainAmount > 0;
 
   return (
     <AbsoluteFill
       style={
-        hasEventTransform
+        hasEventTransform || hasDrain
           ? {
-            transform: `scale(${eventScale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
-            transformOrigin: "center center",
+            ...(hasEventTransform && {
+              transform: `scale(${eventScale}) translate(${eventShakeX}px, ${eventShakeY}px)`,
+              transformOrigin: "center center",
+            }),
+            ...(hasDrain && {
+              filter: `grayscale(${drainAmount}) brightness(${1 - 0.15 * drainAmount})`,
+            }),
           }
           : undefined
       }
@@ -118,6 +189,17 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
       {flashOpacity > 0 && (
         <AbsoluteFill
           style={{ backgroundColor: "#fff", opacity: flashOpacity, pointerEvents: "none" }}
+        />
+      )}
+      {speedLinesOpacity > 0 && (
+        <SpeedLines opacity={speedLinesOpacity} origin={panel.focalOrigin ?? [0.5, 0.5]} />
+      )}
+      {vignetteOpacity > 0 && (
+        <AbsoluteFill
+          style={{
+            background: `radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,${vignetteOpacity}) 100%)`,
+            pointerEvents: "none",
+          }}
         />
       )}
       {events.map((event, i) => {

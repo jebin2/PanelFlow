@@ -110,11 +110,15 @@ already enters with its own direction (`slide_*`, `slam_*`, `whip_*`, `spin_in`,
 
 `events` fire *during* a shot, as punctuation, and a short lives on them: land
 one on every hard beat (intensity 4-5), matched to what the panel does —
-`shockwave` for a blow landing, `flash` for a shock, `rattle` for an explosion,
-`heartbeat` for held dread. But a short with an event on *every* shot has none,
-so save them for the hits. Each is `{"type": "...", "at_fraction": 0.4}`, where
-`type` is one of `tremble`, `flash`, `shockwave`, `heartbeat`, `rattle`, and
-`at_fraction` is 0..1 through the shot. Use `[]` for none.
+`zoom_punch` for the hardest single blow, `shockwave` for a lesser blow
+landing, `speed_lines` for a sudden attack or burst of motion, `flash` for a
+shock, `rattle` for an explosion, `heartbeat` for held dread, `vignette_pulse`
+for dread closing in, `color_drain` for the moment hope dies. But a short with
+an event on *every* shot has none, so save them for the hits. Each is
+`{"type": "...", "at_fraction": 0.4}`, where `type` is one of `tremble`,
+`flash`, `shockwave`, `heartbeat`, `rattle`, `zoom_punch`, `speed_lines`,
+`vignette_pulse`, `color_drain`, and `at_fraction` is 0..1 through the shot.
+Use `[]` for none.
 
 **`silent_seconds` belongs only to a shot with no narration at all.** A silent
 shot is `"narration": ""` plus `"silent_seconds": 2` — a held image, no voice.

@@ -7,7 +7,16 @@ export type { TransitionName as PanelTransition };
 export type PanelAnimation = AnimationName | "assemble" | "three_part_build_up";
 
 export interface PanelEvent {
-  type: "tremble" | "flash" | "shockwave" | "heartbeat" | "rattle";
+  type:
+    | "tremble"
+    | "flash"
+    | "shockwave"
+    | "heartbeat"
+    | "rattle"
+    | "zoom_punch"
+    | "speed_lines"
+    | "vignette_pulse"
+    | "color_drain";
   startSeconds: number;
   durationSeconds: number;
 }

@@ -31,8 +31,11 @@ FRAME = {"longform": (1920, 1080), "shorts": (1080, 1920)}
 TRANSITION_FRAMES = 18
 TRANSITION_SECONDS = TRANSITION_FRAMES / config.FPS
 
-# An event is punctuation, not a phase — it hits and it is gone.
+# An event is punctuation, not a phase — it hits and it is gone. The
+# atmosphere events breathe a little longer than the impact ones, but even
+# they resolve inside the shot.
 EVENT_SECONDS = 0.6
+EVENT_SECONDS_BY_TYPE = {"vignette_pulse": 1.2, "color_drain": 1.2}
 
 # A wide panel in the portrait short is drawn as a thin strip over a blurred
 # bar, unreadable, so we crop it toward the frame around its focal point. A
@@ -213,11 +216,12 @@ def _events(shot, duration):
     """
     events = []
     for event in shot.get("events") or []:
+        seconds = EVENT_SECONDS_BY_TYPE.get(event["type"], EVENT_SECONDS)
         start = max(0.0, min(float(event["at_fraction"]) * duration,
-                             duration - EVENT_SECONDS))
+                             duration - seconds))
         events.append({"type": event["type"],
                        "startSeconds": round(start, 3),
-                       "durationSeconds": EVENT_SECONDS})
+                       "durationSeconds": seconds})
     return events
 
 

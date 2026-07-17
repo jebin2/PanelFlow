@@ -24,9 +24,11 @@ ANIMATIONS = CAMERA + IMPACT + TENSION + DIRECTIONAL + PANELFLOW_OWN
 
 TRANSITIONS = ["none", "fade", "slide", "wipe", "flip", "toss"]
 
-# PanelEvent.type — a strict subset of the animation names, and not the same
-# thing: an event fires *during* a shot, an animation *is* the shot's movement.
-EVENTS = ["tremble", "flash", "shockwave", "heartbeat", "rattle"]
+# PanelEvent.type — overlaps the animation names but is not the same thing: an
+# event fires *during* a shot, an animation *is* the shot's movement. The last
+# four are event-only, rendered by PanelWithEvents in remotion-comic.
+EVENTS = ["tremble", "flash", "shockwave", "heartbeat", "rattle",
+          "zoom_punch", "speed_lines", "vignette_pulse", "color_drain"]
 
 SOURCE_KINDS = ["panel", "full_page", "pan"]
 ANIMATION_TARGETS = ["focal_point", "whole"]
