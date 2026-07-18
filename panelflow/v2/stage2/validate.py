@@ -186,7 +186,7 @@ def _check_narration(assets, shots, model=None):
             problems.append(
                 f'shot {shot.get("id")}: narration has markup or a stage direction — '
                 f"TTS reads it aloud")
-    return problems + _check_names(assets, shots, model)
+    return problems + _check_names(assets, shots, model) + _check_voice(shots, model)
 
 
 def _check_names(assets, shots, model):
@@ -244,6 +244,58 @@ def _names_prompt(assets, shots):
         + (_book_words(assets) or "(the book has no lettering)")
         + f'\n\nNARRATION\n{"=" * 40}\n{lines}'
     )
+
+
+# What each voice defect asks the repairer to do. Strictly local, like every
+# other problem: fix the shot named, touch nothing else.
+_VOICE_PROBLEMS = {
+    "second_person": ('narration addresses someone as {phrase!r} — the teller '
+                      'speaks about the characters, never to them; rewrite that '
+                      'address in third person'),
+    "first_person": ('the narrator speaks as {phrase!r} but the teller has no '
+                     '"I" — set the speaker whose line it is, or retell it in '
+                     'third person'),
+    "speaker_not_quote": ('speaker is set but the line is not purely their own '
+                          'words ({phrase!r}) — keep only the character\'s '
+                          'words, or clear the speaker and retell'),
+}
+
+
+def _check_voice(shots, model):
+    """Ask whether any line breaks the teller's register.
+
+    Three defects only — a leaked second-person address, a teller "I", a
+    speaker tag on a line that is not purely the quote — and asked of a model
+    because each is a judgment about language ("your mother" can be an address
+    or reported speech; an "I" can be the teller's or an embedded quote's).
+
+    Unlike names, this is style, not hallucination: if the check itself fails,
+    validation proceeds without it rather than blocking the video.
+    """
+    speaking = [s for s in shots if (s.get("narration") or "").strip()]
+    if not speaking:
+        return []
+
+    try:
+        result = llm.ask_json(
+            system_prompt=prompts.load("check_narration_voice"),
+            user_prompt="\n".join(
+                f'{s["id"]} [{s.get("speaker") or "narrator"}]: {s.get("narration")}'
+                for s in speaking),
+            model=model,
+            label="checking narration voice",
+        )
+    except Exception as e:
+        logger_config.warning(f"2.3: voice check skipped: {e}")
+        return []
+
+    problems = []
+    for violation in result.get("violations", []):
+        template = _VOICE_PROBLEMS.get(violation.get("kind"))
+        if template:
+            problems.append(f'shot {violation.get("shot")}: '
+                            + template.format(phrase=violation.get("phrase", "")))
+    return problems
 
 
 def _book_words(assets):

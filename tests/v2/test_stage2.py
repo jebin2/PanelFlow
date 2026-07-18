@@ -332,7 +332,7 @@ def test_the_whole_narration_is_sent_unfiltered(ready_book, directed, monkeypatc
     seen = {}
 
     def fake(system_prompt, user_prompt, **kw):
-        seen["prompt"] = user_prompt
+        seen.setdefault(kw.get("label"), user_prompt)
         return {"violations": []}
     monkeypatch.setattr(validate.llm, "ask_json", fake)
 
@@ -340,9 +340,10 @@ def test_the_whole_narration_is_sent_unfiltered(ready_book, directed, monkeypatc
     direction["shots"][0]["narration"] = "The sorcerer Doctor Strange watches."
     validate.check(ready_book, direction)
 
-    assert "Doctor Strange" in seen["prompt"]          # not filtered out
-    assert "Then it moves." in seen["prompt"]          # every speaking shot
-    assert '"Wolverine"' in seen["prompt"]             # who may be named
+    prompt = seen["checking narration for invented names"]
+    assert "Doctor Strange" in prompt                  # not filtered out
+    assert "Then it moves." in prompt                  # every speaking shot
+    assert '"Wolverine"' in prompt                     # who may be named
 
 
 def test_unnamed_characters_are_listed_for_the_name_check(ready_book, directed, monkeypatch):
@@ -352,11 +353,13 @@ def test_unnamed_characters_are_listed_for_the_name_check(ready_book, directed, 
     ready_book.save_characters(characters)
     seen = {}
     monkeypatch.setattr(validate.llm, "ask_json",
-                        lambda **kw: seen.update(prompt=kw["user_prompt"]) or {"violations": []})
+                        lambda **kw: seen.setdefault(kw.get("label"), kw["user_prompt"])
+                        and {"violations": []} or {"violations": []})
 
     validate.check(ready_book, directed())
 
-    assert "winding_creature — long, ribbon-like, tan" in seen["prompt"]
+    assert ("winding_creature — long, ribbon-like, tan"
+            in seen["checking narration for invented names"])
 
 
 def test_the_books_own_words_are_given_to_the_name_check(ready_book, directed, monkeypatch):
@@ -369,12 +372,14 @@ def test_the_books_own_words_are_given_to_the_name_check(ready_book, directed, m
     ready_book.save_page(1, page)
     seen = {}
     monkeypatch.setattr(validate.llm, "ask_json",
-                        lambda **kw: seen.update(prompt=kw["user_prompt"]) or {"violations": []})
+                        lambda **kw: seen.setdefault(kw.get("label"), kw["user_prompt"])
+                        and {"violations": []} or {"violations": []})
 
     validate.check(ready_book, directed())
 
-    assert "THE BOOK'S OWN WORDS" in seen["prompt"]
-    assert "THE COUNT saved my brain." in seen["prompt"]
+    prompt = seen["checking narration for invented names"]
+    assert "THE BOOK'S OWN WORDS" in prompt
+    assert "THE COUNT saved my brain." in prompt
 
 
 def test_a_silent_book_asks_nobody(ready_book, directed, monkeypatch):
@@ -468,3 +473,37 @@ def test_a_grounded_relationship_reaches_the_director(ready_book):
 
     assert "ward of Wolverine" in lines["kayla"]
     assert "relationships" not in lines["wolverine"]     # none recorded, none shown
+
+
+# ------------------------------------------------- the teller's register
+
+def test_a_voice_defect_becomes_a_local_problem(ready_book, directed, monkeypatch):
+    """The three register defects come back as strictly-local repairs; an
+    unknown kind from a drifting model is dropped, not crashed on."""
+    def fake(**kw):
+        if kw.get("label") == "checking narration voice":
+            return {"violations": [
+                {"shot": 3, "kind": "second_person", "phrase": "your mother"},
+                {"shot": 5, "kind": "speaker_not_quote", "phrase": "Her mother shouted:"},
+                {"shot": 7, "kind": "too_poetic", "phrase": "not a real kind"},
+            ]}
+        return {"violations": []}
+    monkeypatch.setattr(validate.llm, "ask_json", fake)
+
+    problems = validate.check(ready_book, directed())
+
+    assert any("shot 3" in p and "'your mother'" in p and "third person" in p for p in problems)
+    assert any("shot 5" in p and "clear the speaker" in p for p in problems)
+    assert not any("shot 7" in p for p in problems)
+
+
+def test_a_failed_voice_check_is_skipped_not_fatal(ready_book, directed, monkeypatch):
+    """Style is not hallucination: names blocking validation is right; a
+    register nit blocking a video would not be."""
+    def fake(**kw):
+        if kw.get("label") == "checking narration voice":
+            raise RuntimeError("TTT down")
+        return {"violations": []}
+    monkeypatch.setattr(validate.llm, "ask_json", fake)
+
+    validate.check(ready_book, directed())     # must not raise
