@@ -13,7 +13,7 @@ system prompt and nothing here needs to know which is running.
 from custom_logger import logger_config
 
 from .. import llm, prompts
-from . import digest, schemas
+from . import digest, normalize, schemas
 
 STYLE_VERSION = "v1"
 
@@ -44,6 +44,7 @@ def run(assets, target, model=None):
         user_prompt=_user_prompt(assets),
         schema=schemas.DIRECTION,
         model=model,
+        label=f"directing {target}",
     )
 
     assets.save_direction(target, _assemble(result, target, model))
@@ -73,17 +74,5 @@ def _assemble(result, target, model):
         "validated": False,      # 2.3 owns this, and it is Stage 3's gate
         "meta": result.get("meta", {}),
         "music": result.get("music", {}),
-        "shots": _number(result.get("shots", [])),
+        "shots": normalize.normalize_shots(result.get("shots", [])),
     }
-
-
-def _number(shots):
-    """Shot ids are positions, so we assign them.
-
-    A model asked to number a list off by one mid-way is a real failure mode,
-    and the ids are what Stage 3 renders in order — nothing is gained by asking
-    for something we can count.
-    """
-    for shot_id, shot in enumerate(shots, start=1):
-        shot["id"] = shot_id
-    return shots

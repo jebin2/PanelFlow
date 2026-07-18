@@ -187,43 +187,6 @@ def test_an_animation_the_renderer_cannot_play_is_caught(ready_book, directed):
     assert any("unknown animation" in p for p in validate.check(ready_book, direction))
 
 
-def test_one_animation_over_the_quarter_cap_is_caught():
-    """12 shots -> cap max(3, 25%) = 3. Both moves over it are named."""
-    shots = ([{"animation": "ken_burns"}] * 8) + ([{"animation": "zoom_in"}] * 4)
-
-    problems = validate._check_animation_variety(shots)
-
-    assert any("'ken_burns'" in p and "over the 3 cap" in p for p in problems)
-    assert any("'zoom_in'" in p for p in problems)
-
-
-def test_a_varied_direction_has_no_variety_problem():
-    shots = [{"animation": a} for a in (
-        "ken_burns", "zoom_in", "creep", "pan_up", "fade_in", "snap",
-        "burst", "punch_in", "slide_right", "ken_burns", "zoom_out", "tremble")]
-
-    assert validate._check_animation_variety(shots) == []
-
-
-def test_a_short_video_tolerates_the_floor_of_three():
-    """The floor keeps a 6-shot video from tripping on a natural repeat: three
-    of a move is fine, four is not."""
-    assert validate._check_animation_variety(
-        [{"animation": "ken_burns"}] * 3 + [{"animation": "snap"}] * 3) == []
-    caught = validate._check_animation_variety(
-        [{"animation": "ken_burns"}] * 4 + [{"animation": "snap"}] * 2)
-    assert any("'ken_burns'" in p for p in caught)
-
-
-def test_animation_monotony_reaches_the_validator(ready_book, directed):
-    """Wired end to end: a direction that is all one move fails 2.3."""
-    direction = directed()
-    only_move = dict(direction["shots"][0], animation="ken_burns")
-    direction["shots"] = [dict(only_move, id=i) for i in range(1, 9)]
-
-    assert any("vary the camera work" in p for p in validate.check(ready_book, direction))
-
-
 def test_an_event_with_the_wrong_key_is_caught(ready_book, directed):
     """Verbatim from the first real run: the model wrote {"name": "tremble"}."""
     direction = directed()

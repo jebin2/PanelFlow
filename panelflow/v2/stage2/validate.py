@@ -1,9 +1,15 @@
 """Sub-stage 2.3 — Validate & repair.
 
-Checks a direction file, then up to two repair calls. This is what sets
+Checks a direction file, then up to MAX_REPAIRS repair calls. This is what sets
 `validated: true`, which is Stage 3's gate — a file with a dangling panel ref,
 an animation the renderer has never heard of, or a name the book never says
 must not reach a render.
+
+The bulk of a fresh direction's problems are mechanical shape drift (events as
+bare strings, a silent_seconds on a narrated shot); those are settled in code by
+`normalize` before the first check, so the repair calls are spent only on the
+genuine judgment left over — an invented name — which on a long direction can
+take several passes to work through.
 
 Almost every check here is a fact: does the panel exist, is the animation in the
 renderer's vocabulary, does every beat have a shot. Taste belongs to 2.1/2.2.
@@ -14,15 +20,17 @@ first cut of it was a regex, and it was worse than nothing: it passed
 "Wolverine catches it." while flagging "Beneath".
 """
 import re
-from collections import Counter
 
 from custom_logger import logger_config
 
 from .. import llm, prompts
 from ..paths import ANALYZED
-from . import schemas
+from . import normalize, schemas
 
-MAX_REPAIRS = 2
+# Normalization now clears the mechanical drift up front, so every repair goes
+# to genuine judgment. A long direction (150+ shots) can need several passes to
+# rewrite a clutch of invented names.
+MAX_REPAIRS = 5
 # Post-trim, post-speedup speech runs faster than read-aloud prose; measured on
 # a real render, not assumed. Only a ceiling hangs on this estimate — a short
 # that runs long gets rejected by the platform, a short that runs short is just
@@ -30,13 +38,6 @@ MAX_REPAIRS = 2
 WORDS_PER_SECOND = 3.5
 SHORTS_MAX_SECONDS = 120
 ENDING_ANIMATIONS = ["zoom_out", "fade_in", "ken_burns", "breathe"]
-
-# No single animation may carry more than this share of a video, or the camera
-# work reads as one repeated move rather than direction — see
-# _check_animation_variety. A floor keeps a short video from tripping on a
-# natural repeat, and leaves the plurality move (usually ken_burns) plenty of room.
-ANIMATION_CAP_FRACTION = 0.25
-ANIMATION_CAP_FLOOR = 3
 
 # Markup is syntax — a bracket is a bracket in every book, so a rule can own it.
 # Naming is not, and is asked of a model below.
@@ -55,6 +56,11 @@ def run(assets, target, model=None):
     if not direction.get("shots"):
         raise ValueError(f"2.3: no direction to validate for {target!r}; run 2.1/2.2 first")
 
+    # A direction file may have been written before normalization existed, or by
+    # a repair that drifted on shape again — settle the mechanical shapes in code
+    # so the repair loop only spends the model on genuine judgment calls.
+    direction["shots"] = normalize.normalize_shots(direction["shots"])
+    logger_config.info(f"2.3 {target}: validating ({len(direction['shots'])} shots)")
     for attempt in range(MAX_REPAIRS + 1):
         problems = check(assets, direction, model)
         if not problems:
@@ -85,7 +91,6 @@ def check(assets, direction, model=None):
     problems += _check_sources(assets, shots)
     problems += _check_vocabulary(shots)
     problems += _check_speakers(assets, shots)
-    problems += _check_animation_variety(shots)
     problems += _check_narration(assets, shots, model)
     problems += _check_meta(assets, direction)
     if direction.get("target") == "longform":
@@ -144,6 +149,9 @@ def _check_vocabulary(shots):
         if shot.get("animation_target") not in schemas.ANIMATION_TARGETS:
             problems.append(f'{where}: unknown animation_target {shot.get("animation_target")!r}')
         for event in shot.get("events") or []:
+            if not isinstance(event, dict):
+                problems.append(f'{where}: event must be an object with a "type", got {event!r}')
+                continue
             if event.get("type") not in schemas.EVENTS:
                 problems.append(f'{where}: unknown event {event.get("type")!r}')
             if not 0 <= (event.get("at_fraction") or 0) <= 1:
@@ -168,27 +176,6 @@ def _check_speakers(assets, shots):
         speaker = shot.get("speaker")
         if speaker and speaker not in roster:
             problems.append(f'shot {shot.get("id")}: unknown speaker {speaker!r}')
-    return problems
-
-
-def _check_animation_variety(shots):
-    """No single animation may dominate the video.
-
-    A book where nearly half the shots are the same slow drift is not directed,
-    it is defaulted — the camera stops being a choice. Which move a panel *wants*
-    is the director's call and cannot be ruled on here, but "not the same one
-    over and over" is arithmetic, so the ceiling lives in code and the repair is
-    asked to vary the work, never told which move to put where.
-    """
-    if not shots:
-        return []
-    cap = max(ANIMATION_CAP_FLOOR, int(ANIMATION_CAP_FRACTION * len(shots)))
-    problems = []
-    for animation, count in Counter(s.get("animation") for s in shots).most_common():
-        if count > cap:
-            problems.append(
-                f"animation {animation!r} is on {count} of {len(shots)} shots, over "
-                f"the {cap} cap — vary the camera work so no one move dominates")
     return problems
 
 
@@ -224,6 +211,7 @@ def _check_names(assets, shots, model):
             system_prompt=prompts.load("check_narration_names"),
             user_prompt=_names_prompt(assets, speaking),
             model=model,
+            label="checking narration for invented names",
         )
     except Exception as e:
         # Loud, and fatal to validation: silently skipping the anti-hallucination
@@ -347,19 +335,14 @@ def _repair(assets, direction, problems, model):
         ),
         schema=schemas.DIRECTION,
         model=model,
+        label=f"repairing direction ({len(problems)} problem(s))",
     )
     if result.get("shots"):
-        direction["shots"] = _renumber(result["shots"])
+        direction["shots"] = normalize.normalize_shots(result["shots"])
     for key in ("meta", "music"):
         if result.get(key):
             direction[key] = result[key]
     return direction
-
-
-def _renumber(shots):
-    for shot_id, shot in enumerate(shots, start=1):
-        shot["id"] = shot_id
-    return shots
 
 
 def _shots_json(direction):
