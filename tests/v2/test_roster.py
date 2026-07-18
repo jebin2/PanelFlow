@@ -110,3 +110,17 @@ def test_roster_prompt_flags_an_entry_with_no_visual():
 
 def test_empty_roster_tells_the_analyser_everything_is_new():
     assert "every character you see is new" in roster.describe_for_prompt({"characters": []})
+
+
+def test_updates_keep_only_relationships_grounded_in_the_roster():
+    """The narration says these out loud, so a relation to a phantom id or
+    with no relation text must never reach the disk."""
+    chars = _chars()
+    roster.apply_updates(chars, [{"id": "marcus", "relationships": [
+        {"to_id": "hooded", "relation": "brother", "evidence": "p12: 'my own brother'"},
+        {"to_id": "nobody_here", "relation": "father", "evidence": "guessed"},
+        {"to_id": "scarred", "relation": "", "evidence": "empty relation"},
+    ]}])
+    marcus = next(c for c in chars["characters"] if c["id"] == "marcus")
+    assert marcus["relationships"] == [
+        {"to_id": "hooded", "relation": "brother", "evidence": "p12: 'my own brother'"}]

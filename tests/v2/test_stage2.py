@@ -449,3 +449,22 @@ def test_both_targets_read_the_same_book_and_differ_only_in_prompt(ready_book, m
     assert seen["prompts"][0] != seen["prompts"][1]      # different job
     assert ready_book.load_direction("shorts")["target"] == "shorts"
     assert "120 seconds" in seen["prompts"][1]           # the hard ceiling
+
+
+def test_a_grounded_relationship_reaches_the_director(ready_book):
+    """1.4's grounded relationships ride the roster line, resolved to sayable
+    names, so the narration can retell "her mother" instead of two bare names."""
+    characters = ready_book.load_characters()
+    characters["characters"].append({
+        "id": "kayla", "name": "Kayla", "named_in_story": True,
+        "role_in_story": "supporting",
+        "relationships": [{"to_id": "wolverine", "relation": "ward",
+                           "evidence": "p3: 'he took her in'"}],
+    })
+    ready_book.save_characters(characters)
+
+    lines = {line.split(" |")[0].lstrip("- "): line
+             for line in digest.roster_text(characters).splitlines()}
+
+    assert "ward of Wolverine" in lines["kayla"]
+    assert "relationships" not in lines["wolverine"]     # none recorded, none shown

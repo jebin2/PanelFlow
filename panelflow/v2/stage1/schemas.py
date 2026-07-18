@@ -116,6 +116,18 @@ RECONCILE = S(
                     "aliases": S(type=T.ARRAY, items=S(type=T.STRING)),
                     "role_in_story": S(type=T.STRING, enum=["protagonist", "antagonist", "supporting", "background"]),
                     "inferred_identity": S(type=T.STRING, description="Single consistent value, empty to clear"),
+                    "relationships": S(
+                        type=T.ARRAY,
+                        items=S(
+                            type=T.OBJECT,
+                            required=["to_id", "relation", "evidence"],
+                            properties={
+                                "to_id": S(type=T.STRING),
+                                "relation": S(type=T.STRING, description="As the book states it: mother, brother, oldest friend"),
+                                "evidence": S(type=T.STRING, description="The on-page line that grounds it"),
+                            },
+                        ),
+                    ),
                 },
             ),
         ),

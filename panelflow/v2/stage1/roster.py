@@ -121,4 +121,12 @@ def apply_updates(characters, updates):
             character["role_in_story"] = update["role_in_story"]
         if "inferred_identity" in update:
             character["inferred_identity"] = update["inferred_identity"] or None
+        if update.get("relationships"):
+            # Grounded like names: only relations to someone actually in the
+            # roster survive, so the narration can never lean on a phantom.
+            character["relationships"] = [
+                {"to_id": r["to_id"], "relation": r["relation"],
+                 "evidence": r.get("evidence", "")}
+                for r in update["relationships"]
+                if r.get("to_id") in by_id and (r.get("relation") or "").strip()]
     return characters

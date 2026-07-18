@@ -26,6 +26,16 @@ Return:
     identity claim across the whole book. If pages disagree, pick the one the
     evidence supports; if they disagree irreconcilably, return an empty string
     to clear it. Never move an inferred identity into `name`.
+  - `relationships` — how this character relates to others in the roster, but
+    **only** when the book's own text states it: "your mother", "my brother",
+    "we served together". Each is `{"to_id": ..., "relation": ...,
+    "evidence": ...}` where `evidence` is the on-page line that grounds it and
+    `relation` reads from this character toward `to_id` ("mother" on hippolyta
+    with `to_id` diana means Hippolyta is Diana's mother). The narration will
+    say these out loud, so a guessed relationship is a factual error on
+    screen — world knowledge ("everyone knows they're married") grounds
+    nothing. When unsure, record none; a missing relationship costs a nicety,
+    a wrong one costs the video its credibility.
 
 Rules:
 
@@ -68,7 +78,10 @@ Return only JSON, no prose and no markdown fence:
       "named_by_panel": 4,
       "aliases": ["The Scar"],
       "role_in_story": "antagonist",
-      "inferred_identity": ""
+      "inferred_identity": "",
+      "relationships": [
+        {"to_id": "elena", "relation": "brother", "evidence": "p12: 'my own brother would sell me out'"}
+      ]
     }
   ]
 }

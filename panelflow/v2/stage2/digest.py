@@ -19,16 +19,23 @@ def roster_text(characters):
     only the unnamed — carry their visual, which is what the narration has to
     reach for instead of a name.
     """
+    names = {c["id"]: _sayable_name(c) or c["id"]
+             for c in characters.get("characters", [])}
     lines = []
     for c in characters.get("characters", []):
         role = c.get("role_in_story") or "role unknown"
         name = _sayable_name(c)
         if name:
-            lines.append(f'- {c["id"]} | say "{name}" ({_why_sayable(c)}) | {role}')
+            line = f'- {c["id"]} | say "{name}" ({_why_sayable(c)}) | {role}'
         else:
             visual = c.get("visual") or "no description recorded"
-            lines.append(f'- {c["id"]} | NOT named in this book — describe them, '
-                         f"never invent a name | looks like: {visual} | {role}")
+            line = (f'- {c["id"]} | NOT named in this book — describe them, '
+                    f"never invent a name | looks like: {visual} | {role}")
+        # 1.4 grounded these in the book's own text, so the narration may say
+        # them; a relationship absent here must not be spoken.
+        rel = ", ".join(f'{r["relation"]} of {names.get(r["to_id"], r["to_id"])}'
+                        for r in c.get("relationships") or [])
+        lines.append(line + (f" | {rel}" if rel else ""))
     return "\n".join(lines) or "(no characters)"
 
 
