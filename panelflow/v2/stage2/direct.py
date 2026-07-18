@@ -15,7 +15,9 @@ from custom_logger import logger_config
 from .. import llm, prompts
 from . import digest, normalize, schemas
 
-STYLE_VERSION = "v1"
+# v2: the friend-retelling voice — dialogue is reported, not read aloud, and a
+# direct quote is a rare, speaker-tagged event. Directions styled v1 redirect.
+STYLE_VERSION = "v2"
 
 # target -> the prompt that gives it its philosophy.
 TARGETS = {

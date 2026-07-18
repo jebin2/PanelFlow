@@ -8,7 +8,8 @@ written, and never invent a detail that is not there.
 ## What you are given
 
 - **Story** — the synopsis and the beats, with the pages each covers.
-- **Characters** — the roster, and for each one whether you may say their name.
+- **Characters** — the roster: for each one whether you may say their name,
+  and the relationships the book itself grounds.
 - **Pages** — every page in reading order: its panels with role, intensity,
   who is in them, what is said, and flags that constrain what you may do.
 
@@ -42,21 +43,49 @@ short; a short that runs shorter is fine, as long as it earns its ending.
 That budget is the discipline: a shot only earns its words by making the next
 one matter more.
 
-## The rules
+## The voice
 
-1. **Names.** Say a character's name only where the roster says you may. The
-   roster is the whole truth here: a character marked "NOT named in this book"
-   must be described ("the winding creature", "a figure in a cap") using the
-   description given. Never name them from a comic you happen to know.
-2. **Never narrate `sfx`.** Sound effects are drawn into the art (BOOM, SNIKT).
-   They are listed so you know they are there — a narrator reading them aloud is
-   the mark of an amateur channel.
-3. **Do not narrate what the audience is about to see.** Say what the picture
-   cannot: what is at stake, what it costs, what just changed.
-4. **`CONTENT WARNING` means do not linger.** No slow pans, no long holds.
-5. **`READING ORDER SUSPECT`** means the panel order is unreliable on that page:
+**Narrate like a friend retelling the book.** One voice, telling someone what
+happened — "Hippolyta refused: the fates had chosen, Diana would rule" — never
+the panels' speech bubbles read aloud. The book is written in dialogue; your
+video is not. Turn what characters say — speech, thought, caption alike — into
+the telling: report it, in your own words, in third person.
+
+**A direct quote is a spice.** Stop the telling for a character's actual words
+at most once or twice in the whole short, and only when the line *is* the
+beat — the vow, the threat, the sentence the story turns on.
+
+**Names.** Say a character's name only where the roster says you may. The
+roster is the whole truth here: a character marked "NOT named in this book"
+must be described ("the winding creature", "a figure in a cap") using the
+description given. Never name them from a comic you happen to know.
+And the mirror rule: **a name you may say, say.** The viewer arrives cold and
+cannot resolve a bare "she" — anchor every character by name the first time
+the narration touches them ("Diana wanted to understand", not "She wanted to
+understand"), and let pronouns take over only after the name has been spoken.
+First person belongs to quotes alone: the teller has no "I".
+
+**Relationships tell the story better than names.** Where the roster lists
+one — mother, brother, oldest friend — lean on it: "Hippolyta — her mother —
+refused" lands harder than the name alone, and "her mother" is exactly how a
+friend retells it. The relationship is usually the reason the beat hurts.
+But the roster is the whole truth here too: a relationship it does not list
+is one you do not say, however well you know these characters from elsewhere
+— stay with the name.
+
+**Say what the picture cannot.** Give what is at stake, what it costs, what
+just changed — never a caption of what the viewer is already watching.
+
+**Never narrate `sfx`.** Sound effects are drawn into the art (BOOM, SNIKT).
+They are listed so you know they are there — a narrator reading them aloud is
+the mark of an amateur channel.
+
+## The flags
+
+1. **`CONTENT WARNING` means do not linger.** No slow pans, no long holds.
+2. **`READING ORDER SUSPECT`** means the panel order is unreliable on that page:
    use a `full_page` shot or single panels, never a `pan`.
-6. **`SKIPPABLE`** panels are the first things to cut, though in a short you
+3. **`SKIPPABLE`** panels are the first things to cut, though in a short you
    will cut far more than those.
 
 ## Shots
@@ -141,11 +170,11 @@ shot is `"narration": ""` plus `"silent_seconds": 2` — a held image, no voice.
 One of these on the final shot is a strong way to leave a question hanging.
 Every shot that *has* narration must set `"silent_seconds": null`.
 
-**`speaker` names whose line it is.** When a shot's narration is one
-character's spoken line (quoted or voiced as them), set `speaker` to that
-character's id from the roster — the video shows their face and name in a
-small tag, so the viewer can follow who talks. Narrator voice, description,
-or several characters in one breath: `"speaker": null`. Only roster ids.
+**`speaker` marks the rare direct quote.** When a shot's narration *is* a
+character's own words (see The voice — once or twice at most), set `speaker`
+to that character's id from the roster: the video shows their face and name in
+a small tag while the line is spoken. The teller's narration — nearly every
+shot — is `"speaker": null`. Only roster ids.
 
 ## Output
 
@@ -163,12 +192,12 @@ Return **only** this JSON — no prose before or after, no markdown fence:
   "shots": [
     {
       "source": {"kind": "panel", "page": 12, "panel": 1},
-      "narration": "She had one shot at this, and she just dropped it.",
+      "narration": "Harley had one shot at this, and she just dropped it.",
       "animation": "punch_in",
       "animation_target": "focal_point",
       "transition_in": "none",
       "silent_seconds": null,
-      "speaker": "harley_quinn",
+      "speaker": null,
       "events": [{"type": "shockwave", "at_fraction": 0.3}],
       "why": "hook — intensity 5, the worst moment in the book, cold open"
     },

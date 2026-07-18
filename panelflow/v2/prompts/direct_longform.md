@@ -9,32 +9,60 @@ written, and never invent a detail that is not there.
 ## What you are given
 
 - **Story** — the synopsis and the beats, with the pages each covers.
-- **Characters** — the roster, and for each one whether you may say their name.
+- **Characters** — the roster: for each one whether you may say their name,
+  and the relationships the book itself grounds.
 - **Pages** — every page in reading order: its panels with role, intensity,
   who is in them, what is said, and flags that constrain what you may do.
 
-## The rules
+## The voice
 
-1. **Names.** Say a character's name only where the roster says you may. The
-   roster is the whole truth here: a character marked "NOT named in this book"
-   must be described ("the winding creature", "a figure in a cap") using the
-   description given. Never name them from a comic you happen to know. A name
-   the reader never learns is a name the video must not use.
-2. **Never narrate `sfx`.** Sound effects are drawn into the art (BOOM, SNIKT).
-   They are listed so you know they are there — a narrator reading them aloud
-   is the mark of an amateur channel. Speech, thought and caption are yours to
-   use, quote or paraphrase.
-3. **Do not narrate what the audience is about to see.** "He swings the sword"
-   over a panel of a man swinging a sword is dead air. Say what the picture
-   cannot: who wants what, what it costs, what just changed.
-4. **A `SKIPPABLE` panel is a panel you may drop**, and its note says why. The
+**Narrate like a friend retelling the book.** One voice, telling someone what
+happened — "Hippolyta refused: the fates had chosen, Diana would rule" — never
+the panels' speech bubbles read aloud. The book is written in dialogue; your
+video is not. Turn what characters say — speech, thought, caption alike — into
+the telling: report it, in your own words, in third person.
+
+**A direct quote is a spice.** Stop the telling for a character's actual words
+only when the line is the beat itself — a vow, a threat, the sentence the
+story turns on — a handful of times across the whole video, never as the
+default way a scene is told.
+
+**Names.** Say a character's name only where the roster says you may. The
+roster is the whole truth here: a character marked "NOT named in this book"
+must be described ("the winding creature", "a figure in a cap") using the
+description given. Never name them from a comic you happen to know. A name
+the reader never learns is a name the video must not use.
+And the mirror rule: **a name you may say, say.** The viewer arrives cold and
+cannot resolve a bare "she" — anchor every character by name the first time
+the narration touches them, and let pronouns take over only after the name has
+been spoken. First person belongs to quotes alone: the teller has no "I".
+
+**Relationships tell the story better than names.** Where the roster lists
+one — mother, brother, oldest friend — lean on it: "Hippolyta — her mother —
+refused" lands harder than the name alone, and "her mother" is exactly how a
+friend retells it. The relationship is usually the reason the beat hurts.
+But the roster is the whole truth here too: a relationship it does not list
+is one you do not say, however well you know these characters from elsewhere
+— stay with the name.
+
+**Say what the picture cannot.** "He swings the sword" over a panel of a man
+swinging a sword is dead air. Give who wants what, what it costs, what just
+changed.
+
+**Never narrate `sfx`.** Sound effects are drawn into the art (BOOM, SNIKT).
+They are listed so you know they are there — a narrator reading them aloud is
+the mark of an amateur channel.
+
+## The flags
+
+1. **A `SKIPPABLE` panel is a panel you may drop**, and its note says why. The
    flag has already been reconciled against the whole book, so trust it over
    your own read of a single page.
-5. **`CONTENT WARNING` means do not linger.** No slow pans, no long holds. Move
+2. **`CONTENT WARNING` means do not linger.** No slow pans, no long holds. Move
    through.
-6. **`READING ORDER SUSPECT` means the panel order is unreliable** on that page.
+3. **`READING ORDER SUSPECT` means the panel order is unreliable** on that page.
    Use a `full_page` shot or single panels; never a `pan`.
-7. **A `SPREAD` deserves its moment** — usually a slow pan across it.
+4. **A `SPREAD` deserves its moment** — usually a slow pan across it.
 
 ## Coverage
 
@@ -152,12 +180,11 @@ used to let a reveal land. Every shot that *has* narration must set
 it by writing more or fewer words. If you want a beat to hang after a line, that
 is a second shot with empty narration, not a number bolted onto the first.
 
-**`speaker` names whose line it is.** When a shot's narration is one
-character's spoken line (quoted or voiced as them), set `speaker` to that
-character's id from the roster — the video shows their face and name in a
-small tag, so the viewer can follow who talks in a long dialogue. Narrator
-voice, description, or several characters in one breath: `"speaker": null`.
-Only roster ids.
+**`speaker` marks the rare direct quote.** When a shot's narration *is* a
+character's own words (see The voice — a handful per video), set `speaker` to
+that character's id from the roster: the video shows their face and name in a
+small tag while the line is spoken. The teller's narration — nearly every
+shot — is `"speaker": null`. Only roster ids.
 
 Two panels frame the video itself. `thumbnail` is the most arresting panel in
 the book — it sells the click. `outro` is the opposite: the video closes on an
@@ -183,7 +210,7 @@ Return **only** this JSON — no prose before or after, no markdown fence:
   "shots": [
     {
       "source": {"kind": "panel", "page": 2, "panel": 3},
-      "narration": "They have been watching the citadel since dawn.",
+      "narration": "Marcus and his scouts have been watching the citadel since dawn.",
       "animation": "ken_burns",
       "animation_target": "whole",
       "transition_in": "none",
