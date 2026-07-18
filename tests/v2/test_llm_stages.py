@@ -35,7 +35,7 @@ def stub_llm(monkeypatch):
     seen = {}
 
     def install(page=None, reconcile_result=None, story=None):
-        def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None):
+        def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None, label=None):
             if "analyse one comic page" in system_prompt:
                 seen["page_prompt"] = user_prompt
                 return copy.deepcopy(page if page is not None else PAGE_RESPONSE)
@@ -454,7 +454,7 @@ def _stub_both(monkeypatch, matches=None, match_raises=False):
     """Page analysis and the dialogue match come through the same ask_json."""
     seen = {}
 
-    def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None):
+    def fake(system_prompt, user_prompt, schema=None, image_path=None, model=None, label=None):
         if "match a comic page's dialogue" in system_prompt:
             if match_raises:
                 raise RuntimeError("TTT down")

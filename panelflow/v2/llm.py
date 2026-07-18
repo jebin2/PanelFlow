@@ -17,9 +17,11 @@ from . import prompts, providers
 RETRIES = 3
 
 
-def ask_json(system_prompt, user_prompt, schema=None, image_path=None, model=None):
+def ask_json(system_prompt, user_prompt, schema=None, image_path=None, model=None, label=None):
     """One stateless JSON call. Vision work (image_path) goes to the vision
-    provider, everything else to the text provider. Raises after RETRIES."""
+    provider, everything else to the text provider. `label` is a human name for
+    what is being processed, shown in the provider's progress line. Raises after
+    RETRIES."""
     provider = providers.vision() if image_path else providers.text()
     last_error = None
 
@@ -31,6 +33,7 @@ def ask_json(system_prompt, user_prompt, schema=None, image_path=None, model=Non
                 image_path=image_path,
                 schema=schema,
                 model=model,
+                label=label,
             )
             try:
                 return _parse(raw)
@@ -58,6 +61,7 @@ def reshape(system_prompt, answer):
             f"INSTRUCTIONS THE ANALYST WAS GIVEN\n{'=' * 40}\n{system_prompt}\n\n"
             f"THE ANSWER THEY WROTE\n{'=' * 40}\n{answer}"
         ),
+        label="reshaping to JSON",
     )
     return _parse(raw)
 

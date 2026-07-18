@@ -30,6 +30,7 @@ def run(assets, model=None):
         ]),
         schema=schemas.STORY,
         model=model,
+        label="synthesizing the story",
     )
 
     known_ids = roster.ids(characters)

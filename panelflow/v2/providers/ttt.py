@@ -22,9 +22,9 @@ POLL_SECONDS = 3
 TIMEOUT_SECONDS = 900
 
 
-def generate(system_prompt, user_prompt, model=None, **_):
+def generate(system_prompt, user_prompt, model=None, label=None, **_):
     task_id = _submit(system_prompt, user_prompt, model or MODEL)
-    return _await_result(task_id)
+    return _await_result(task_id, label)
 
 
 def _submit(system_prompt, user_prompt, model):
@@ -38,7 +38,8 @@ def _submit(system_prompt, user_prompt, model):
     return response.json()["id"]
 
 
-def _await_result(task_id):
+def _await_result(task_id, label=None):
+    prefix = f"{label} — " if label else ""
     deadline = time.monotonic() + TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         time.sleep(POLL_SECONDS)
@@ -48,7 +49,7 @@ def _await_result(task_id):
             return _unwrap(task.get("result"))
         if status == "failed":
             raise RuntimeError(f"TTT task failed: {task.get('error')}")
-        logger_config.info(f"TTT {status}…", overwrite=True)
+        logger_config.info(f"{prefix}TTT {status}…", overwrite=True)
     raise TimeoutError(f"TTT task {task_id} timed out after {TIMEOUT_SECONDS}s")
 
 

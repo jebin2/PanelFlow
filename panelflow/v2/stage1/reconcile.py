@@ -37,6 +37,7 @@ def run(assets, model=None):
         ]),
         schema=schemas.RECONCILE,
         model=model,
+        label="reconciling characters",
     )
 
     merge_map = roster.apply_merges(characters, result.get("merges", []))
