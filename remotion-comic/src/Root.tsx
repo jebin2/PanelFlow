@@ -82,7 +82,9 @@ const ComicVideoComp: React.FC<{ manifest: ComicManifest }> = ({ manifest }) => 
         </Sequence>
       )}
       <Sequence from={intro} layout="none">
-        <PanelSequences panels={manifest.panels} fps={manifest.fps} />
+        {/* A music track carries the event/transition hits baked in (hits.py);
+            the static SFX are the fallback for a video whose score failed. */}
+        <PanelSequences panels={manifest.panels} fps={manifest.fps} muteSfx={!!manifest.music?.src} />
       </Sequence>
       {outro > 0 && (
         <Sequence from={intro + panelFrames} durationInFrames={outro} layout="none">

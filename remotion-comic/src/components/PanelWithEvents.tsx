@@ -11,6 +11,8 @@ import { getAnimationProps } from "remotion-animation-kit";
 interface Props {
   panel: PanelData;
   fps: number;
+  /** True when a music track plays: its baked-in hits replace the static SFX. */
+  muteSfx?: boolean;
 }
 
 const EVENT_SFX: Partial<Record<PanelEvent["type"], { file: string; volume: number }>> = {
@@ -56,7 +58,7 @@ const SpeedLines: React.FC<{ opacity: number; origin: [number, number] }> = ({ o
   );
 };
 
-export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
+export const PanelWithEvents: React.FC<Props> = ({ panel, fps, muteSfx }) => {
   const frame = useCurrentFrame();
   // Same kinetic word everywhere; landscape sits it at the bottom edge so it
   // stays off the artwork, portrait keeps the kit's default height.
@@ -253,7 +255,7 @@ export const PanelWithEvents: React.FC<Props> = ({ panel, fps }) => {
         />
       )}
       {events.map((event, i) => {
-        const sfxInfo = EVENT_SFX[event.type];
+        const sfxInfo = muteSfx ? undefined : EVENT_SFX[event.type];
         if (!sfxInfo) return null;
         const startFrame = Math.round(event.startSeconds * fps);
         const durFrames = Math.max(1, Math.round(event.durationSeconds * fps));

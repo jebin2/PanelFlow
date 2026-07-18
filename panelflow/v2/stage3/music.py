@@ -7,6 +7,10 @@ densely it is narrated — and it is measured here, in code. Turning that shape
 into music is judgement, so a model writes the pattern; a tool (strudel-render)
 renders the pattern to audio.
 
+The track also carries the video's punctuation: the director's events and
+transitions become percussive hits stacked over the model's bed (see hits.py).
+Placement is arithmetic and the palette is fixed, so that layer is code too.
+
 Music is an enhancement, never a gate: if the model writes a pattern that will
 not render, or renders silent, the video ships without music rather than not at
 all. A broken score must not cost a video.
@@ -20,6 +24,7 @@ import subprocess
 from custom_logger import logger_config
 
 from .. import jsonio, llm, prompts
+from . import hits
 from .render import REMOTION_DIR
 
 # The track's clock. One cycle = 2s at 0.5; section lengths are cycles rounded
@@ -33,7 +38,7 @@ BED_VOLUME = 0.3
 MUSIC_LUFS = -18
 # Salted into the cache fingerprint: bump when the composer prompt or palette
 # changes enough that cached tracks should be rewritten.
-COMPOSER_VERSION = 6
+COMPOSER_VERSION = 7
 MIN_SECTION_CYCLES = 1
 # A musical phrase, not a shot: a section shorter than this cannot state a
 # progression, and stitching short sections is what made the score stutter.
@@ -54,21 +59,22 @@ def run(assets, target, direction, manifest, model=None):
     ({"src", "volume"}), or {} when there is nothing to score or scoring failed.
     """
     mood = ((direction.get("music") or {}).get("mood") or "").strip()
-    sections = _sections(assets, direction, manifest,
-                         bookends=BOOKEND_SECONDS.get(target, (0.0, 0.0)))
+    bookends = BOOKEND_SECONDS.get(target, (0.0, 0.0))
+    sections = _sections(assets, direction, manifest, bookends=bookends)
     total_cycles = sum(s["cycles"] for s in sections)
     if not mood or not total_cycles:
         return {}
 
+    punctuation = hits.timeline(manifest, lead_seconds=bookends[0])
     out = assets.music_path(target)
-    fingerprint = _fingerprint(mood, sections)
+    fingerprint = _fingerprint(mood, sections, punctuation)
     if os.path.exists(out) and _meta(assets, target).get("fingerprint") == fingerprint:
         logger_config.info(f"3.3 {target}: music unchanged, keeping {os.path.basename(out)}")
         return _ref(assets, out)
 
     for attempt in range(1, COMPOSE_ATTEMPTS + 1):
         try:
-            pattern = _compose(mood, sections, total_cycles, model)
+            pattern = _score(mood, sections, total_cycles, punctuation, model)
             _render(pattern, out, total_cycles)
             _write_meta(assets, target, fingerprint, pattern)
             logger_config.info(
@@ -168,6 +174,15 @@ def _band(intensity):
 
 # --------------------------------------------------------------- composition
 
+def _score(mood, sections, total_cycles, punctuation, model):
+    """The model's bed with the code-built hit layers stacked over it."""
+    bed = _compose(mood, sections, total_cycles, model)
+    layers = hits.layers(punctuation, total_cycles, CPS)
+    if not layers:
+        return bed
+    return "stack(" + ", ".join([bed] + layers) + ")"
+
+
 def _compose(mood, sections, total_cycles, model):
     result = llm.ask_json(
         system_prompt=prompts.load("compose_music"),
@@ -207,9 +222,23 @@ def _render(pattern, out, total_cycles):
         ["node", _CLI], input=json.dumps(options),
         text=True, capture_output=True, cwd=REMOTION_DIR)
     if result.returncode != 0:
+        _dump_failed(pattern, out)
         raise RuntimeError(f"strudel-render failed: {result.stderr.strip() or result.stdout.strip()}")
     if _mean_volume(out) <= SILENCE_DB:
+        _dump_failed(pattern, out)
         raise ValueError("rendered track is silent")
+
+
+def _dump_failed(pattern, out):
+    """A pattern that would not render is the whole postmortem — keep it.
+
+    Without this, a composer SyntaxError points at a character offset in a
+    string nobody ever saw.
+    """
+    path = out + ".failed.js"
+    with open(path, "w") as f:
+        f.write(pattern)
+    logger_config.warning(f"3.3: failing pattern kept at {path}")
 
 
 def _chromium():
@@ -236,9 +265,10 @@ def _ref(assets, out):
     return {"src": assets.rel_to_book(out), "volume": BED_VOLUME}
 
 
-def _fingerprint(mood, sections):
+def _fingerprint(mood, sections, punctuation):
     payload = json.dumps([COMPOSER_VERSION, mood,
-                          [(s["cycles"], s["band"], s["narration"]) for s in sections]],
+                          [(s["cycles"], s["band"], s["narration"]) for s in sections],
+                          [(round(seconds, 2), kind) for seconds, kind in punctuation]],
                          sort_keys=True)
     return hashlib.md5(payload.encode("utf-8")).hexdigest()
 

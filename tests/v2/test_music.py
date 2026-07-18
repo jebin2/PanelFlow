@@ -148,7 +148,7 @@ def scored(monkeypatch):
 def _book(tmp_path):
     assets = _Assets(tmp_path, PAGES)
     direction = {"music": {"mood": "tense"}, "shots": [_panel_shot(2)]}
-    manifest = {"panels": [{"narrationText": "hi", "durationInSeconds": 6}]}
+    manifest = {"fps": 24, "panels": [{"narrationText": "hi", "durationInSeconds": 6}]}
     return assets, direction, manifest
 
 
@@ -171,6 +171,20 @@ def test_a_scored_video_gets_a_music_ref_and_is_cached(tmp_path, scored):
     assert scored["compose"] == 1 and scored["render"] == 1     # not recomposed
 
 
+def test_hits_are_stacked_over_the_bed(tmp_path, scored):
+    """A manifest with an event renders as stack(bed, hit layer), and the
+    rendered pattern is what the meta records."""
+    assets, direction, manifest = _book(tmp_path)
+    manifest["panels"][0]["events"] = [{"type": "tremble", "startSeconds": 1.0}]
+
+    music.run(assets, "shorts", direction, manifest)
+
+    with open(os.path.join(assets.target_dir("shorts"), "music.json")) as f:
+        pattern = json.load(f)["pattern"]
+    assert pattern.startswith("stack(arrange(")
+    assert "gm_timpani" in pattern
+
+
 def test_a_failed_render_costs_no_video(tmp_path, monkeypatch):
     assets, direction, manifest = _book(tmp_path)
     monkeypatch.setattr(music.llm, "ask_json",
@@ -179,6 +193,8 @@ def test_a_failed_render_costs_no_video(tmp_path, monkeypatch):
                         lambda *a, **k: types.SimpleNamespace(returncode=1, stderr="boom", stdout=""))
 
     assert music.run(assets, "shorts", direction, manifest) == {}   # skipped, not raised
+    # ...but the pattern that failed is kept for the postmortem.
+    assert os.path.exists(assets.music_path("shorts") + ".failed.js")
 
 
 def test_a_silent_render_is_rejected(tmp_path, monkeypatch):

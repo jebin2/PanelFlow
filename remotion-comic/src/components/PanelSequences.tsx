@@ -75,9 +75,11 @@ export function narratedWindows(panels: PanelData[], fps: number): { start: numb
 interface Props {
   panels: PanelData[];
   fps: number;
+  /** True when a music track plays: its baked-in hits replace the static SFX. */
+  muteSfx?: boolean;
 }
 
-export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
+export const PanelSequences: React.FC<Props> = ({ panels, fps, muteSfx }) => {
   // Calculate the absolute start frame of each panel in the composition.
   // Each panel contributes (durationInFrames - TRANSITION_FRAMES) to the
   // cursor, except the first which contributes its full duration.
@@ -106,7 +108,7 @@ export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
                 />
               )}
               <TransitionSeries.Sequence durationInFrames={durationInFrames}>
-                <PanelWithEvents panel={panel} fps={fps} />
+                <PanelWithEvents panel={panel} fps={fps} muteSfx={muteSfx} />
               </TransitionSeries.Sequence>
             </React.Fragment>
           );
@@ -116,7 +118,7 @@ export const PanelSequences: React.FC<Props> = ({ panels, fps }) => {
       {/* Transition SFX — placed outside TransitionSeries at absolute frame positions
           to avoid audio quirks inside TransitionSeries.Sequence */}
       {panels.map((panel, i) => {
-        if (i === 0) return null;
+        if (muteSfx || i === 0) return null;
         const transition = effectiveTransition(panels, i, fps);
         const sfxInfo = TRANSITION_SFX[transition];
         if (!sfxInfo) return null;

@@ -15,6 +15,10 @@ silence, and a name that does not exist fails silently.
   length in **cycles**, its **intensity** (`calm`, `rising`, or `intense`), and
   whether the narration over it is **heavy** or **sparse**.
 
+A percussive hit layer — the video's flashes, tremors and scene changes — is
+stacked over your pattern afterwards, by code. Compose the bed and its arc;
+do not try to sound-effect moments you cannot see.
+
 ## The one hard rule
 
 Return an `arrange(...)` whose section lengths are **exactly** the cycle counts
