@@ -49,6 +49,18 @@ optimise away.
 Length is not budgeted. Let the story decide how long it needs, and pad
 nothing: a book that earns four minutes should not be stretched to eight.
 
+Find length in *coverage*, not in dwelling. Keep the narration exactly as it
+is — one vivid, punchy line per shot; do not lengthen a shot by piling
+sentences onto it, because a viewer tires of a single image the longer a voice
+holds them on it. Instead, tell the story in **more shots**. A page is rarely
+one beat: a look, the thing looked at, the reply, the turn are four moments,
+and each earns its own shot with its own line rather than being compressed into
+one. Cut the book finer — move to a fresh panel as often as the story gives you
+a new beat — and the film grows longer the right way, through variety and
+momentum, never by making anyone stare. A book this size wants dozens of shots
+across its pages, not one caption per page: forty shots is a summary, and a
+richer telling is closer to sixty or more.
+
 ## Shots
 
 Each shot names its source:
