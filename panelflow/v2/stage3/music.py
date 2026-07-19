@@ -45,7 +45,9 @@ MIN_SECTION_CYCLES = 1
 MIN_SECTION_SECONDS = 16
 # A silent render is a failed score, not a valid quiet one.
 SILENCE_DB = -60.0
-COMPOSE_ATTEMPTS = 2
+# Three, not two: the syntax pre-flight makes a bad pattern cost milliseconds
+# instead of a browser launch, so a retry is cheap enough to afford one more.
+COMPOSE_ATTEMPTS = 3
 # The renderer's bookends (Root.tsx): the music plays from frame 0 and under
 # the end card, so the score must cover intro + shots + outro. Seconds, per
 # target — longform's CinematicIntro/EndCard, shorts' TitleCard.
@@ -75,6 +77,7 @@ def run(assets, target, direction, manifest, model=None):
     for attempt in range(1, COMPOSE_ATTEMPTS + 1):
         try:
             pattern = _score(mood, sections, total_cycles, punctuation, model)
+            _check_syntax(pattern, out)
             _render(pattern, out, total_cycles)
             _write_meta(assets, target, fingerprint, pattern)
             logger_config.info(
@@ -205,6 +208,24 @@ def _prompt(mood, sections, total_cycles):
         f'TOTAL\n{"=" * 40}\n{total_cycles} cycles ({total_cycles / CPS:.0f} seconds)\n\n'
         f'SECTIONS — in order, lengths in cycles\n{"=" * 40}\n{lines}'
     )
+
+
+def _check_syntax(pattern, out):
+    """Parse the composer's pattern with Node before paying for a render.
+
+    The composer's most common failure is a dropped bracket in arrange(), and
+    strudel-render only reports it after a full browser launch. The same parser
+    that will judge the pattern later judges it here, in milliseconds, so a
+    broken attempt retries immediately instead of burning the render budget.
+    """
+    result = subprocess.run(
+        ["node", "-e", "new Function(require('fs').readFileSync(0, 'utf8'))"],
+        input=pattern, text=True, capture_output=True)
+    if result.returncode != 0:
+        _dump_failed(pattern, out)
+        error = next((line for line in result.stderr.splitlines()
+                      if "SyntaxError" in line), result.stderr.strip())
+        raise ValueError(f"composer wrote a pattern that does not parse: {error}")
 
 
 def _render(pattern, out, total_cycles):

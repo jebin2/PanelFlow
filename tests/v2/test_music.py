@@ -141,6 +141,7 @@ def scored(monkeypatch):
 
     monkeypatch.setattr(music.llm, "ask_json", fake_ask_json)
     monkeypatch.setattr(music.subprocess, "run", fake_run)
+    monkeypatch.setattr(music, "_check_syntax", lambda *a: None)
     monkeypatch.setattr(music, "_mean_volume", lambda path: -20.0)
     return calls
 
@@ -189,6 +190,7 @@ def test_a_failed_render_costs_no_video(tmp_path, monkeypatch):
     assets, direction, manifest = _book(tmp_path)
     monkeypatch.setattr(music.llm, "ask_json",
                         lambda **kw: {"pattern": "note(\"c2\").s(\"sawtooth\")"})
+    monkeypatch.setattr(music, "_check_syntax", lambda *a: None)
     monkeypatch.setattr(music.subprocess, "run",
                         lambda *a, **k: types.SimpleNamespace(returncode=1, stderr="boom", stdout=""))
 
@@ -197,9 +199,28 @@ def test_a_failed_render_costs_no_video(tmp_path, monkeypatch):
     assert os.path.exists(assets.music_path("shorts") + ".failed.js")
 
 
+def test_a_dropped_bracket_is_caught_before_the_render(tmp_path):
+    """The Wonder Woman failure: arrange() sections missing their closing
+    brackets. Node's parser rejects it here, in milliseconds, and the pattern
+    is kept for the postmortem."""
+    out = str(tmp_path / "music.mp3")
+    broken = 'arrange([15, stack(note("c1")), [16, stack(note("c2"))])'
+
+    with pytest.raises(ValueError, match="does not parse"):
+        music._check_syntax(broken, out)
+    assert os.path.exists(out + ".failed.js")
+
+
+def test_a_pattern_that_parses_passes_the_check(tmp_path):
+    out = str(tmp_path / "music.mp3")
+    music._check_syntax('stack(arrange([2, note("c1").s("gm_cello")]))', out)
+    assert not os.path.exists(out + ".failed.js")
+
+
 def test_a_silent_render_is_rejected(tmp_path, monkeypatch):
     assets, direction, manifest = _book(tmp_path)
     monkeypatch.setattr(music.llm, "ask_json", lambda **kw: {"pattern": "silence"})
+    monkeypatch.setattr(music, "_check_syntax", lambda *a: None)
     monkeypatch.setattr(music.subprocess, "run",
                         lambda cmd, input=None, **k: (open(json.loads(input)["out"], "w").close(),
                                                       types.SimpleNamespace(returncode=0, stderr="", stdout=""))[1])
