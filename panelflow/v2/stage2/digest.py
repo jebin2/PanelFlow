@@ -19,8 +19,7 @@ def roster_text(characters):
     only the unnamed — carry their visual, which is what the narration has to
     reach for instead of a name.
     """
-    names = {c["id"]: _sayable_name(c) or c["id"]
-             for c in characters.get("characters", [])}
+    by_id = {c["id"]: c for c in characters.get("characters", [])}
     lines = []
     for c in characters.get("characters", []):
         role = c.get("role_in_story") or "role unknown"
@@ -33,10 +32,31 @@ def roster_text(characters):
                     f"never invent a name | looks like: {visual} | {role}")
         # 1.4 grounded these in the book's own text, so the narration may say
         # them; a relationship absent here must not be spoken.
-        rel = ", ".join(f'{r["relation"]} of {names.get(r["to_id"], r["to_id"])}'
-                        for r in c.get("relationships") or [])
+        rel = ", ".join(filter(None, (_relationship_text(r, by_id)
+                                      for r in c.get("relationships") or [])))
         lines.append(line + (f" | {rel}" if rel else ""))
     return "\n".join(lines) or "(no characters)"
+
+
+def _relationship_text(relationship, by_id):
+    """One relationship, naming the other character only if it may be named.
+
+    The naming rule binds here too, and it used to leak: the other end of a
+    relationship was printed as its roster id, so an unnamed character came out
+    as "sister of impostor_batwoman" — an internal token offered to the director
+    exactly where a name belongs. The relation itself is worth keeping (it is
+    often why the beat lands), so it stays, pointed at the roster entry that
+    says how to describe them.
+    """
+    other = by_id.get(relationship.get("to_id"))
+    if not other:
+        return ""          # 1.4 filters these, but a name we cannot resolve is
+                           # a relationship the director cannot say anything about
+    name = _sayable_name(other)
+    if name:
+        return f'{relationship["relation"]} of {name}'
+    return (f'{relationship["relation"]} of the unnamed character on this roster '
+            f'with id {other["id"]} — describe them, never say that id')
 
 
 def _sayable_name(character):

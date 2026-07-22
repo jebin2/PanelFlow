@@ -489,6 +489,49 @@ def test_a_grounded_relationship_reaches_the_director(ready_book):
     assert "relationships" not in lines["wolverine"]     # none recorded, none shown
 
 
+def test_a_relationship_to_an_unnamed_character_offers_no_id_to_say(ready_book):
+    """Batwoman #5: "sister of impostor_batwoman" put an internal token exactly
+    where a name goes, for a character the roster forbids naming. The relation
+    survives — it is usually why the beat lands — but not as a name."""
+    characters = ready_book.load_characters()
+    characters["characters"].append({
+        "id": "masked_twin", "named_in_story": False, "role_in_story": "supporting",
+        "visual": "a woman in a cracked cowl",
+    })
+    characters["characters"].append({
+        "id": "kayla", "name": "Kayla", "named_in_story": True,
+        "role_in_story": "supporting",
+        "relationships": [{"to_id": "masked_twin", "relation": "sister",
+                           "evidence": "p7: 'my sister'"}],
+    })
+    ready_book.save_characters(characters)
+
+    lines = {line.split(" |")[0].lstrip("- "): line
+             for line in digest.roster_text(characters).splitlines()}
+
+    assert "sister of masked_twin" not in lines["kayla"]
+    assert "sister of the unnamed character" in lines["kayla"]
+    assert "never say that id" in lines["kayla"]
+
+
+def test_a_relationship_pointing_nowhere_is_dropped(ready_book):
+    """A target that is not on the roster cannot be named or described, so
+    there is nothing the director could do with the relation."""
+    characters = ready_book.load_characters()
+    characters["characters"].append({
+        "id": "kayla", "name": "Kayla", "named_in_story": True,
+        "role_in_story": "supporting",
+        "relationships": [{"to_id": "ghost", "relation": "daughter", "evidence": "p1"}],
+    })
+    ready_book.save_characters(characters)
+
+    lines = {line.split(" |")[0].lstrip("- "): line
+             for line in digest.roster_text(characters).splitlines()}
+
+    assert "daughter" not in lines["kayla"]
+    assert "ghost" not in lines["kayla"]
+
+
 # ------------------------------------------------- the teller's register
 
 def test_a_voice_defect_becomes_a_local_problem(ready_book, directed, monkeypatch):
