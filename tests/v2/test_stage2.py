@@ -436,6 +436,20 @@ def test_shot_ids_are_assigned_here_not_asked_for(ready_book, monkeypatch):
     assert direction["validated"] is False      # 2.3 owns that flag
 
 
+def test_a_director_that_named_no_shots_saves_nothing(ready_book, monkeypatch):
+    """Batwoman #5: the call came back without shots, an empty direction was
+    saved as if it were real, and the run only died in 2.3 — after paying for
+    the other target — complaining that 2.1 had never run. A failed call fails
+    here, and leaves no file behind to lie about it."""
+    monkeypatch.setattr(direct.llm, "ask_json", lambda **kw: {"meta": {"title": "x"}})
+
+    with pytest.raises(ValueError, match="returned no shots"):
+        direct.run(ready_book, "longform")
+
+    assert ready_book.load_direction("longform") == {}
+    assert not direct.is_done(ready_book, "longform")
+
+
 def test_both_targets_read_the_same_book_and_differ_only_in_prompt(ready_book, monkeypatch):
     """The philosophies are opposed, and all of that lives in the system prompt:
     one call cannot cover a story evenly and cut it to the bone at once."""

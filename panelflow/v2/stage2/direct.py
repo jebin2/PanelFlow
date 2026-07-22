@@ -49,7 +49,17 @@ def run(assets, target, model=None):
         label=f"directing {target}",
     )
 
-    assets.save_direction(target, _assemble(result, target, model))
+    direction = _assemble(result, target, model)
+    # A director that named no shots did not direct: the call came back empty or
+    # shaped wrong. Saving that would persist a failure as an artifact — the run
+    # would keep going, spend the other target's call, and only die in 2.3 with
+    # "run 2.1/2.2 first", which is the wrong story about the wrong sub-stage.
+    if not direction["shots"]:
+        raise ValueError(
+            f"directing {target}: the model returned no shots — nothing was saved. "
+            f"Re-run to ask again.")
+
+    assets.save_direction(target, direction)
     return []
 
 
