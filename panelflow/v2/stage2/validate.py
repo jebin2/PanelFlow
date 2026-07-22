@@ -23,7 +23,7 @@ import re
 
 from custom_logger import logger_config
 
-from .. import llm, prompts
+from .. import llm, motion, prompts
 from ..paths import ANALYZED
 from . import normalize, schemas
 
@@ -90,6 +90,7 @@ def check(assets, direction, model=None):
     problems += _check_ids(shots)
     problems += _check_sources(assets, shots)
     problems += _check_vocabulary(shots)
+    problems += _check_motion_conflicts(shots)
     problems += _check_speakers(assets, shots)
     problems += _check_narration(assets, shots, model)
     problems += _check_meta(assets, direction)
@@ -164,6 +165,27 @@ def _check_vocabulary(shots):
             problems.append(f"{where}: silent shot without silent_seconds")
     if shots and shots[0].get("transition_in") != "none":
         problems.append("shot 1: must open with transition_in 'none'")
+    return problems
+
+
+def _check_motion_conflicts(shots):
+    """A transition the renderer will silently replace with a fade.
+
+    The pairing rule is in both prompts and gets ignored anyway: Batwoman #5's
+    shorts asked for whip_pan, push and wipe and would have played three fades,
+    with the file on disk still claiming otherwise. The conflict is set
+    membership, so it is found here; which half to give up is a taste call about
+    one shot, so it goes to the repair loop rather than being rewritten in code.
+    """
+    problems = []
+    for shot in shots:
+        transition, animation = shot.get("transition_in"), shot.get("animation")
+        if motion.fights(transition, animation):
+            problems.append(
+                f'shot {shot.get("id")}: transition {transition!r} fights animation '
+                f'{animation!r} and the renderer will play a fade instead — either '
+                f"use a transition that survives ({', '.join(sorted(motion.NEUTRAL - {'none'}))}) "
+                f"or an animation that does not enter under its own motion")
     return problems
 
 

@@ -236,6 +236,37 @@ def test_longform_may_skip_pages_but_not_beats(ready_book, directed):
     assert any("has no shot" in p and "climax" in p for p in problems)
 
 
+def test_a_transition_the_renderer_would_downgrade_is_caught(ready_book, directed):
+    """Batwoman #5's shorts asked for whip_pan over whip_right and would have
+    played a fade, with the file on disk still claiming whip_pan."""
+    direction = directed(shots=[
+        {"source": {"kind": "panel", "page": 1, "panel": 1}, "narration": "One.",
+         "animation": "ken_burns", "animation_target": "whole", "transition_in": "none",
+         "silent_seconds": None, "speaker": None, "events": []},
+        {"source": {"kind": "panel", "page": 1, "panel": 1}, "narration": "Two.",
+         "animation": "whip_right", "animation_target": "whole", "transition_in": "whip_pan",
+         "silent_seconds": None, "speaker": None, "events": []},
+    ])
+
+    problems = validate.check(ready_book, direction)
+
+    assert any("fights animation" in p and "shot 2" in p for p in problems)
+
+
+def test_a_transition_that_survives_is_left_alone(ready_book, directed):
+    """toss is neutral, so it plays over a directional animation untouched."""
+    direction = directed(shots=[
+        {"source": {"kind": "panel", "page": 1, "panel": 1}, "narration": "One.",
+         "animation": "ken_burns", "animation_target": "whole", "transition_in": "none",
+         "silent_seconds": None, "speaker": None, "events": []},
+        {"source": {"kind": "panel", "page": 1, "panel": 1}, "narration": "Two.",
+         "animation": "whip_right", "animation_target": "whole", "transition_in": "toss",
+         "silent_seconds": None, "speaker": None, "events": []},
+    ])
+
+    assert not any("fights animation" in p for p in validate.check(ready_book, direction))
+
+
 def test_the_first_shot_must_not_transition_in(ready_book, directed):
     direction = directed()
     direction["shots"][0]["transition_in"] = "fade"

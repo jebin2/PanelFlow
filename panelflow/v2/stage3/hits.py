@@ -16,6 +16,7 @@ failed plays them exactly as it always did.
 """
 import math
 
+from .. import motion
 from .compile import TRANSITION_FRAMES
 
 # Which director vocabulary earns a hit — mirrors the renderer's old SFX maps
@@ -24,14 +25,6 @@ EVENT_KINDS = {"tremble": "rumble", "rattle": "rumble",
                "flash": "strike", "heartbeat": "heartbeat"}
 TRANSITION_KINDS = {"slide": "whoosh", "wipe": "whoosh",
                     "whip_pan": "whoosh", "push": "whoosh"}
-
-# Must match PanelSequences.tsx: a directional transition over an animation
-# that enters under its own motion is downgraded to a fade, and a fade makes
-# no sound.
-NEUTRAL = {"none", "fade", "toss", "iris", "clock_wipe", "halftone", "barn_door"}
-SELF_ENTRANCING = {"slide_left", "slide_right", "slide_bottom", "slide_top",
-                   "slam_left", "slam_right", "whip_left", "whip_right",
-                   "spin_in", "tilt_in"}
 
 # Each hit is a short figure on consecutive quarter-cycles: the pitches, the
 # GM voice, the level under the bed. `early` starts a hit ahead of its mark —
@@ -90,9 +83,8 @@ def _transition(panels, i, fps):
     previous = math.ceil(panels[i - 1]["durationInSeconds"] * fps)
     if frames < TRANSITION_FRAMES or previous < TRANSITION_FRAMES:
         return "none"
-    if raw not in NEUTRAL and panels[i].get("animation") in SELF_ENTRANCING:
-        return "fade"
-    return raw
+    # A fade makes no sound, so a downgraded transition earns no whoosh.
+    return motion.resolve(raw, panels[i].get("animation"))
 
 
 def layers(hits, total_cycles, cps):
