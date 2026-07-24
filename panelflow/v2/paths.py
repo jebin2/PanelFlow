@@ -76,6 +76,11 @@ class Assets:
     def save_direction(self, target, data):
         jsonio.write(self.direction_path(target), data)
 
+    def expand_cache_path(self, target):
+        """2.4's per-shot segmentations, keyed by narration hash, so a run
+        killed mid-way is resumed for free instead of re-asking every shot."""
+        return os.path.join(self.direction_dir, f"{target}.expand.json")
+
     # ------------------------------------------------------------------ stage 3
 
     def target_dir(self, target):

@@ -22,7 +22,8 @@ from .stage3 import runner as stage3_runner
 # at the prompt instead of silently doing nothing — or worse, in Stage 3, where
 # an unknown id falls past every early return and runs everything.
 ONLY_CHOICES = ([number for number, _, _ in runner.SUB_STAGES]
-                + sorted(stage2_runner.SUB_STAGES) + [stage2_runner.VALIDATE]
+                + sorted(stage2_runner.SUB_STAGES)
+                + [stage2_runner.VALIDATE, stage2_runner.EXPAND]
                 + sorted(stage3_runner.SUB_STAGES))
 
 
