@@ -1,6 +1,6 @@
 """Gemini via gemiwrap. Needs GEMINI_API_KEY; handles both text and vision."""
 from panelflow import config
-from panelflow.pipeline.gemini_config import pre_model_wrapper
+from .gemini_config import pre_model_wrapper
 
 
 def generate(system_prompt, user_prompt, image_path=None, schema=None, model=None, **_):
