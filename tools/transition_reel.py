@@ -17,8 +17,8 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panelflow.v2.stage2.schemas import TRANSITIONS
-from panelflow.v2.stage3.render import REMOTION_DIR
+from panelflow.stage2.schemas import TRANSITIONS
+from panelflow.stage3.render import REMOTION_DIR
 from tools.event_reel import _book
 
 PANEL_SECONDS = 2.5

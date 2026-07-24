@@ -124,7 +124,7 @@ Key properties:
   | events | `remotion-comic/src/types.ts` → `PanelEvent.type` |
 
   `stage2/schemas.py` transcribes those unions into Python, and a transcription
-  rots the moment the kit gains a move — so `tests/v2/test_vocabulary.py` reads
+  rots the moment the kit gains a move — so `tests/test_vocabulary.py` reads
   the real `.ts` files and fails when they disagree, naming what drifted. The
   kit is a github dependency and an actively improving repo; without that test,
   a new animation would silently never reach the director, and a removed one

@@ -22,15 +22,15 @@ already satisfied. Each sub-stage is also exposed individually so a single
 step can be re-run or debugged in isolation without touching the others:
 
 ```bash
-python -m panelflow.v2.cli "<comic_folder>"              # whole of Stage 1
-python -m panelflow.v2.cli "<comic_folder>" --only 1.3   # one sub-stage
-python -m panelflow.v2.cli "<comic_folder>" --model X    # override the LLM
+python -m panelflow.cli "<comic_folder>"              # whole of Stage 1
+python -m panelflow.cli "<comic_folder>" --only 1.3   # one sub-stage
+python -m panelflow.cli "<comic_folder>" --model X    # override the LLM
 ```
 
-Code lives in `panelflow/v2/` (`stage1/` = one module per sub-stage,
+Code lives in `panelflow/` (`stage1/` = one module per sub-stage,
 `paths.py` = the `Assets` accessor, `llm.py` = the only place that talks to a
-model, `prompts/` = prompt text). Tests: `tests/v2/`, runnable with no API
-key or project venv (`python -m pytest tests/v2`).
+model, `prompts/` = prompt text). Tests: `tests/`, runnable with no API
+key or project venv (`python -m pytest tests`).
 
 Design goals:
 

@@ -75,7 +75,7 @@ entirely just means no kinetic subtitles for that shot — the video still plays
 One manifest per target for the whole book (v1's per-page `pageNumber` render
 loop is gone — nothing ever read the field back). All the geometry lives in
 `stage3/geometry.py`, pure functions with no I/O, pinned by
-`tests/v2/test_geometry.py` — a wrong answer there does not raise, it quietly
+`tests/test_geometry.py` — a wrong answer there does not raise, it quietly
 zooms at the wrong spot, and nobody notices until they watch the video.
 
 **Focal points.** Stage 1 recorded `focal_point` as fractions of the *panel*;

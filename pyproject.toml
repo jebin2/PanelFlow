@@ -64,10 +64,10 @@ dependencies = [
 ]
 
 [project.scripts]
-panelflow = "panelflow.v2.batch:main"
+panelflow = "panelflow.batch:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
 
 [tool.setuptools.package-data]
-panelflow = ["v2/prompts/**"]
+panelflow = ["prompts/**"]

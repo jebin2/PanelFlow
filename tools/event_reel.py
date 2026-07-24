@@ -16,9 +16,9 @@ import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from panelflow.v2.stage2.schemas import EVENTS
-from panelflow.v2.stage3.compile import EVENT_SECONDS, EVENT_SECONDS_BY_TYPE
-from panelflow.v2.stage3.render import REMOTION_DIR
+from panelflow.stage2.schemas import EVENTS
+from panelflow.stage3.compile import EVENT_SECONDS, EVENT_SECONDS_BY_TYPE
+from panelflow.stage3.render import REMOTION_DIR
 
 PANEL_SECONDS = 2.5
 BOOKS = os.path.join(os.path.dirname(REMOTION_DIR), "content_to_be_processed")

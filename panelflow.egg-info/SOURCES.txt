@@ -46,6 +46,7 @@ panelflow/v2/prompts/__init__.py
 panelflow/v2/providers/__init__.py
 panelflow/v2/providers/browser_ui.py
 panelflow/v2/providers/gemini.py
+panelflow/v2/providers/ocr.py
 panelflow/v2/providers/ttt.py
 panelflow/v2/stage1/__init__.py
 panelflow/v2/stage1/analyze.py
@@ -63,6 +64,7 @@ tests/v2/conftest.py
 tests/v2/test_browser_ui.py
 tests/v2/test_cli.py
 tests/v2/test_llm_stages.py
+tests/v2/test_ocr.py
 tests/v2/test_ordering.py
 tests/v2/test_providers.py
 tests/v2/test_roster.py
