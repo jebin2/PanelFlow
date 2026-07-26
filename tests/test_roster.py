@@ -81,6 +81,26 @@ def test_add_new_skips_ids_already_in_roster():
     assert guard["first_seen"] == {"page": 4, "panel": 2}
 
 
+def test_a_character_registered_on_a_real_panel_gets_a_crop():
+    chars = _chars()
+    roster.add_new(chars, [{"id": "lucy", "visual": "girl in red", "first_panel": 1}],
+                   page_index=6)
+    lucy = chars["characters"][-1]
+    assert lucy["reference_images"] == ["pages/0006/panels/panel_01.jpg"]
+    assert lucy["first_seen"] == {"page": 6, "panel": 1}
+
+
+def test_a_character_with_no_locatable_panel_gets_no_crop():
+    """first_panel 0 is the analyser's 'named but off-panel' — panels are
+    1-indexed, so panel_00 never exists. No crop beats a crash or a wrong face."""
+    chars = _chars()
+    roster.add_new(chars, [{"id": "elodie", "name": "Elodie", "visual": "a voice",
+                            "first_panel": 0}], page_index=6)
+    elodie = chars["characters"][-1]
+    assert elodie["reference_images"] == []
+    assert elodie["first_seen"] == {"page": 6, "panel": None}
+
+
 def test_updates_reject_a_role_outside_the_enum():
     """Providers without schema enforcement answer freely: opencode returned
     'fugitive pursued by guards' for role_in_story."""

@@ -38,6 +38,13 @@ def add_new(characters, new_entries, page_index):
                 f"1.3 page {page_index}: character {slug!r} registered with no visual "
                 f"description — it cannot be matched on later pages")
         named_by_panel = entry.get("named_by_panel") or 0
+        # Panels are 1-indexed on disk (panel_01.jpg …). first_panel is 0 when
+        # the analyser named a character it could not pin to a drawn panel — one
+        # spoken of, off-panel. That earns no crop: panel_00 never exists, and a
+        # fallback crop would put the wrong face on her. No reference is honest,
+        # and Stage 3 already drops the nametag for a face it does not have.
+        first_panel = entry.get("first_panel", 1)
+        has_panel = isinstance(first_panel, int) and first_panel >= 1
         characters.setdefault("characters", []).append({
             "id": slug,
             "name": entry.get("name") or None,
@@ -45,8 +52,10 @@ def add_new(characters, new_entries, page_index):
             "named_in_story": bool(entry.get("name")),
             "named_by": {"page": page_index, "panel": named_by_panel} if named_by_panel else None,
             "visual": entry.get("visual", ""),
-            "first_seen": {"page": page_index, "panel": entry.get("first_panel", 1)},
-            "reference_images": [f"pages/{page_index:04d}/panels/panel_{entry.get('first_panel', 1):02d}.jpg"],
+            "first_seen": {"page": page_index, "panel": first_panel if has_panel else None},
+            "reference_images": (
+                [f"pages/{page_index:04d}/panels/panel_{first_panel:02d}.jpg"]
+                if has_panel else []),
             "inferred_identity": entry.get("inferred_identity") or None,
             "role_in_story": None,
             "source": "dialogue" if entry.get("name") else "visual-only",
