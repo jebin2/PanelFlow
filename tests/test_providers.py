@@ -30,6 +30,35 @@ def test_unwrap_rejects_an_envelope_with_no_body():
         ttt._unwrap(json.dumps({"model": "qwen3.5:4b"}))
 
 
+# ---------------------------------------------------------------- TTT auth
+
+def test_headers_carry_the_api_key(monkeypatch):
+    monkeypatch.setenv("TTT_API_KEY", "ttt_test_key")
+    assert ttt._headers() == {"X-API-Key": "ttt_test_key"}
+
+
+def test_headers_refuse_to_send_an_unauthenticated_request(monkeypatch):
+    """The service answers 401 without a key, so say why here rather than
+    leave it to be read off a status code from the other end."""
+    monkeypatch.delenv("TTT_API_KEY", raising=False)
+    with pytest.raises(RuntimeError, match="TTT_API_KEY is not set"):
+        ttt._headers()
+
+
+def test_submit_sends_the_key(monkeypatch):
+    monkeypatch.setenv("TTT_API_KEY", "ttt_test_key")
+    sent = {}
+
+    class FakeResponse:
+        def raise_for_status(self): pass
+        def json(self): return {"id": "task-1"}
+
+    monkeypatch.setattr("panelflow.providers.ttt.requests.post",
+                        lambda url, **kwargs: sent.update(kwargs) or FakeResponse())
+    assert ttt._submit("sys", "user", "opencode") == "task-1"
+    assert sent["headers"] == {"X-API-Key": "ttt_test_key"}
+
+
 # ---------------------------------------------------------------- fence stripping
 
 def test_strip_fence_unwraps_json_fences():

@@ -22,6 +22,18 @@ POLL_SECONDS = 3
 TIMEOUT_SECONDS = 900
 
 
+def _headers():
+    """Every /api call is authenticated; the server answers 401 without this.
+    Read at call time, not import time, so a key set after import still counts.
+    """
+    key = os.environ.get("TTT_API_KEY")
+    if not key:
+        raise RuntimeError(
+            "TTT_API_KEY is not set — the TTT service rejects unauthenticated requests"
+        )
+    return {"X-API-Key": key}
+
+
 def generate(system_prompt, user_prompt, model=None, label=None, **_):
     task_id = _submit(system_prompt, user_prompt, model or MODEL)
     return _await_result(task_id, label)
@@ -32,6 +44,7 @@ def _submit(system_prompt, user_prompt, model):
         f"{BASE_URL}/api/tasks/upload",
         json={"text": user_prompt, "system_prompt": system_prompt,
               "model": model, "hide_from_ui": True},
+        headers=_headers(),
         timeout=30,
     )
     response.raise_for_status()
@@ -43,7 +56,12 @@ def _await_result(task_id, label=None):
     deadline = time.monotonic() + TIMEOUT_SECONDS
     while time.monotonic() < deadline:
         time.sleep(POLL_SECONDS)
-        task = requests.get(f"{BASE_URL}/api/tasks/{task_id}", timeout=30).json()
+        response = requests.get(f"{BASE_URL}/api/tasks/{task_id}",
+                                headers=_headers(), timeout=30)
+        # Without this a rejected key reads as a task that never progresses,
+        # and we would poll a 401 for the full 900s before giving up.
+        response.raise_for_status()
+        task = response.json()
         status = task.get("status")
         if status == "completed":
             return _unwrap(task.get("result"))
