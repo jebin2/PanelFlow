@@ -600,7 +600,7 @@ Four workers, and the boundaries between them are the load-bearing part:
 | **extractor** | comic-panel-extractor, local YOLO/CV | panel boxes |
 | **OCR** | PaddleOCR at `jebin2-ocr.hf.space` | text boxes (its text is kept only for matching) |
 | **vision** | Gemini web UI, driven in a neko docker browser | descriptions, characters, dialogue words, focal_point |
-| **text** | TTT at `opencode.voidall.com`, model `opencode` | reshape prose→JSON, match dialogue↔boxes, reconcile, synthesize |
+| **text** | TTT at `ttt.voidall.com`, model `opencode` | reshape prose→JSON, match dialogue↔boxes, reconcile, synthesize |
 
 The rule underneath: **models transcribe and match; arithmetic and geometry stay
 in code.** A model is never asked for a pixel coordinate, and never asked to

@@ -1,4 +1,4 @@
-"""Text generation via our own TTT service (opencode.voidall.com).
+"""Text generation via our own TTT service (ttt.voidall.com).
 
 An async job queue: submit a task, poll until it completes. Text only — no
 image support, which is why vision stages use a different provider.
@@ -10,7 +10,7 @@ import time
 import requests
 from custom_logger import logger_config
 
-BASE_URL = os.environ.get("TTT_API_URL", "https://opencode.voidall.com").rstrip("/")
+BASE_URL = os.environ.get("TTT_API_URL", "https://ttt.voidall.com").rstrip("/")
 # "opencode" reasons far better than "qwen" (Qwen3.5:4b), which fails even the
 # character-merge task, and it answers faster. Override per call if needed.
 MODEL = os.environ.get("TTT_MODEL", "opencode")
